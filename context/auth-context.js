@@ -168,19 +168,34 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      // Sign out from Firebase
-      const auth = getAuth()
-      await auth.signOut()
+      // Try to call backend logout API, but don't fail if it errors
+      try {
+        await api.auth.logout()
+      } catch (apiError) {
+        // Ignore 401 errors on logout - token might already be expired
+        console.log("Backend logout API call failed (this is okay):", apiError)
+      }
 
-      // Call backend logout API
-      await api.auth.logout()
+      // Sign out from Firebase
+      try {
+        const auth = getAuth()
+        await auth.signOut()
+      } catch (firebaseError) {
+        console.log("Firebase signout failed (this is okay):", firebaseError)
+      }
     } catch (error) {
       console.error("Logout error:", error)
     } finally {
-      // Always clear local storage
-      localStorage.removeItem("auth_token")
-      localStorage.removeItem("user")
+      // Always clear ALL storage regardless of API success/failure
+      localStorage.clear() // Clear everything to be safe
+      sessionStorage.clear()
       setUser(null)
+      
+      // Force redirect to login page using window.location for hard navigation
+      // This ensures we bypass any cached state
+      if (typeof window !== 'undefined') {
+        window.location.href = '/auth/login'
+      }
     }
   }
 
