@@ -130,7 +130,25 @@ export default function NewCasePage() {
       setIsLawyer(isLawyer);
     }
   }, [user])
-
+useEffect(() => {
+  if (user && isLawyer) {
+    // Auto-add the current lawyer if no lawyers are present
+    setCaseData(prev => ({
+      ...prev,
+      lawyers: prev.lawyers && prev.lawyers.length > 0 ? prev.lawyers : [{
+        name: user.name,
+        email: user.email || "",
+        contact: user.phone || "",
+        role: "lead",
+        position: "first_chair",
+        isPrimary: true,
+        level: "Senior",
+        chairPosition: "first_chair",
+        addedBy: user._id
+      }]
+    }));
+  }
+}, [user, isLawyer]);
   // Helper functions for managing associated clients (if user is a lawyer)
   const updateClientField = (index, field, value) => {
     setCaseData(prev => {
@@ -225,6 +243,7 @@ export default function NewCasePage() {
     petitioners: [],
     respondentRole: "Defendant",
     respondents: [],
+      lawyers: [],
     description: "",
     status: "active",
     priority: "normal",
@@ -435,30 +454,37 @@ export default function NewCasePage() {
     }
 
     // Validate lawyers if lawyer is creating the case
-    if (isLawyer && (section === 'all' || section === 'associatedParties')) {
-      // Ensure at least one lawyer is present
-      if (!caseData.lawyers || caseData.lawyers.length === 0) {
+ // Validate lawyers if lawyer is creating the case
+if (isLawyer && (section === 'all' || section === 'associatedParties')) {
+  // Check if we have lawyers in the state OR if the current user should be auto-added
+  const hasLawyersInState = caseData.lawyers && caseData.lawyers.length > 0;
+  const currentUserIsLawyer = user && (user.role === 'lawyer' || user.role === 'admin');
+  
+  // If no lawyers are explicitly added but current user is a lawyer, that's acceptable
+  if (!hasLawyersInState && !currentUserIsLawyer) {
+    toast({
+      title: "Error",
+      description: "Please add at least one lawyer to the case.",
+      variant: "destructive",
+    });
+    return;
+  }
+  
+  // Validate lawyer names only if lawyers are explicitly added
+  if (hasLawyersInState) {
+    for (let i = 0; i < caseData.lawyers.length; i++) {
+      const lawyer = caseData.lawyers[i];
+      if (!lawyer.name || lawyer.name.trim() === '') {
         toast({
           title: "Error",
-          description: "Please add at least one lawyer to the case.",
+          description: `Please enter a name for Lawyer ${i + 1}.`,
           variant: "destructive",
         });
         return;
       }
-      
-      // Validate lawyer names
-      for (let i = 0; i < caseData.lawyers.length; i++) {
-        const lawyer = caseData.lawyers[i];
-        if (!lawyer.name || lawyer.name.trim() === '') {
-          toast({
-            title: "Error",
-            description: `Please enter a name for Lawyer ${i + 1}.`,
-            variant: "destructive",
-          });
-          return;
-        }
-      }
     }
+  }
+}
 
     // Validate associated clients if lawyer is creating the case
     if (isLawyer && (section === 'all' || section === 'associatedParties')) {
@@ -749,10 +775,18 @@ export default function NewCasePage() {
 
             <TabsContent value="details">
               <Card>
-                <CardHeader>
-                  <CardTitle>Case Information</CardTitle>
-                  <CardDescription>Enter the basic details about the case</CardDescription>
-                </CardHeader>
+               <CardHeader>
+  <CardTitle>Legal Team</CardTitle>
+  <CardDescription>
+    {user && (
+      <span className="text-green-600 font-medium">
+        You ({user.name}) are automatically added as the primary lawyer.
+      </span>
+    )}
+    <br />
+    Add other lawyers working on this case (optional).
+  </CardDescription>
+</CardHeader>
                 <CardContent>
                   <form id="case-form" onSubmit={handleSubmit} className="space-y-4">
                     {/* ... (rest of the JSX) */}

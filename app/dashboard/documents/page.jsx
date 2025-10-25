@@ -115,6 +115,22 @@ export default function DocumentsPage() {
   })
   const [uploadProgress, setUploadProgress] = useState({})
 
+  // Fetch cases separately
+  const fetchCases = async () => {
+    try {
+      const response = await api.cases.getAll()
+      setCases(response.data?.data || response.data || [])
+    } catch (error) {
+      console.error("Error fetching cases:", error)
+      // Fallback to sample data
+      setCases([
+        { _id: "1", title: "Smith v. Johnson" },
+        { _id: "2", title: "Estate of Williams" },
+        { _id: "3", title: "Brown LLC v. Davis Corp" },
+      ])
+    }
+  }
+
   const fetchDocuments = async () => {
     setLoading(true)
     try {
@@ -131,11 +147,9 @@ export default function DocumentsPage() {
         sortOrder,
       }
 
-      // API calls to fetch documents and cases
-      const [documentsResponse, casesResponse] = await Promise.all([api.documents.getAll(filters), api.cases.getAll()])
-
-      setDocuments(documentsResponse.data || [])
-      setCases(casesResponse.data || [])
+      // API call to fetch documents only
+      const documentsResponse = await api.documents.getAll(filters)
+      setDocuments(documentsResponse.data?.data || documentsResponse.data || [])
     } catch (error) {
       console.error("Error fetching documents:", error)
       setError("Failed to load documents. Please try again.")
@@ -179,12 +193,6 @@ export default function DocumentsPage() {
           tags: ["draft", "contract"],
         },
       ])
-
-      setCases([
-        { id: "1", title: "Smith v. Johnson" },
-        { id: "2", title: "Estate of Williams" },
-        { id: "3", title: "Brown LLC v. Davis Corp" },
-      ])
     } finally {
       setLoading(false)
     }
@@ -196,6 +204,10 @@ export default function DocumentsPage() {
       setIsLawyer(user.role === "lawyer")
     }
   }, [user])
+
+  useEffect(() => {
+    fetchCases()
+  }, [])
 
   useEffect(() => {
     fetchDocuments()
@@ -221,7 +233,6 @@ export default function DocumentsPage() {
     }
   }
 
-  // Update the handleUploadSubmit function to properly handle file uploads
   const handleUploadSubmit = async (e) => {
     e.preventDefault()
 
@@ -377,7 +388,7 @@ export default function DocumentsPage() {
               <SelectContent>
                 <SelectItem value="all">All Cases</SelectItem>
                 {cases.map((caseItem) => (
-                  <SelectItem key={caseItem.id} value={caseItem.id}>
+                  <SelectItem key={caseItem._id || caseItem.id} value={caseItem._id || caseItem.id}>
                     {caseItem.title}
                   </SelectItem>
                 ))}
@@ -561,10 +572,21 @@ export default function DocumentsPage() {
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
                 <Label htmlFor="file">Document File</Label>
-                <Input id="file" type="file" onChange={handleFileChange} required />
+                <Input 
+                  id="file" 
+                  type="file" 
+                  onChange={handleFileChange} 
+                  required 
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt,.xls,.xlsx,.ppt,.pptx"
+                />
+                {uploadForm.file && (
+                  <p className="text-sm text-muted-foreground">
+                    Selected: {uploadForm.file.name}
+                  </p>
+                )}
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="case">Case</Label>
+                <Label htmlFor="case">Case *</Label>
                 <Select
                   value={uploadForm.case}
                   onValueChange={(value) => setUploadForm({ ...uploadForm, case: value })}
@@ -574,13 +596,24 @@ export default function DocumentsPage() {
                     <SelectValue placeholder="Select case" />
                   </SelectTrigger>
                   <SelectContent>
-                    {cases.map((caseItem) => (
-                      <SelectItem key={caseItem.id} value={caseItem.id}>
-                        {caseItem.title}
+                    {cases.length > 0 ? (
+                      cases.map((caseItem) => (
+                        <SelectItem key={caseItem._id || caseItem.id} value={caseItem._id || caseItem.id}>
+                          {caseItem.title}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-cases" disabled>
+                        No cases available
                       </SelectItem>
-                    ))}
+                    )}
                   </SelectContent>
                 </Select>
+                {cases.length === 0 && (
+                  <p className="text-sm text-red-500">
+                    No cases found. Please create a case first.
+                  </p>
+                )}
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="category">Category</Label>
@@ -609,17 +642,29 @@ export default function DocumentsPage() {
                   onChange={(e) => setUploadForm({ ...uploadForm, tags: e.target.value })}
                 />
               </div>
+              <div className="grid gap-2">
+                <Label htmlFor="description">Description</Label>
+                <Input
+                  id="description"
+                  placeholder="Document description"
+                  value={uploadForm.description}
+                  onChange={(e) => setUploadForm({ ...uploadForm, description: e.target.value })}
+                />
+              </div>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowUploadDialog(false)}>
                 Cancel
               </Button>
-              <Button type="submit">Upload</Button>
+              <Button type="submit" disabled={!uploadForm.file || !uploadForm.case}>
+                Upload
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
+      {/* Rest of the dialogs remain the same */}
       {/* View Document Dialog */}
       {viewDocument && (
         <Dialog open={!!viewDocument} onOpenChange={() => setViewDocument(null)}>
@@ -726,6 +771,7 @@ export default function DocumentsPage() {
   )
 }
 
+// DocumentsTable component remains the same
 function DocumentsTable({
   documents,
   selectedDocuments,
