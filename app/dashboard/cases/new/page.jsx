@@ -291,7 +291,7 @@ useEffect(() => {
       if (name === 'nextHearingDate' && newData.filingDate && date) {
         if (new Date(date) <= new Date(newData.filingDate)) {
           toast({
-            title: "Validation Error",
+            title: "",
             description: "First hearing date must be after the filing date",
             variant: "destructive",
           });
@@ -417,7 +417,7 @@ useEffect(() => {
     if (section === 'all' || section === 'party') {
       if (!caseData.petitioners || caseData.petitioners.length === 0) {
         toast({
-          title: "Error",
+          title: "",
           description: "Please add at least one petitioner/plaintiff/appellant/complainant",
           variant: "destructive",
         });
@@ -463,7 +463,7 @@ if (isLawyer && (section === 'all' || section === 'associatedParties')) {
   // If no lawyers are explicitly added but current user is a lawyer, that's acceptable
   if (!hasLawyersInState && !currentUserIsLawyer) {
     toast({
-      title: "Error",
+      title: "",
       description: "Please add at least one lawyer to the case.",
       variant: "destructive",
     });
@@ -490,7 +490,7 @@ if (isLawyer && (section === 'all' || section === 'associatedParties')) {
     if (isLawyer && (section === 'all' || section === 'associatedParties')) {
       if (!caseData.clients || caseData.clients.length === 0) {
         toast({
-          title: "Error",
+          title: "",
           description: "Please add at least one client for the case.",
           variant: "destructive",
         });

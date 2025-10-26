@@ -116,87 +116,108 @@ export default function DocumentsPage() {
   const [uploadProgress, setUploadProgress] = useState({})
 
   // Fetch cases separately
-  const fetchCases = async () => {
-    try {
-      const response = await api.cases.getAll()
-      setCases(response.data?.data || response.data || [])
-    } catch (error) {
-      console.error("Error fetching cases:", error)
-      // Fallback to sample data
-      setCases([
-        { _id: "1", title: "Smith v. Johnson" },
-        { _id: "2", title: "Estate of Williams" },
-        { _id: "3", title: "Brown LLC v. Davis Corp" },
-      ])
+  // Update the fetchCases function in your DocumentsPage component
+const fetchCases = async () => {
+  try {
+    const response = await api.cases.getAll()
+    console.log("Cases API Response:", response) // Debug log
+    
+    // Handle different response structures
+    let casesData = []
+    
+    if (Array.isArray(response)) {
+      casesData = response
+    } else if (response && Array.isArray(response.data)) {
+      casesData = response.data
+    } else if (response && response.data && Array.isArray(response.data.data)) {
+      casesData = response.data.data
+    } else if (response && response.data) {
+      // If data is an object, convert to array
+      casesData = [response.data].flat()
     }
+    
+    console.log("Processed cases data:", casesData) // Debug log
+    setCases(casesData)
+  } catch (error) {
+    console.error("Error fetching cases:", error)
+    
+    // More appropriate fallback - empty array instead of sample data
+    setCases([])
+    
+    toast({
+      title: "Failed to load cases",
+      description: "Could not load your cases. Please try again.",
+      variant: "destructive",
+    })
   }
+}
 
-  const fetchDocuments = async () => {
-    setLoading(true)
-    try {
-      // Prepare filter parameters
-      const filters = {
-        search: searchTerm,
-        case: caseFilter !== "all" ? caseFilter : undefined,
-        category: categoryFilter !== "All Categories" ? categoryFilter : undefined,
-        status: statusFilter !== "All Statuses" ? statusFilter.toLowerCase() : undefined,
-        date: dateFilter !== "all" ? dateFilter : undefined,
-        tag: tagFilter || undefined,
-        tab: activeTab !== "all" ? activeTab : undefined,
-        sortBy,
-        sortOrder,
-      }
+// Also update the case filter in your JSX to handle empty cases
+<Select value={caseFilter} onValueChange={setCaseFilter}>
+  <SelectTrigger className="w-[180px]">
+    <SelectValue placeholder="Filter by case" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="all">All Cases</SelectItem>
+    {cases.length > 0 ? (
+      cases.map((caseItem) => (
+        <SelectItem key={caseItem._id || caseItem.id} value={caseItem._id || caseItem.id}>
+          {caseItem.title}
+        </SelectItem>
+      ))
+    ) : (
+      <SelectItem value="no-cases" disabled>
+        No cases available
+      </SelectItem>
+    )}
+  </SelectContent>
+</Select>
 
-      // API call to fetch documents only
-      const documentsResponse = await api.documents.getAll(filters)
-      setDocuments(documentsResponse.data?.data || documentsResponse.data || [])
-    } catch (error) {
-      console.error("Error fetching documents:", error)
-      setError("Failed to load documents. Please try again.")
 
-      // Fallback to sample data
-      setDocuments([
-        {
-          id: "1",
-          name: "Complaint.pdf",
-          type: "pdf",
-          size: 1024000,
-          category: "Pleadings",
-          status: "Approved",
-          case: { title: "Smith v. Johnson" },
-          uploadedBy: { name: "John Lawyer" },
-          createdAt: new Date().toISOString(),
-          tags: ["important", "court-filing"],
-        },
-        {
-          id: "2",
-          name: "Evidence Photo.jpg",
-          type: "jpg",
-          size: 2048000,
-          category: "Evidence",
-          status: "Pending",
-          case: { title: "Estate of Williams" },
-          uploadedBy: { name: "John Lawyer" },
-          createdAt: new Date().toISOString(),
-          tags: ["photo", "evidence"],
-        },
-        {
-          id: "3",
-          name: "Contract Draft.docx",
-          type: "docx",
-          size: 512000,
-          category: "Contracts",
-          status: "Approved",
-          case: { title: "Brown LLC v. Davis Corp" },
-          uploadedBy: { name: "John Lawyer" },
-          createdAt: new Date().toISOString(),
-          tags: ["draft", "contract"],
-        },
-      ])
-    } finally {
-      setLoading(false)
+const fetchDocuments = async () => {
+  setLoading(true)
+  try {
+    // Prepare filter parameters
+    const filters = {
+      search: searchTerm,
+      case: caseFilter !== "all" ? caseFilter : undefined,
+      category: categoryFilter !== "All Categories" ? categoryFilter : undefined,
+      status: statusFilter !== "All Statuses" ? statusFilter.toLowerCase() : undefined,
+      date: dateFilter !== "all" ? dateFilter : undefined,
+      tag: tagFilter || undefined,
+      tab: activeTab !== "all" ? activeTab : undefined,
+      sortBy,
+      sortOrder,
     }
+
+    // API call to fetch documents only
+    const documentsResponse = await api.documents.getAll(filters)
+    const docs = documentsResponse.data?.data || documentsResponse.data || []
+    
+    // Transform backend fields to frontend expected fields
+    const transformedDocs = docs.map(doc => ({
+      id: doc._id || doc.id,
+      name: doc.name,
+      type: doc.fileType?.split('/')[1] || 'file', // Extract extension from fileType
+      size: doc.fileSize,
+      category: doc.category,
+      status: doc.status,
+      case: doc.case,
+      uploadedBy: doc.uploadedBy,
+      createdAt: doc.createdAt,
+      tags: doc.tags,
+      fileUrl: doc.filePath // Map filePath to fileUrl for frontend
+    }))
+    
+    setDocuments(transformedDocs)
+  } catch (error) {
+    console.error("Error fetching documents:", error)
+    setError("Failed to load documents. Please try again.")
+    setDocuments([]) // Use empty array instead of sample data
+  } finally {
+    setLoading(false)
   }
+}
 
   useEffect(() => {
     // Check if user is lawyer or client

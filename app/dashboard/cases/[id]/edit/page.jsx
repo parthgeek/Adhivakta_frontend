@@ -182,7 +182,7 @@ export default function EditCasePage() {
       if (name === 'nextHearingDate' && newData.filingDate && value) {
         if (new Date(value) <= new Date(newData.filingDate)) {
           toast({
-            title: "Validation Error",
+            title: "",
             description: "First hearing date must be after the filing date",
             variant: "destructive",
           });
@@ -205,7 +205,7 @@ export default function EditCasePage() {
     // --- PARTY VALIDATION (like new case page) ---
     if (!caseData.petitioners || caseData.petitioners.length === 0) {
       toast({
-        title: "Error",
+        title: "",
         description: "Please add at least one petitioner/plaintiff/appellant/complainant",
         variant: "destructive",
       });

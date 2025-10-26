@@ -673,20 +673,8 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
               <form id="security-form" onSubmit={updateSecurity} className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Shield className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">Two-Factor Authentication</p>
-                      <p className="text-sm text-muted-foreground">Add an extra layer of security to your account</p>
-                    </div>
-                  </div>
-                  <Switch
-                    checked={securitySettings.twoFactorAuth}
-                    onCheckedChange={(checked) => handleSecurityChange("twoFactorAuth", checked)}
-                  />
-                </div>
-
+                
+                 
                 <div className="flex items-center justify-between border-t pt-4">
                   <div className="flex items-center space-x-2">
                     <Bell className="h-5 w-5 text-muted-foreground" />
