@@ -3,7 +3,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import RegisterFormClient from "@/components/auth/register-form-client"
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 
 export default function RegisterPage() {
