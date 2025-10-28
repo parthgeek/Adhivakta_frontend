@@ -3,7 +3,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { RegisterFormClient } from "@/components/auth/register-form"
+import { RegisterForm} from "@/components/auth/register-form"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 
 export default function RegisterPage() {
@@ -20,7 +20,7 @@ export default function RegisterPage() {
               <CardDescription>Get started with Adhivakta legal case management</CardDescription>
             </CardHeader>
             <CardContent>
-              <RegisterFormClient />
+              <RegisterForm/>
             </CardContent>
           </Card>
           <p className="mt-4 text-center text-sm text-muted-foreground">
