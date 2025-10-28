@@ -346,7 +346,8 @@ const register = useCallback(async (userData) => {
 }, [handleAuthSuccess])
 
 
-  const loginWithGoogle = useCallback(async (role = null) => {
+
+const loginWithGoogle = useCallback(async (role = null) => {
   const auth = getAuth()
   const provider = new GoogleAuthProvider()
 
@@ -361,23 +362,26 @@ const register = useCallback(async (userData) => {
     const idToken = await fbUser.getIdToken()
     if (!idToken) throw new Error("Could not obtain Firebase ID token")
 
-    // Show a tiny preview only (safe) — don't log full token in prod
-    console.log("Got idToken (length):", idToken.length, "role:", role)
-
     const payload = { idToken }
     if (role) payload.role = role
 
-    // Use absolute URL if API_URL is missing — helpful in dev
-    const apiUrl = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_URL) ? process.env.NEXT_PUBLIC_API_URL : ''
-    console.log("Calling backend", `${apiUrl}/auth/google-login`, payload)
-
-    const response = await api.auth.googleLogin(payload) // uses API_URL inside api.js
+    const response = await api.auth.googleLogin(payload)
     console.log("Backend google-login response:", response)
     handleAuthSuccess(response)
     return response.user
   } catch (err) {
     console.error("loginWithGoogle error:", err)
-    // Surface a helpful message to the UI as well
+    
+    // Check if backend requires role for new user
+    if (err.response?.data?.message?.includes("role required") || 
+        err.message?.includes("role required")) {
+      // Throw a special error that indicates role is needed
+      const roleError = new Error("Role selection required for new user")
+      roleError.requiresRole = true
+      roleError.authData = { idToken: await fbUser?.getIdToken() }
+      throw roleError
+    }
+    
     throw err
   }
 }, [handleAuthSuccess])

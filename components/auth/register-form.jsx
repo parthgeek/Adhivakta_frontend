@@ -1,35 +1,53 @@
-// components/auth/register-form.jsx
 'use client'
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { useAuth } from "@/context/auth-context"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Loader2 } from "lucide-react"
-import { FcGoogle } from "react-icons/fc"
+import React, { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/context/auth-context'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Loader2 } from 'lucide-react'
+import { FcGoogle } from 'react-icons/fc'
+
+export default function RegisterPage() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+      <div className="w-full max-w-md bg-white border rounded-2xl shadow p-6">
+        <h1 className="text-2xl font-semibold mb-4">Create an account</h1>
+        <p className="text-sm text-muted-foreground mb-6">Choose whether you're signing up as a lawyer or a client — this is required for Google sign-in.</p>
+        <RegisterForm />
+      </div>
+    </div>
+  )
+}
 
 export function RegisterForm() {
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [accountType, setAccountType] = useState("lawyer")
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  // start with empty so user is forced to choose explicitly
+  const [accountType, setAccountType] = useState('')
   const [terms, setTerms] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
+  const [error, setError] = useState('')
+
   const { register, loginWithGoogle } = useAuth()
   const router = useRouter()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError("")
+    setError('')
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match")
+      setError('Passwords do not match')
+      return
+    }
+
+    if (!accountType) {
+      setError('Please select an account type')
       return
     }
 
@@ -41,30 +59,35 @@ export function RegisterForm() {
         email,
         password,
         role: accountType,
-        // Add any other fields your backend expects
       }
 
       await register(userData)
-      router.push("/dashboard")
-    } catch (error) {
-      console.error("Registration error:", error)
-      setError(error.message || "Registration failed. Please try again.")
+      router.push('/dashboard')
+    } catch (err) {
+      console.error('Registration error:', err)
+      setError(err?.message || 'Registration failed. Please try again.')
     } finally {
       setIsLoading(false)
     }
   }
 
   const handleGoogleLogin = async () => {
-    setError("")
-    setIsLoading(true)
+    setError('')
 
+    // enforce selection before initiating Google login
+    if (!accountType) {
+      setError('Please select an account type before continuing with Google login.')
+      return
+    }
+
+    setIsLoading(true)
     try {
-      // PASS the selected accountType here so backend can create role appropriately
+      // pass the role so your backend can create the right account or validate
       await loginWithGoogle(accountType)
-      router.push("/dashboard")
-    } catch (error) {
-      console.error("Google login failed:", error)
-      setError("Google login failed. Please try again.")
+      router.push('/dashboard')
+    } catch (err) {
+      console.error('Google login failed:', err)
+      setError(err?.message || 'Google login failed. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -72,11 +95,17 @@ export function RegisterForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {error && <div className="bg-red-50 text-red-500 p-3 rounded-md text-sm">{error}</div>}
+      {error && (
+        <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm" role="alert">
+          {error}
+        </div>
+      )}
+
       <div className="space-y-2">
         <Label htmlFor="name">Full Name</Label>
         <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required disabled={isLoading} />
       </div>
+
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input
@@ -89,6 +118,7 @@ export function RegisterForm() {
           disabled={isLoading}
         />
       </div>
+
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>
         <Input
@@ -100,6 +130,7 @@ export function RegisterForm() {
           disabled={isLoading}
         />
       </div>
+
       <div className="space-y-2">
         <Label htmlFor="confirmPassword">Confirm Password</Label>
         <Input
@@ -111,10 +142,11 @@ export function RegisterForm() {
           disabled={isLoading}
         />
       </div>
+
       <div className="space-y-2">
         <Label htmlFor="accountType">Account Type</Label>
         <Select value={accountType} onValueChange={setAccountType}>
-          <SelectTrigger>
+          <SelectTrigger aria-label="Account type">
             <SelectValue placeholder="Select role" />
           </SelectTrigger>
           <SelectContent>
@@ -123,12 +155,14 @@ export function RegisterForm() {
           </SelectContent>
         </Select>
       </div>
+
       <div className="flex items-center space-x-2">
         <Checkbox id="terms" checked={terms} onCheckedChange={setTerms} required disabled={isLoading} />
         <Label htmlFor="terms" className="text-sm font-normal">
           I agree to the terms of service and privacy policy
         </Label>
       </div>
+
       <Button type="submit" className="w-full" disabled={isLoading || !terms}>
         {isLoading ? (
           <>
@@ -136,21 +170,34 @@ export function RegisterForm() {
             Creating account...
           </>
         ) : (
-          "Create account"
+          'Create account'
         )}
       </Button>
+
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+          <span className="bg-white px-2 text-muted-foreground">Or continue with</span>
         </div>
       </div>
-      <Button type="button" variant="outline" className="w-full" onClick={handleGoogleLogin} disabled={isLoading}>
+
+      {/* Google button: disabled until accountType is chosen */}
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full flex items-center justify-center"
+        onClick={handleGoogleLogin}
+        disabled={isLoading || !accountType}
+        aria-disabled={isLoading || !accountType}
+        title={!accountType ? 'Select account type first' : 'Continue with Google'}
+      >
         <FcGoogle className="mr-2 h-4 w-4" />
-        Google
+        {isLoading ? 'Processing...' : 'Sign in with Google'}
       </Button>
+
+      <p className="text-xs text-center text-muted-foreground mt-2">Tip: select the role before continuing with Google so we can create the correct account type.</p>
     </form>
   )
 }

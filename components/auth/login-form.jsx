@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from "react"
@@ -10,6 +11,20 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Loader2 } from "lucide-react"
 import { FcGoogle } from "react-icons/fc"
 import { toast } from "@/components/ui/use-toast"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export function LoginForm() {
   const [email, setEmail] = useState("")
@@ -17,6 +32,9 @@ export function LoginForm() {
   const [remember, setRemember] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const [showRoleDialog, setShowRoleDialog] = useState(false)
+  const [selectedRole, setSelectedRole] = useState("")
+  const [pendingGoogleAuth, setPendingGoogleAuth] = useState(null)
   const { login, loginWithGoogle } = useAuth()
   const router = useRouter()
 
@@ -43,21 +61,63 @@ export function LoginForm() {
     }
   }
 
-  // Update the handleGoogleLogin function to properly handle Google login
+  // Enhanced Google login that requires role for new users
   const handleGoogleLogin = async () => {
     setError("")
     setIsLoading(true)
 
     try {
-      await loginWithGoogle()
-      router.push("/dashboard")
+      // First attempt Google login without role
+      const result = await loginWithGoogle()
+      
+      // If login is successful, redirect to dashboard
+      if (result) {
+        router.push("/dashboard")
+      }
     } catch (error) {
-      console.error("Google login error:", error)
-      setError("Google login failed. Please try again.")
+      // Check if error indicates role is required for new user
+      if (error.message?.includes("role required") || error.message?.includes("Role required")) {
+        // Store the authentication context and show role selection
+        setPendingGoogleAuth(error.authData || {})
+        setShowRoleDialog(true)
+      } else {
+        console.error("Google login error:", error)
+        setError("Google login failed. Please try again.")
+        toast({
+          variant: "destructive",
+          title: "Authentication Error",
+          description: "Google login failed. Please try again.",
+        })
+      }
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Handle role selection for new Google users
+  const handleRoleSelection = async () => {
+    if (!selectedRole) {
       toast({
         variant: "destructive",
-        title: "Authentication Error",
-        description: "Google login failed. Please try again.",
+        title: "Selection Required",
+        description: "Please select your role to continue.",
+      })
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      // Retry Google login with selected role
+      await loginWithGoogle(selectedRole)
+      setShowRoleDialog(false)
+      router.push("/dashboard")
+    } catch (error) {
+      console.error("Google login with role error:", error)
+      setError("Failed to complete registration. Please try again.")
+      toast({
+        variant: "destructive",
+        title: "Registration Error",
+        description: "Failed to complete registration. Please try again.",
       })
     } finally {
       setIsLoading(false)
@@ -72,7 +132,6 @@ export function LoginForm() {
 
     setIsLoading(true)
     try {
-      // Call the forgot password endpoint
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/forgot-password`, {
         method: "POST",
         headers: {
@@ -84,71 +143,112 @@ export function LoginForm() {
       alert("If an account with this email exists, you will receive password reset instructions.")
     } catch (error) {
       console.error("Forgot password error:", error)
-      // Don't show error to prevent email enumeration
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {error && <div className="bg-red-50 text-red-500 p-3 rounded-md text-sm">{error}</div>}
-      <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          type="email"
-          placeholder="name@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          disabled={isLoading}
-        />
-      </div>
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="password">Password</Label>
-          <Button variant="link" className="h-auto p-0 text-sm" onClick={handleForgotPassword} type="button">
-            Forgot password?
-          </Button>
+    <>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && <div className="bg-red-50 text-red-500 p-3 rounded-md text-sm">{error}</div>}
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            placeholder="name@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            disabled={isLoading}
+          />
         </div>
-        <Input
-          id="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          disabled={isLoading}
-        />
-      </div>
-      <div className="flex items-center space-x-2">
-        <Checkbox id="remember" checked={remember} onCheckedChange={setRemember} disabled={isLoading} />
-        <Label htmlFor="remember" className="text-sm font-normal">
-          Remember me
-        </Label>
-      </div>
-      <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Signing in...
-          </>
-        ) : (
-          "Sign in"
-        )}
-      </Button>
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t" />
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password">Password</Label>
+            <Button variant="link" className="h-auto p-0 text-sm" onClick={handleForgotPassword} type="button">
+              Forgot password?
+            </Button>
+          </div>
+          <Input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            disabled={isLoading}
+          />
         </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+        <div className="flex items-center space-x-2">
+          <Checkbox id="remember" checked={remember} onCheckedChange={setRemember} disabled={isLoading} />
+          <Label htmlFor="remember" className="text-sm font-normal">
+            Remember me
+          </Label>
         </div>
-      </div>
-      <Button type="button" variant="outline" className="w-full" onClick={handleGoogleLogin} disabled={isLoading}>
-        <FcGoogle className="mr-2 h-4 w-4" />
-        Google
-      </Button>
-    </form>
+        <Button type="submit" className="w-full" disabled={isLoading}>
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Signing in...
+            </>
+          ) : (
+            "Sign in"
+          )}
+        </Button>
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+          </div>
+        </div>
+        <Button type="button" variant="outline" className="w-full" onClick={handleGoogleLogin} disabled={isLoading}>
+          <FcGoogle className="mr-2 h-4 w-4" />
+          Google
+        </Button>
+      </form>
+
+      {/* Role Selection Dialog for New Google Users */}
+      <Dialog open={showRoleDialog} onOpenChange={setShowRoleDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Select Your Role</DialogTitle>
+            <DialogDescription>
+              Please select your role to complete your account setup.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="role">I am a:</Label>
+              <Select value={selectedRole} onValueChange={setSelectedRole}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select your role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="lawyer">Lawyer</SelectItem>
+                  <SelectItem value="client">Client</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button 
+              onClick={handleRoleSelection} 
+              className="w-full" 
+              disabled={isLoading || !selectedRole}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating Account...
+                </>
+              ) : (
+                "Continue"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
