@@ -15,7 +15,7 @@ import api from "@/services/api"
 
 export const AuthContext = createContext()
 
-// Token expiration check
+
 const isTokenExpired = (token) => {
   if (!token) return true
   try {
@@ -276,77 +276,112 @@ export const AuthProvider = ({ children }) => {
     }
   }, [])
 
-  // Login function
-  const login = useCallback(async (email, password) => {
-    try {
-      // Try Firebase first
-      try {
-        const auth = getAuth()
-        await signInWithEmailAndPassword(auth, email, password)
-        const idToken = await auth.currentUser.getIdToken()
-        const response = await api.auth.googleLogin({ idToken })
-        handleAuthSuccess(response)
-        return response.user
-      } catch (firebaseError) {
-        console.log("Firebase auth failed, trying regular login:", firebaseError.message)
-      }
-
-      // Fallback to regular login
-      const response = await api.auth.login({ email, password })
-      handleAuthSuccess(response)
-      return response.user
-    } catch (error) {
-      console.error("Login error:", error)
-      throw error
-    }
-  }, [handleAuthSuccess])
-
-  // Register function
-  const register = useCallback(async (userData) => {
-    // Ensure only 'lawyer' and 'client' roles
-    if (!['lawyer', 'client'].includes(userData.role)) {
-      userData.role = 'client'
-    }
-
-    try {
-      const { email, password } = userData
-
-      // Try Firebase registration first
-      if (email && password) {
-        try {
-          const auth = getAuth()
-          await createUserWithEmailAndPassword(auth, email, password)
-        } catch (firebaseError) {
-          console.log("Firebase registration failed (continuing):", firebaseError.message)
-        }
-      }
-
-      // Register with backend
-      const response = await api.auth.register(userData)
-      handleAuthSuccess(response)
-      return response.user
-    } catch (error) {
-      console.error("Registration error:", error)
-      throw error
-    }
-  }, [handleAuthSuccess])
-
-  // Google login function
-  const loginWithGoogle = useCallback(async () => {
+// correct email/password login
+const login = useCallback(async (email, password) => {
+  try {
+    // First try backend email/password login (not Google)
+    const response = await api.auth.login({ email, password })
+    handleAuthSuccess(response)
+    return response.user
+  } catch (backendErr) {
+    console.log("Backend login failed, trying Firebase fallback if available:", backendErr.message)
+    // Optional fallback to Firebase auth if you want that behaviour:
     try {
       const auth = getAuth()
-      const provider = new GoogleAuthProvider()
-      const result = await signInWithPopup(auth, provider)
-      const idToken = await result.user.getIdToken()
-
-      const response = await api.auth.googleLogin({ idToken })
+      await signInWithEmailAndPassword(auth, email, password)
+      const idToken = await auth.currentUser.getIdToken()
+      // If you want to authenticate via backend using Firebase token:
+      const response = await api.auth.googleLogin({ idToken }) // optional
       handleAuthSuccess(response)
       return response.user
-    } catch (error) {
-      console.error("Google login error:", error)
-      throw error
+    } catch (firebaseErr) {
+      console.error("Firebase fallback login failed:", firebaseErr)
+      throw firebaseErr // bubble up to UI
     }
-  }, [handleAuthSuccess])
+  }
+}, [handleAuthSuccess])
+
+
+ // auth-context.js — improved register that links Firebase UID
+const register = useCallback(async (userData) => {
+  // Ensure only 'lawyer' and 'client' roles
+  if (!['lawyer', 'client'].includes(userData.role)) {
+    userData.role = 'client'
+  }
+
+  try {
+    const { email, password } = userData
+
+    // Try Firebase registration first (if email+password provided)
+    if (email && password) {
+      try {
+        const auth = getAuth()
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+
+        // Get firebase UID and optionally idToken
+        const firebaseUID = userCredential.user.uid
+        let idToken = null
+        try {
+          idToken = await userCredential.user.getIdToken()
+        } catch (err) {
+          console.warn('Could not get ID token after createUser:', err.message)
+        }
+
+        // Attach firebaseUID/idToken to payload so backend can link accounts
+        userData.firebaseUID = firebaseUID
+        if (idToken) userData.idToken = idToken
+      } catch (firebaseError) {
+        console.log("Firebase registration failed (continuing):", firebaseError.message)
+      }
+    }
+
+    // Register with backend (signup route)
+    const response = await api.auth.register(userData)
+    handleAuthSuccess(response)
+    return response.user
+  } catch (error) {
+    console.error("Registration error:", error)
+    throw error
+  }
+}, [handleAuthSuccess])
+
+
+  const loginWithGoogle = useCallback(async (role = null) => {
+  const auth = getAuth()
+  const provider = new GoogleAuthProvider()
+
+  try {
+    console.log("Starting Google signInWithPopup()")
+    const result = await signInWithPopup(auth, provider)
+    if (!result || !result.user) throw new Error("No user returned from signInWithPopup")
+
+    const fbUser = result.user
+    console.log("Firebase user:", { uid: fbUser.uid, email: fbUser.email })
+
+    const idToken = await fbUser.getIdToken()
+    if (!idToken) throw new Error("Could not obtain Firebase ID token")
+
+    // Show a tiny preview only (safe) — don't log full token in prod
+    console.log("Got idToken (length):", idToken.length, "role:", role)
+
+    const payload = { idToken }
+    if (role) payload.role = role
+
+    // Use absolute URL if API_URL is missing — helpful in dev
+    const apiUrl = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_URL) ? process.env.NEXT_PUBLIC_API_URL : ''
+    console.log("Calling backend", `${apiUrl}/auth/google-login`, payload)
+
+    const response = await api.auth.googleLogin(payload) // uses API_URL inside api.js
+    console.log("Backend google-login response:", response)
+    handleAuthSuccess(response)
+    return response.user
+  } catch (err) {
+    console.error("loginWithGoogle error:", err)
+    // Surface a helpful message to the UI as well
+    throw err
+  }
+}, [handleAuthSuccess])
+
 
   // Refresh user data
   const refreshUser = useCallback(async () => {

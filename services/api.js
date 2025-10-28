@@ -39,25 +39,25 @@ const createHeaders = (contentType = "application/json") => {
 
 const api = {
   auth: {
-    register: async (userData) => {
-      const response = await fetch(`${API_URL}/auth/register`, {
-        method: "POST",
-        headers: createHeaders(),
-        body: JSON.stringify(userData),
-      })
+  register: async (userData) => {
+    const response = await fetch(`${API_URL}/auth/signup`, {
+      method: "POST",
+      headers: createHeaders(),
+      body: JSON.stringify(userData),
+    })
 
-      return handleResponse(response)
-    },
+    return handleResponse(response)
+  },
 
-    login: async (credentials) => {
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: "POST",
-        headers: createHeaders(),
-        body: JSON.stringify(credentials),
-      })
+  login: async (credentials) => {
+    const response = await fetch(`${API_URL}/auth/login`, {
+      method: "POST",
+      headers: createHeaders(),
+      body: JSON.stringify(credentials),
+    })
 
-      return handleResponse(response)
-    },
+    return handleResponse(response)
+  },
 
     googleLogin: async (data) => {
       const response = await fetch(`${API_URL}/auth/google-login`, {

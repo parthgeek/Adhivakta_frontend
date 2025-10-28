@@ -1,4 +1,5 @@
-"use client"
+// components/auth/register-form.jsx
+'use client'
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
@@ -58,9 +59,11 @@ export function RegisterForm() {
     setIsLoading(true)
 
     try {
-      await loginWithGoogle()
+      // PASS the selected accountType here so backend can create role appropriately
+      await loginWithGoogle(accountType)
       router.push("/dashboard")
     } catch (error) {
+      console.error("Google login failed:", error)
       setError("Google login failed. Please try again.")
     } finally {
       setIsLoading(false)
