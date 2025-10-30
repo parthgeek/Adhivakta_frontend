@@ -1,15 +1,24 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL 
-
-// Helper function to handle API responses
 const handleResponse = async (response) => {
-  const data = await response.json()
-
-  if (!response.ok) {
-    const error = data.message || response.statusText
-    throw new Error(error)
+  let data;
+  try {
+    data = await response.json();
+  } catch (error) {
+    // If response is not JSON, create a proper error
+    throw new Error(`Server error: ${response.status} ${response.statusText}`);
   }
 
-  return data
+  if (!response.ok) {
+    // Handle 401 Unauthorized - trigger logout
+    if (response.status === 401 && typeof window !== "undefined" && window.__authLogout) {
+      window.__authLogout();
+    }
+    
+    const error = data.message || data.errors?.[0]?.msg || response.statusText;
+    throw new Error(error);
+  }
+
+  return data;
 }
 
 // Helper function to get auth token
@@ -39,26 +48,34 @@ const createHeaders = (contentType = "application/json") => {
 
 const api = {
   auth: {
-  register: async (userData) => {
-    const response = await fetch(`${API_URL}/auth/signup`, {
-      method: "POST",
-      headers: createHeaders(),
-      body: JSON.stringify(userData),
-    })
+    
+    register: async (userData) => {
+      console.log("API Register - Sending:", userData);
+      const response = await fetch(`${API_URL}/auth/signup`, {
+        method: "POST",
+        headers: createHeaders(),
+        body: JSON.stringify(userData),
+      });
 
-    return handleResponse(response)
-  },
+      const data = await handleResponse(response);
+      console.log("API Register - Response:", data);
+      return data;
+    },
 
-  login: async (credentials) => {
-    const response = await fetch(`${API_URL}/auth/login`, {
-      method: "POST",
-      headers: createHeaders(),
-      body: JSON.stringify(credentials),
-    })
+    // Login endpoint - FIXED for better error handling
+    login: async (credentials) => {
+      console.log("API Login - Sending:", { email: credentials.email });
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: createHeaders(),
+        body: JSON.stringify(credentials),
+      });
 
-    return handleResponse(response)
-  },
-
+      const data = await handleResponse(response);
+      console.log("API Login - Response:", data);
+      return data;
+    },
+    // Google login endpoint
     googleLogin: async (data) => {
       const response = await fetch(`${API_URL}/auth/google-login`, {
         method: "POST",
@@ -69,6 +86,7 @@ const api = {
       return handleResponse(response)
     },
 
+    // Logout endpoint
     logout: async () => {
       const response = await fetch(`${API_URL}/auth/logout`, {
         method: "POST",
@@ -78,9 +96,63 @@ const api = {
       return handleResponse(response)
     },
 
+    // Verify token endpoint
     verifyToken: async () => {
       const response = await fetch(`${API_URL}/auth/verify`, {
         method: "GET",
+        headers: createHeaders(),
+      })
+
+      return handleResponse(response)
+    },
+
+    // NEW: Forgot password endpoint
+    forgotPassword: async (data) => {
+      const response = await fetch(`${API_URL}/auth/forgot-password`, {
+        method: "POST",
+        headers: createHeaders(),
+        body: JSON.stringify(data),
+      })
+
+      return handleResponse(response)
+    },
+
+    // NEW: Reset password endpoint
+    resetPassword: async (token, data) => {
+      const response = await fetch(`${API_URL}/auth/reset-password/${token}`, {
+        method: "POST",
+        headers: createHeaders(),
+        body: JSON.stringify(data),
+      })
+
+      return handleResponse(response)
+    },
+
+    // NEW: Change password endpoint (protected)
+    changePassword: async (data) => {
+      const response = await fetch(`${API_URL}/auth/change-password`, {
+        method: "POST",
+        headers: createHeaders(),
+        body: JSON.stringify(data),
+      })
+
+      return handleResponse(response)
+    },
+
+    // NEW: Get current user
+    getMe: async () => {
+      const response = await fetch(`${API_URL}/auth/me`, {
+        method: "GET",
+        headers: createHeaders(),
+      })
+
+      return handleResponse(response)
+    },
+
+    // NEW: Resend verification email
+    resendVerification: async () => {
+      const response = await fetch(`${API_URL}/auth/resend-verification`, {
+        method: "POST",
         headers: createHeaders(),
       })
 
