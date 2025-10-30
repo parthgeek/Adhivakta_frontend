@@ -49,18 +49,19 @@ const createHeaders = (contentType = "application/json") => {
 const api = {
   auth: {
     
-    register: async (userData) => {
-      console.log("API Register - Sending:", userData);
-      const response = await fetch(`${API_URL}/auth/signup`, {
-        method: "POST",
-        headers: createHeaders(),
-        body: JSON.stringify(userData),
-      });
 
-      const data = await handleResponse(response);
-      console.log("API Register - Response:", data);
-      return data;
-    },
+register: async (userData) => {
+  console.log("API Register - Sending:", userData);
+  const response = await fetch(`${API_URL}/auth/signup`, {
+    method: "POST",
+    headers: createHeaders(),
+    body: JSON.stringify(userData),
+  });
+
+  const data = await handleResponse(response);
+  console.log("API Register - Response:", data);
+  return data;
+},
 
     // Login endpoint - FIXED for better error handling
     login: async (credentials) => {

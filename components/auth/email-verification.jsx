@@ -10,7 +10,44 @@ export function EmailVerification() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [isVerified, setIsVerified] = useState(null)
-
+// Add this to your email-verification.jsx or register-form.jsx
+const checkVerificationStatus = async () => {
+  setCheckingVerification(true);
+  try {
+    const response = await api.auth.updateVerificationStatus();
+    
+    if (response.isVerified) {
+      toast({
+        title: "Email Verified!",
+        description: "Your email has been verified successfully.",
+      });
+      
+      // If this is during registration, redirect to login
+      setTimeout(() => {
+        router.push('/auth/login');
+      }, 2000);
+      
+      return true;
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Not Verified Yet",
+        description: "Please click the verification link in your email.",
+      });
+      return false;
+    }
+  } catch (error) {
+    console.error("Verification check error:", error);
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: "Could not check verification status.",
+    });
+    return false;
+  } finally {
+    setCheckingVerification(false);
+  }
+};
   useEffect(() => {
     let mounted = true
     const check = async () => {
