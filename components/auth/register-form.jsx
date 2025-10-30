@@ -33,18 +33,11 @@ export function RegisterForm() {
     setIsLoading(true)
     try {
       await loginWithGoogle(accountType)
-      toast({
-        title: 'Success!',
-        description: 'You have successfully signed up with Google.',
-      })
+      toast({ title: 'Success!', description: 'You have successfully signed up with Google.' })
       router.push('/dashboard')
     } catch (err) {
       console.error('Google sign-up failed:', err)
-      toast({
-        variant: 'destructive',
-        title: 'Sign-up Failed',
-        description: err?.message || 'Could not complete Google sign-up. Try again.',
-      })
+      toast({ variant: 'destructive', title: 'Sign-up Failed', description: err?.message || 'Could not complete Google sign-up. Try again.' })
     } finally {
       setIsLoading(false)
     }
@@ -59,9 +52,7 @@ export function RegisterForm() {
       )}
 
       <div className="space-y-2">
-        <label htmlFor="accountType" className="block text-sm font-medium text-gray-700">
-          Account Type
-        </label>
+        <label htmlFor="accountType" className="block text-sm font-medium text-gray-700">Account Type</label>
         <Select value={accountType} onValueChange={setAccountType} disabled={isLoading}>
           <SelectTrigger>
             <SelectValue placeholder="Select your role" />
@@ -73,29 +64,11 @@ export function RegisterForm() {
         </Select>
       </div>
 
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full flex items-center justify-center"
-        onClick={handleGoogleLogin}
-        disabled={isLoading || !accountType}
-      >
-        {isLoading ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...
-          </>
-        ) : (
-          <>
-            <FcGoogle className="mr-2 h-4 w-4" /> Continue with Google
-          </>
-        )}
+      <Button type="button" variant="outline" className="w-full flex items-center justify-center" onClick={handleGoogleLogin} disabled={isLoading || !accountType}>
+        {isLoading ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>) : (<><FcGoogle className="mr-2 h-4 w-4" /> Continue with Google</>)}
       </Button>
 
-      {!accountType && (
-        <p className="text-xs text-center text-muted-foreground">
-          Please select your account type before using Google sign-up.
-        </p>
-      )}
+      {!accountType && <p className="text-xs text-center text-muted-foreground">Please select your account type before using Google sign-up.</p>}
     </div>
   )
 }
