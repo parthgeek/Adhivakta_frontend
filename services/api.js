@@ -255,7 +255,23 @@ register: async (userData) => {
 
       return handleResponse(response)
     },
+addClientByEmail: async (caseId, email) => {
+  const response = await fetch(`${API_URL}/cases/${caseId}/clients-by-email`, {
+    method: 'POST',
+    headers: createHeaders(),
+    body: JSON.stringify({ email })
+  });
+  return handleResponse(response);
+},
 
+addLawyerByEmail: async (caseId, email) => {
+  const response = await fetch(`${API_URL}/cases/${caseId}/lawyers-by-email`, {
+    method: 'POST',
+    headers: createHeaders(),
+    body: JSON.stringify({ email })
+  });
+  return handleResponse(response);
+},
     create: async (caseData) => {
       const response = await fetch(`${API_URL}/cases`, {
         method: "POST",

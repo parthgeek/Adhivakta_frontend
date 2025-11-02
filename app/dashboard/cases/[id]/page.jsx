@@ -42,7 +42,65 @@ export default function CaseDetailsPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState("")
   const [deleting, setDeleting] = useState(false)
-  
+
+const [partnerEmail, setPartnerEmail] = useState('');
+const [addingPartner, setAddingPartner] = useState(false);
+
+// tiny email validator
+const isValidEmail = (email) => {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+const handleAddClientByEmail = async () => {
+  if (!partnerEmail) return toast({ title: 'Error', description: 'Enter an email', variant: 'destructive' });
+  if (!isValidEmail(partnerEmail)) return toast({ title: 'Error', description: 'Enter a valid email', variant: 'destructive' });
+
+  setAddingPartner(true);
+  try {
+    const resp = await api.cases.addClientByEmail(id, partnerEmail);
+    // try to update locally from response; fall back to full refetch
+    const updated = resp?.data || resp;
+    if (updated) {
+      setCaseData(prev => ({ ...(prev||{}), ...(updated||{}) }));
+    } else {
+      const fresh = await api.cases.getById(id);
+      setCaseData(fresh?.data || fresh || caseData);
+    }
+    toast({ title: 'Success', description: 'Client added to case' });
+    setPartnerEmail('');
+  } catch (err) {
+    const msg = err?.response?.data?.message || err?.message || String(err);
+    toast({ title: 'Error', description: msg || 'Failed to add client' });
+  } finally {
+    setAddingPartner(false);
+  }
+};
+
+const handleAddLawyerByEmail = async () => {
+  if (!partnerEmail) return toast({ title: 'Error', description: 'Enter an email', variant: 'destructive' });
+  if (!isValidEmail(partnerEmail)) return toast({ title: 'Error', description: 'Enter a valid email', variant: 'destructive' });
+
+  setAddingPartner(true);
+  try {
+    const resp = await api.cases.addLawyerByEmail(id, partnerEmail);
+    const updated = resp?.data || resp;
+    if (updated) {
+      setCaseData(prev => ({ ...(prev||{}), ...(updated||{}) }));
+    } else {
+      const fresh = await api.cases.getById(id);
+      setCaseData(fresh?.data || fresh || caseData);
+    }
+    toast({ title: 'Success', description: 'Lawyer added to case' });
+    setPartnerEmail('');
+  } catch (err) {
+    const msg = err?.response?.data?.message || err?.message || String(err);
+    toast({ title: 'Error', description: msg || 'Failed to add lawyer' });
+  } finally {
+    setAddingPartner(false);
+  }
+};
+
+
 
   useEffect(() => {
     const fetchCaseDetails = async () => {
@@ -596,6 +654,35 @@ export default function CaseDetailsPage() {
                       <div className="text-center py-4 text-muted-foreground">No advocate or lawyer information available.</div>
                     )}
                   </div>
+{/* Add Client/Lawyer by Email */}
+{(user?.role === 'lawyer' || user?.role === 'client') && (
+  <div className="mt-6 border-t pt-4">
+    <h3 className="text-md font-semibold mb-2">Add Person by Email</h3>
+    <p className="text-sm text-muted-foreground mb-3">
+      Enter the email of a registered user to link them to this case.
+    </p>
+    <div className="flex items-center gap-2">
+      <Input
+        type="email"
+        placeholder="Enter email (e.g. client@example.com)"
+        value={partnerEmail}
+        onChange={(e) => setPartnerEmail(e.target.value)}
+        className="max-w-sm"
+      />
+      {user.role === "lawyer" && (
+        <Button onClick={handleAddClientByEmail} disabled={addingPartner}>
+          {addingPartner ? "Adding..." : "Add Client"}
+        </Button>
+      )}
+      {user.role === "client" && (
+        <Button onClick={handleAddLawyerByEmail} disabled={addingPartner}>
+          {addingPartner ? "Adding..." : "Add Lawyer"}
+        </Button>
+      )}
+    </div>
+  </div>
+)}
+
 
                   {/* Clients Section */}
                   <div className="mb-4 pb-4 border-b">

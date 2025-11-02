@@ -123,81 +123,66 @@ export default function NewCasePage() {
   const [selectedFiles, setSelectedFiles] = useState([])
   const [uploadProgress, setUploadProgress] = useState({})
   const [parties, setParties] = useState([])
+  const [addClientEmail, setAddClientEmail] = useState("")
+  const [addLawyerEmail, setAddLawyerEmail] = useState("")
+  const [stagedClientEmails, setStagedClientEmails] = useState([])
+  const [stagedLawyerEmails, setStagedLawyerEmails] = useState([])
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false)
 
   useEffect(() => {
     if (user) {
-      const isLawyer = user?.role === 'lawyer' || user?.role === 'admin';
-      setIsLawyer(isLawyer);
+      const isLawyer = user?.role === 'lawyer' || user?.role === 'admin'
+      setIsLawyer(isLawyer)
     }
   }, [user])
-useEffect(() => {
-  if (user && isLawyer) {
-    // Auto-add the current lawyer if no lawyers are present
-    setCaseData(prev => ({
-      ...prev,
-      lawyers: prev.lawyers && prev.lawyers.length > 0 ? prev.lawyers : [{
-        name: user.name,
-        email: user.email || "",
-        contact: user.phone || "",
-        role: "lead",
-        position: "first_chair",
-        isPrimary: true,
-        level: "Senior",
-        chairPosition: "first_chair",
-        addedBy: user._id
-      }]
-    }));
-  }
-}, [user, isLawyer]);
+
   // Helper functions for managing associated clients (if user is a lawyer)
   const updateClientField = (index, field, value) => {
     setCaseData(prev => {
-      const updatedClients = [...(prev.clients || [])];
-      updatedClients[index] = { ...updatedClients[index], [field]: value };
-      return { ...prev, clients: updatedClients };
-    });
-  };
+      const updatedClients = [...(prev.clients || [])]
+      updatedClients[index] = { ...updatedClients[index], [field]: value }
+      return { ...prev, clients: updatedClients }
+    })
+  }
 
   const removeClient = (index) => {
-    setCaseData(prev => ({ ...prev, clients: prev.clients.filter((_, i) => i !== index) }));
-  };
+    setCaseData(prev => ({ ...prev, clients: prev.clients.filter((_, i) => i !== index) }))
+  }
 
   // Stakeholder Management Functions
   const addStakeholder = () => {
     setCaseData(prev => ({
       ...prev,
       stakeholders: [...(prev.stakeholders || []), { name: '', email: '', contact: '', address: '', roleInCase: '' }]
-    }));
-  };
+    }))
+  }
 
   const updateStakeholderField = (index, field, value) => {
     setCaseData(prev => {
-      const updatedStakeholders = [...(prev.stakeholders || [])];
-      updatedStakeholders[index] = { ...updatedStakeholders[index], [field]: value };
-      return { ...prev, stakeholders: updatedStakeholders };
-    });
-  };
+      const updatedStakeholders = [...(prev.stakeholders || [])]
+      updatedStakeholders[index] = { ...updatedStakeholders[index], [field]: value }
+      return { ...prev, stakeholders: updatedStakeholders }
+    })
+  }
 
   const removeStakeholder = (index) => {
-    setCaseData(prev => ({ ...prev, stakeholders: prev.stakeholders.filter((_, i) => i !== index) }));
-  };
-
-
+    setCaseData(prev => ({ ...prev, stakeholders: prev.stakeholders.filter((_, i) => i !== index) }))
+  }
 
   const addClient = () => {
     setCaseData(prev => ({
       ...prev,
       clients: [...(prev.clients || []), { name: '', email: '', contact: '', address: '' }]
-    }));
-  };
+    }))
+  }
 
   // Helper function for adding an advocate (if user is a client)
   const addAdvocate = () => {
     setCaseData(prev => ({
       ...prev,
       advocates: [...(prev.advocates || []), { name: '', email: '', contact: '', company: '', gst: '', isLead: false, level: '', poc: '', spock: '' }]
-    }));
-  };
+    }))
+  }
 
   // Define district options
   const districtOptions = [
@@ -222,7 +207,7 @@ useEffect(() => {
     { value: "chennai", label: "Chennai" },
     { value: "coimbatore", label: "Coimbatore" },
     { value: "madurai", label: "Madurai" },
-  ];
+  ]
 
   const [caseData, setCaseData] = useState({
     title: "",
@@ -243,7 +228,6 @@ useEffect(() => {
     petitioners: [],
     respondentRole: "Defendant",
     respondents: [],
-      lawyers: [],
     description: "",
     status: "active",
     priority: "normal",
@@ -254,7 +238,7 @@ useEffect(() => {
     notes: "",
     advocates: [],
     clients: [],
-    stakeholders: [], // Initialize stakeholders
+    stakeholders: [],
   })
 
   const handleChange = (e) => {
@@ -291,7 +275,7 @@ useEffect(() => {
       if (name === 'nextHearingDate' && newData.filingDate && date) {
         if (new Date(date) <= new Date(newData.filingDate)) {
           toast({
-            title: "",
+            title: "Validation Error",
             description: "First hearing date must be after the filing date",
             variant: "destructive",
           });
@@ -388,6 +372,166 @@ useEffect(() => {
     return uploadedDocs;
   };
 
+  // Email-based addition functions
+  const stageClientByEmail = async () => {
+    if (!addClientEmail) {
+      toast({ title: "Enter an email", variant: "destructive" })
+      return
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(addClientEmail)) {
+      toast({ title: "Invalid email format", variant: "destructive" })
+      return
+    }
+
+    try {
+      setIsCheckingEmail(true)
+      
+      // Check if email is already staged
+      if (stagedClientEmails.includes(addClientEmail.toLowerCase())) {
+        toast({ 
+          title: "Email already added", 
+          description: "This client email is already staged for addition.",
+          variant: "destructive" 
+        })
+        return
+      }
+
+      // Check if user exists by email - we'll assume the API will handle this
+      // For now, we'll stage the email and the backend will validate
+      setStagedClientEmails(prev => [...prev, addClientEmail.toLowerCase()])
+      toast({ 
+        title: "Client staged", 
+        description: "Client will be added to case after creation." 
+      })
+      
+    } catch (error) {
+      console.error("Error staging client email:", error)
+      toast({ 
+        title: "Error", 
+        description: "Failed to stage client email. Please try again.",
+        variant: "destructive" 
+      })
+    } finally {
+      setIsCheckingEmail(false)
+      setAddClientEmail("")
+    }
+  }
+
+  const stageLawyerByEmail = async () => {
+    if (!addLawyerEmail) {
+      toast({ title: "Enter an email", variant: "destructive" })
+      return
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(addLawyerEmail)) {
+      toast({ title: "Invalid email format", variant: "destructive" })
+      return
+    }
+
+    try {
+      setIsCheckingEmail(true)
+      
+      // Check if email is already staged
+      if (stagedLawyerEmails.includes(addLawyerEmail.toLowerCase())) {
+        toast({ 
+          title: "Email already added", 
+          description: "This lawyer email is already staged for addition.",
+          variant: "destructive" 
+        })
+        return
+      }
+
+      // Stage the email - backend will validate existence and role
+      setStagedLawyerEmails(prev => [...prev, addLawyerEmail.toLowerCase()])
+      toast({ 
+        title: "Lawyer staged", 
+        description: "Lawyer will be added to case after creation." 
+      })
+      
+    } catch (error) {
+      console.error("Error staging lawyer email:", error)
+      toast({ 
+        title: "Error", 
+        description: "Failed to stage lawyer email. Please try again.",
+        variant: "destructive" 
+      })
+    } finally {
+      setIsCheckingEmail(false)
+      setAddLawyerEmail("")
+    }
+  }
+
+  // Remove staged emails
+  const removeStagedClientEmail = (email) => {
+    setStagedClientEmails(prev => prev.filter(e => e !== email))
+    toast({ title: "Client removed", description: "Client email removed from staging." })
+  }
+
+  const removeStagedLawyerEmail = (email) => {
+    setStagedLawyerEmails(prev => prev.filter(e => e !== email))
+    toast({ title: "Lawyer removed", description: "Lawyer email removed from staging." })
+  }
+
+  // Function to add staged users after case creation
+  const addStagedUsersToCase = async (caseId) => {
+    try {
+      let addedClients = 0
+      let addedLawyers = 0
+      let failedClients = 0
+      let failedLawyers = 0
+
+      // Add staged clients
+      for (const email of stagedClientEmails) {
+        try {
+          await api.cases.addClientByEmail(caseId, { email })
+          addedClients++
+        } catch (error) {
+          console.error(`Failed to add client ${email}:`, error)
+          failedClients++
+        }
+      }
+      
+      // Add staged lawyers
+      for (const email of stagedLawyerEmails) {
+        try {
+          await api.cases.addLawyerByEmail(caseId, { email })
+          addedLawyers++
+        } catch (error) {
+          console.error(`Failed to add lawyer ${email}:`, error)
+          failedLawyers++
+        }
+      }
+      
+      // Show summary toast
+      if (addedClients > 0 || addedLawyers > 0) {
+        toast({ 
+          title: "Users added successfully", 
+          description: `${addedClients} clients and ${addedLawyers} lawyers were added to the case.` 
+        })
+      }
+      
+      if (failedClients > 0 || failedLawyers > 0) {
+        toast({ 
+          title: "Some users could not be added", 
+          description: `${failedClients} clients and ${failedLawyers} lawyers failed to add. They may not exist in the system.`,
+          variant: "destructive" 
+        })
+      }
+    } catch (error) {
+      console.error("Error adding staged users:", error)
+      toast({ 
+        title: "Warning", 
+        description: "Some users couldn't be added to the case. You can add them manually later.",
+        variant: "destructive" 
+      })
+    }
+  }
+
   const handleSubmit = async (e, section = 'all') => {
     e.preventDefault();
     
@@ -417,7 +561,7 @@ useEffect(() => {
     if (section === 'all' || section === 'party') {
       if (!caseData.petitioners || caseData.petitioners.length === 0) {
         toast({
-          title: "",
+          title: "Error",
           description: "Please add at least one petitioner/plaintiff/appellant/complainant",
           variant: "destructive",
         });
@@ -454,57 +598,56 @@ useEffect(() => {
     }
 
     // Validate lawyers if lawyer is creating the case
- // Validate lawyers if lawyer is creating the case
-if (isLawyer && (section === 'all' || section === 'associatedParties')) {
-  // Check if we have lawyers in the state OR if the current user should be auto-added
-  const hasLawyersInState = caseData.lawyers && caseData.lawyers.length > 0;
-  const currentUserIsLawyer = user && (user.role === 'lawyer' || user.role === 'admin');
-  
-  // If no lawyers are explicitly added but current user is a lawyer, that's acceptable
-  if (!hasLawyersInState && !currentUserIsLawyer) {
-    toast({
-      title: "",
-      description: "Please add at least one lawyer to the case.",
-      variant: "destructive",
-    });
-    return;
-  }
-  
-  // Validate lawyer names only if lawyers are explicitly added
-  if (hasLawyersInState) {
-    for (let i = 0; i < caseData.lawyers.length; i++) {
-      const lawyer = caseData.lawyers[i];
-      if (!lawyer.name || lawyer.name.trim() === '') {
+    if (isLawyer && (section === 'all' || section === 'associatedParties')) {
+      // Ensure at least one lawyer is present (either manual or staged)
+      if ((!caseData.lawyers || caseData.lawyers.length === 0) && stagedLawyerEmails.length === 0) {
         toast({
           title: "Error",
-          description: `Please enter a name for Lawyer ${i + 1}.`,
+          description: "Please add at least one lawyer to the case.",
           variant: "destructive",
         });
         return;
       }
+      
+      // Validate lawyer names for manually added lawyers
+      if (caseData.lawyers && caseData.lawyers.length > 0) {
+        for (let i = 0; i < caseData.lawyers.length; i++) {
+          const lawyer = caseData.lawyers[i];
+          if (!lawyer.name || lawyer.name.trim() === '') {
+            toast({
+              title: "Error",
+              description: `Please enter a name for Lawyer ${i + 1}.`,
+              variant: "destructive",
+            });
+            return;
+          }
+        }
+      }
     }
-  }
-}
 
     // Validate associated clients if lawyer is creating the case
     if (isLawyer && (section === 'all' || section === 'associatedParties')) {
-      if (!caseData.clients || caseData.clients.length === 0) {
+      if ((!caseData.clients || caseData.clients.length === 0) && stagedClientEmails.length === 0) {
         toast({
-          title: "",
+          title: "Error",
           description: "Please add at least one client for the case.",
           variant: "destructive",
         });
         return;
       }
-      for (let i = 0; i < caseData.clients.length; i++) {
-        const client = caseData.clients[i];
-        if (!client.name) {
-          toast({
-            title: "Error",
-            description: `Please enter a name for Client ${i + 1}.`,
-            variant: "destructive",
-          });
-          return;
+      
+      // Validate client names for manually added clients
+      if (caseData.clients && caseData.clients.length > 0) {
+        for (let i = 0; i < caseData.clients.length; i++) {
+          const client = caseData.clients[i];
+          if (!client.name) {
+            toast({
+              title: "Error",
+              description: `Please enter a name for Client ${i + 1}.`,
+              variant: "destructive",
+            });
+            return;
+          }
         }
       }
     }
@@ -586,7 +729,6 @@ if (isLawyer && (section === 'all' || section === 'associatedParties')) {
         ...(isLawyer 
           ? {
               // For lawyers, they can add other lawyers to the legal team
-              // Ensure at least one lawyer (the logged-in user) is always included
               lawyers: (caseData.lawyers && caseData.lawyers.length > 0) 
                 ? caseData.lawyers.map(lawyer => ({
                     name: lawyer.name,
@@ -601,7 +743,7 @@ if (isLawyer && (section === 'all' || section === 'associatedParties')) {
                     chairPosition: lawyer.chairPosition || "supporting",
                     addedBy: user._id
                   }))
-                : [{
+                : [{ // Always include the logged-in lawyer as primary
                     name: user.name,
                     email: user.email || "",
                     contact: user.phone || "",
@@ -612,7 +754,7 @@ if (isLawyer && (section === 'all' || section === 'associatedParties')) {
                     chairPosition: "first_chair",
                     addedBy: user._id
                   }],
-              // Add clients
+              // Add manually added clients
               clients: (caseData.clients || []).map(client => ({
                 name: client.name,
                 email: client.email || "",
@@ -675,13 +817,19 @@ if (isLawyer && (section === 'all' || section === 'associatedParties')) {
       } else {
         // Create new case
         response = await api.cases.create(formattedData);
+        
+        // Add staged users after successful case creation
+        if (response.data && (stagedClientEmails.length > 0 || stagedLawyerEmails.length > 0)) {
+          const caseId = response.data.data?.case?._id || response.data._id;
+          if (caseId) {
+            await addStagedUsersToCase(caseId);
+          }
+        }
       }
       
       if (response.error) {
         throw new Error(response.error);
       }
-
-
 
       // If this is a partial save, update the local state with the saved data
       if (section !== 'all') {
@@ -775,21 +923,12 @@ if (isLawyer && (section === 'all' || section === 'associatedParties')) {
 
             <TabsContent value="details">
               <Card>
-               <CardHeader>
-  <CardTitle>Legal Team</CardTitle>
-  <CardDescription>
-    {user && (
-      <span className="text-green-600 font-medium">
-        You ({user.name}) are automatically added as the primary lawyer.
-      </span>
-    )}
-    <br />
-    Add other lawyers working on this case (optional).
-  </CardDescription>
-</CardHeader>
+                <CardHeader>
+                  <CardTitle>Case Information</CardTitle>
+                  <CardDescription>Enter the basic details about the case</CardDescription>
+                </CardHeader>
                 <CardContent>
                   <form id="case-form" onSubmit={handleSubmit} className="space-y-4">
-                    {/* ... (rest of the JSX) */}
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div className="space-y-2">
                         <Label htmlFor="title">
@@ -1390,10 +1529,10 @@ if (isLawyer && (section === 'all' || section === 'associatedParties')) {
                   <Button variant="outline" onClick={() => router.push("/dashboard/cases")}>Cancel</Button>
                   <Button 
                     type="button" 
-                    onClick={(e) => handleSubmit(e, 'associatedParties')} 
+                    onClick={(e) => handleSubmit(e, 'party')} 
                     disabled={isSubmitting}
                   >
-                    {isSubmitting ? "Saving..." : "Save Case"}
+                    {isSubmitting ? "Saving..." : "Save Section"}
                   </Button>
                 </CardFooter>
               </Card>
@@ -1503,7 +1642,8 @@ if (isLawyer && (section === 'all' || section === 'associatedParties')) {
                 </CardFooter>
               </Card>
             </TabsContent>
-             <TabsContent value="associatedParties">
+
+            <TabsContent value="associatedParties">
               <Card>
                 {isLawyer ? (
                   // LAWYER VIEW: Adding Lawyers and Clients
@@ -1511,10 +1651,59 @@ if (isLawyer && (section === 'all' || section === 'associatedParties')) {
                     {/* Lawyers Section */}
                     <CardHeader>
                       <CardTitle>Legal Team</CardTitle>
-                      <CardDescription>Add other lawyers working on this case (optional).</CardDescription>
+                      <CardDescription>Add other lawyers working on this case</CardDescription>
                     </CardHeader>
                     <CardContent>
+                      {/* Add Lawyer by Email Section */}
+                      <div className="mb-6 p-4 border rounded-lg bg-blue-50">
+                        <h4 className="font-medium mb-3 flex items-center gap-2">
+                          <User className="h-4 w-4" />
+                          Add Existing Lawyer by Email
+                        </h4>
+                        <div className="flex gap-2 mb-3">
+                          <Input
+                            placeholder="lawyer@example.com"
+                            value={addLawyerEmail}
+                            onChange={(e) => setAddLawyerEmail(e.target.value)}
+                            type="email"
+                            className="flex-1"
+                          />
+                          <Button 
+                            onClick={stageLawyerByEmail} 
+                            disabled={isCheckingEmail}
+                            variant="outline"
+                          >
+                            {isCheckingEmail ? "Adding..." : "Add Lawyer"}
+                          </Button>
+                        </div>
+                        {stagedLawyerEmails.length > 0 && (
+                          <div className="mt-3">
+                            <p className="text-sm font-medium mb-2">Lawyers to be added:</p>
+                            <div className="space-y-2">
+                              {stagedLawyerEmails.map((email, index) => (
+                                <div key={index} className="flex items-center justify-between p-2 bg-white rounded border">
+                                  <span className="text-sm">{email}</span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeStagedLawyerEmail(email)}
+                                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        <p className="text-xs text-gray-600 mt-2">
+                          Lawyers will be automatically added to the case after creation and will have access to all case details.
+                        </p>
+                      </div>
+
+                      {/* Manual Lawyer Addition */}
                       <div className="space-y-4">
+                        <h4 className="font-medium">Or Add Lawyer Manually</h4>
                         {(caseData.lawyers || []).map((lawyer, idx) => (
                           <div key={`lawyer-${idx}`} className="space-y-4 border p-4 rounded-lg shadow-sm">
                             <div className="flex justify-between items-center">
@@ -1536,7 +1725,6 @@ if (isLawyer && (section === 'all' || section === 'associatedParties')) {
                             </div>
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {/* Basic Info */}
                               <div className="space-y-1">
                                 <Label htmlFor={`lawyer-name-${idx}`} className="text-sm font-medium">Full Name <span className="text-red-500">*</span></Label>
                                 <Input 
@@ -1696,7 +1884,7 @@ if (isLawyer && (section === 'all' || section === 'associatedParties')) {
                                 gst: '',
                                 level: 'Associate',
                                 chairPosition: 'supporting',
-                                isPrimary: (prev.lawyers || []).length === 0, // Set as primary if first lawyer
+                                isPrimary: (prev.lawyers || []).length === 0,
                                 addedBy: user._id
                               }
                             ]
@@ -1704,7 +1892,7 @@ if (isLawyer && (section === 'all' || section === 'associatedParties')) {
                           variant="outline" 
                           className="mt-2 w-full border-dashed border-gray-300 hover:border-primary hover:bg-primary/5"
                         >
-                          <PlusCircle className="mr-2 h-4 w-4" /> Add Lawyer to Case
+                          <PlusCircle className="mr-2 h-4 w-4" /> Add Lawyer Manually
                         </Button>
                       </div>
                     </CardContent>
@@ -1712,10 +1900,59 @@ if (isLawyer && (section === 'all' || section === 'associatedParties')) {
                     {/* Clients Section */}
                     <CardHeader className="border-t">
                       <CardTitle>Associated Clients</CardTitle>
-                      <CardDescription>Add clients associated with this case. At least one client is required if you are creating the case.</CardDescription>
+                      <CardDescription>Add clients associated with this case</CardDescription>
                     </CardHeader>
                     <CardContent>
+                      {/* Add Client by Email Section */}
+                      <div className="mb-6 p-4 border rounded-lg bg-green-50">
+                        <h4 className="font-medium mb-3 flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          Add Existing Client by Email
+                        </h4>
+                        <div className="flex gap-2 mb-3">
+                          <Input
+                            placeholder="client@example.com"
+                            value={addClientEmail}
+                            onChange={(e) => setAddClientEmail(e.target.value)}
+                            type="email"
+                            className="flex-1"
+                          />
+                          <Button 
+                            onClick={stageClientByEmail} 
+                            disabled={isCheckingEmail}
+                            variant="outline"
+                          >
+                            {isCheckingEmail ? "Adding..." : "Add Client"}
+                          </Button>
+                        </div>
+                        {stagedClientEmails.length > 0 && (
+                          <div className="mt-3">
+                            <p className="text-sm font-medium mb-2">Clients to be added:</p>
+                            <div className="space-y-2">
+                              {stagedClientEmails.map((email, index) => (
+                                <div key={index} className="flex items-center justify-between p-2 bg-white rounded border">
+                                  <span className="text-sm">{email}</span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeStagedClientEmail(email)}
+                                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        <p className="text-xs text-gray-600 mt-2">
+                          Clients will be automatically added to the case after creation and will have access to all case details.
+                        </p>
+                      </div>
+
+                      {/* Manual Client Addition */}
                       <div className="space-y-6">
+                        <h4 className="font-medium">Or Add Client Manually</h4>
                         {(caseData.clients || []).map((client, idx) => (
                           <div key={idx} className="space-y-3 border p-4 rounded-lg shadow">
                             <div className="flex justify-between items-center">
@@ -1743,7 +1980,7 @@ if (isLawyer && (section === 'all' || section === 'associatedParties')) {
                           </div>
                         ))}
                         <Button type="button" onClick={addClient} variant="outline" className="mt-4">
-                          <PlusCircle className="mr-2 h-4 w-4" /> Add Client
+                          <PlusCircle className="mr-2 h-4 w-4" /> Add Client Manually
                         </Button>
                       </div>
                     </CardContent>
@@ -1753,10 +1990,59 @@ if (isLawyer && (section === 'all' || section === 'associatedParties')) {
                   <>
                     <CardHeader>
                       <CardTitle>Legal Team</CardTitle>
-                      <CardDescription>Add your lead and associate advocates for this case (optional)</CardDescription>
+                      <CardDescription>Add your lead and associate advocates for this case</CardDescription>
                     </CardHeader>
                     <CardContent>
+                      {/* Add Lawyer by Email Section for Clients */}
+                      <div className="mb-6 p-4 border rounded-lg bg-blue-50">
+                        <h4 className="font-medium mb-3 flex items-center gap-2">
+                          <User className="h-4 w-4" />
+                          Add Existing Lawyer by Email
+                        </h4>
+                        <div className="flex gap-2 mb-3">
+                          <Input
+                            placeholder="lawyer@example.com"
+                            value={addLawyerEmail}
+                            onChange={(e) => setAddLawyerEmail(e.target.value)}
+                            type="email"
+                            className="flex-1"
+                          />
+                          <Button 
+                            onClick={stageLawyerByEmail} 
+                            disabled={isCheckingEmail}
+                            variant="outline"
+                          >
+                            {isCheckingEmail ? "Adding..." : "Add Lawyer"}
+                          </Button>
+                        </div>
+                        {stagedLawyerEmails.length > 0 && (
+                          <div className="mt-3">
+                            <p className="text-sm font-medium mb-2">Lawyers to be added:</p>
+                            <div className="space-y-2">
+                              {stagedLawyerEmails.map((email, index) => (
+                                <div key={index} className="flex items-center justify-between p-2 bg-white rounded border">
+                                  <span className="text-sm">{email}</span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeStagedLawyerEmail(email)}
+                                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        <p className="text-xs text-gray-600 mt-2">
+                          Lawyers will be automatically added to the case after creation and will have access to all case details.
+                        </p>
+                      </div>
+
+                      {/* Manual Advocate Addition */}
                       <div className="space-y-4">
+                        <h4 className="font-medium">Or Add Advocate Manually</h4>
                         {(caseData.advocates || []).map((advocate, idx) => (
                           <div key={`advocate-${idx}`} className="space-y-4 border p-4 rounded-lg shadow-sm">
                             <div className="flex justify-between items-center">
@@ -1778,7 +2064,6 @@ if (isLawyer && (section === 'all' || section === 'associatedParties')) {
                             </div>
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {/* Basic Info */}
                               <div className="space-y-1">
                                 <Label htmlFor={`adv-name-${idx}`} className="text-sm font-medium">Full Name <span className="text-red-500">*</span></Label>
                                 <Input 
@@ -1954,14 +2239,14 @@ if (isLawyer && (section === 'all' || section === 'associatedParties')) {
                                 poc: '',
                                 level: 'Senior',
                                 chairPosition: 'first_chair',
-                                isLead: (prev.advocates || []).length === 0 // Set as lead if first advocate
+                                isLead: (prev.advocates || []).length === 0
                               }
                             ]
                           }))} 
                           variant="outline" 
                           className="mt-2 w-full border-dashed border-gray-300 hover:border-primary hover:bg-primary/5"
                         >
-                          <PlusCircle className="mr-2 h-4 w-4" /> Add Advocate to Case
+                          <PlusCircle className="mr-2 h-4 w-4" /> Add Advocate Manually
                         </Button>
                       </div>
                     </CardContent>
@@ -2016,10 +2301,10 @@ if (isLawyer && (section === 'all' || section === 'associatedParties')) {
                     <Button variant="outline" onClick={() => router.push("/dashboard/cases")}>Cancel</Button>
                     <Button 
                       type="button" 
-                      onClick={(e) => handleSubmit(e, 'details')} 
+                      onClick={(e) => handleSubmit(e, 'all')} 
                       disabled={isSubmitting}
                     >
-                      {isSubmitting ? "Saving..." : "Save Case"}
+                      {isSubmitting ? "Creating..." : "Create Case"}
                     </Button>
                 </CardFooter>
               </Card>
@@ -2060,10 +2345,19 @@ if (isLawyer && (section === 'all' || section === 'associatedParties')) {
                   <li>Court fee receipts</li>
                 </ul>
               </div>
+              <div className="space-y-2">
+                <h3 className="font-medium">Sharing Cases</h3>
+                <ul className="text-sm space-y-1 list-disc pl-4">
+                  <li>Add lawyers and clients by email</li>
+                  <li>All added users get full case access</li>
+                  <li>Automatic notifications sent</li>
+                  <li>Real-time collaboration enabled</li>
+                </ul>
+              </div>
             </CardContent>
           </Card>
         </div>
       </div>
     </div>
-  );
+  )
 }

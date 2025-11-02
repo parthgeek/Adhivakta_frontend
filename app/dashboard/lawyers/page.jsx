@@ -15,6 +15,7 @@ import {
   MapPin, 
   Briefcase, 
   FileText, 
+  Clock,
   MessageSquare,
   Star,
   Award,
