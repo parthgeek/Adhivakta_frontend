@@ -559,40 +559,30 @@ export default function NewCasePage() {
         // Set advocates and clients based on user role
         ...(isLawyer 
           ? {
-              // For lawyers, they can add other lawyers to the legal team
-              // Ensure at least one lawyer (the logged-in user) is always included
-              lawyers: (caseData.lawyers && caseData.lawyers.length > 0) 
-                ? caseData.lawyers.map(lawyer => ({
-                    name: lawyer.name,
-                    email: lawyer.email || "",
-                    contact: lawyer.contact || "",
-                    company: lawyer.company || "",
-                    gst: lawyer.gst || "",
-                    role: lawyer.role || "associate",
-                    position: lawyer.position || "supporting",
-                    isPrimary: lawyer.isPrimary || false,
-                    level: lawyer.level || "Senior",
-                    chairPosition: lawyer.chairPosition || "supporting",
-                    addedBy: user._id
-                  }))
-                : [{
-                    name: user.name,
-                    email: user.email || "",
-                    contact: user.phone || "",
-                    role: "lead",
-                    position: "first_chair",
-                    isPrimary: true,
-                    level: "Senior",
-                    chairPosition: "first_chair",
-                    addedBy: user._id
-                  }],
-              // Add clients
-              clients: (caseData.clients || []).map(client => ({
-                name: client.name,
-                email: client.email || "",
-                contact: client.contact || "",
-                address: client.address || ""
-              })),
+            
+             // For lawyers (when isLawyer === true)
+  lawyers: (caseData.lawyers || []).map(lawyer => ({
+    name: lawyer.name,
+    email: lawyer.email,
+    contact: lawyer.contact,
+    company: lawyer.company,
+    gst: lawyer.gst,
+    role: lawyer.role,
+    position: lawyer.position,
+    isPrimary: lawyer.isPrimary,
+    level: lawyer.level,
+    chairPosition: lawyer.chairPosition
+  })),
+
+// For clients
+  clients: (caseData.clients || []).map(client => ({
+    name: client.name,
+    email: client.email,
+    contact: client.contact,
+    address: client.address,
+    isPrimary: client.isPrimary
+  })),
+
               // Add stakeholders
               stakeholders: (caseData.stakeholders || []).map(stakeholder => ({
                 name: stakeholder.name,
@@ -677,12 +667,16 @@ export default function NewCasePage() {
         });
         
         // Redirect to the newly created case details page
-        const caseId = response.data?.case?._id || response.data?._id || response._id;
-        if (caseId) {
-          router.push(`/dashboard/cases/${caseId}`);
-        } else {
-          router.push('/dashboard/cases');
-        }
+        // robust case id extraction:
+const caseId =
+  response?.data?.data?.case?._id ||
+  response?.data?.data?._id ||
+  response?.data?.case?._id ||
+  response?.data?._id ||
+  response?._id;
+if (caseId) router.push(`/dashboard/cases/${caseId}`);
+else router.push('/dashboard/cases');
+
       }
       
       return response;
