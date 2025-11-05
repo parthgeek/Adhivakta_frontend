@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/components/ui/use-toast";
 import api from "@/services/api";
-
+import { Badge } from "@/components/ui/badge";
 const CASE_TYPES = [
   { value: "civil", label: "Civil" },
   { value: "criminal", label: "Criminal" },
@@ -117,54 +117,99 @@ export default function EditCasePage() {
   const [caseData, setCaseData] = useState(null);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploadProgress, setUploadProgress] = useState({});
-
+const [hasEditAccess, setHasEditAccess] = useState(false);
   useEffect(() => {
     if (user) {
       setIsLawyer(user?.role === 'lawyer' || user?.role === 'admin');
     }
   }, [user]);
 
-  useEffect(() => {
-    const fetchCase = async () => {
-      try {
-        const response = await api.cases.getById(id);
-        // Normalize data to match the new case form structure
-        const d = response.data;
-        setCaseData({
-          ...d,
-          courtState: d.courtState || "karnataka",
-          district: d.district || "bengaluru_urban",
-          bench: d.bench || "",
-          courtType: d.courtType || "district_court",
-          court: d.court || "",
-          courtHall: d.courtHall || "",
-          courtComplex: d.courtComplex || "",
-          filingDate: d.filingDate ? new Date(d.filingDate) : new Date(),
-          nextHearingDate: d.nextHearingDate ? new Date(d.nextHearingDate) : null,
-          petitionerRole: d.petitionerRole || "Petitioner",
-          petitionerType: d.petitionerType || "Individual",
-          petitioners: d.parties?.petitioner || [],
-          respondentRole: d.respondentRole || "Defendant",
-          respondents: d.parties?.respondent || [],
-          description: d.description || "",
-          status: d.status || "active",
-          priority: d.priority || "normal",
-          isUrgent: d.isUrgent || false,
-          caseStage: d.caseStage || "filing",
-          actSections: d.actSections || "",
-          reliefSought: d.reliefSought || "",
-          notes: d.notes || "",
-          advocates: d.advocates || [],
-          clients: d.clients || [],
-          stakeholders: d.stakeholders || [],
+ useEffect(() => {
+  const fetchCase = async () => {
+    try {
+      const response = await api.cases.getById(id);
+      const d = response.data;
+      
+      // Check if user has edit access
+      const canEdit = checkEditAccess(d, user);
+      setHasEditAccess(canEdit);
+      
+      if (!canEdit) {
+        toast({
+          title: "Access Denied",
+          description: "You don't have permission to edit this case.",
+          variant: "destructive",
         });
-      } catch (err) {
-        toast({ title: "Error", description: "Failed to load case details." });
+        router.push(`/dashboard/cases/${id}`);
+        return;
       }
-    };
-    if (id) fetchCase();
-  }, [id]);
 
+      // Normalize data to match the new case form structure
+      setCaseData({
+        ...d,
+        courtState: d.courtState || "karnataka",
+        district: d.district || "bengaluru_urban",
+        bench: d.bench || "",
+        courtType: d.courtType || "district_court",
+        court: d.court || "",
+        courtHall: d.courtHall || "",
+        courtComplex: d.courtComplex || "",
+        filingDate: d.filingDate ? new Date(d.filingDate) : new Date(),
+        nextHearingDate: d.nextHearingDate ? new Date(d.nextHearingDate) : null,
+        petitionerRole: d.petitionerRole || "Petitioner",
+        petitionerType: d.petitionerType || "Individual",
+        petitioners: d.parties?.petitioner || [],
+        respondentRole: d.respondentRole || "Defendant",
+        respondents: d.parties?.respondent || [],
+        description: d.description || "",
+        status: d.status || "active",
+        priority: d.priority || "normal",
+        isUrgent: d.isUrgent || false,
+        caseStage: d.caseStage || "filing",
+        actSections: d.actSections || "",
+        reliefSought: d.reliefSought || "",
+        notes: d.notes || "",
+        advocates: d.advocates || [],
+        clients: d.clients || [],
+        stakeholders: d.stakeholders || [],
+        lawyers: d.lawyers || [],
+      });
+    } catch (err) {
+      toast({ 
+        title: "Error", 
+        description: err.message || "Failed to load case details.",
+        variant: "destructive" 
+      });
+      router.push("/dashboard/cases");
+    }
+  };
+  
+  if (id && user) fetchCase();
+}, [id, user]);
+// Check if user has edit access to this case
+const checkEditAccess = (caseData, user) => {
+  if (!user || !caseData) return false;
+  
+  if (user.role === 'lawyer' || user.role === 'admin') {
+    // Lawyer can edit if they are in the lawyers array
+    const caseLawyers = caseData.lawyers || [];
+    return caseLawyers.some(lawyer => 
+      lawyer.user?._id === user.id || 
+      lawyer.user === user.id ||
+      lawyer._id === user.id
+    );
+  } else if (user.role === 'client') {
+    // Client can edit if they are in the clients array
+    const caseClients = caseData.clients || [];
+    return caseClients.some(client => 
+      client.user?._id === user.id || 
+      client.user === user.id ||
+      client._id === user.id
+    );
+  }
+  
+  return false;
+};
   const handleChange = (e) => {
     const { name, value } = e.target;
     setCaseData((prev) => ({ ...prev, [name]: value }));
@@ -198,76 +243,85 @@ export default function EditCasePage() {
     setCaseData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!caseData) return;
 
-    // --- PARTY VALIDATION (like new case page) ---
+const handleSubmit = async (e, section = 'all') => {
+  // prevent default when event provided
+  if (e && e.preventDefault) e.preventDefault();
+  if (!caseData) return;
+
+  // When saving details/party/all -> validate petitioners/respondents (same rules as before)
+  if (section === 'all' || section === 'details' || section === 'party') {
     if (!caseData.petitioners || caseData.petitioners.length === 0) {
-      toast({
-        title: "Error",
-        description: "Please add at least one petitioner/plaintiff/appellant/complainant",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Please add at least one petitioner/plaintiff/appellant/complainant", variant: "destructive" });
       return;
     }
     for (let i = 0; i < caseData.petitioners.length; i++) {
       const petitioner = caseData.petitioners[i];
       if (!petitioner.name) {
-        toast({
-          title: "Error",
-          description: `Please enter a name for Petitioner/Plaintiff/Appellant/Complainant ${i + 1}`,
-          variant: "destructive",
-        });
+        toast({ title: "Error", description: `Please enter a name for Petitioner ${i + 1}`, variant: "destructive" });
         return;
       }
       if (!petitioner.type) {
-        toast({
-          title: "Error",
-          description: `Please select a type for Petitioner ${i + 1}`,
-          variant: "destructive",
-        });
+        toast({ title: "Error", description: `Please select a type for Petitioner ${i + 1}`, variant: "destructive" });
         return;
       }
     }
-    // Validate respondent data if any
+
     if (caseData.respondents && caseData.respondents.length > 0) {
       for (let i = 0; i < caseData.respondents.length; i++) {
         const respondent = caseData.respondents[i];
         if (!respondent.name) {
-          toast({
-            title: "Error",
-            description: `Please enter a name for Respondent/Defendant/Accused/Opponent ${i + 1}`,
-            variant: "destructive",
-          });
+          toast({ title: "Error", description: `Please enter a name for Respondent ${i + 1}`, variant: "destructive" });
           return;
         }
         if (!respondent.role) {
-          toast({
-            title: "Error",
-            description: `Please select a role for Respondent ${i + 1}`,
-            variant: "destructive",
-          });
+          toast({ title: "Error", description: `Please select a role for Respondent ${i + 1}`, variant: "destructive" });
           return;
         }
         if (!respondent.type) {
-          toast({
-            title: "Error",
-            description: `Please select a type for Respondent ${i + 1}`,
-            variant: "destructive",
-          });
+          toast({ title: "Error", description: `Please select a type for Respondent ${i + 1}`, variant: "destructive" });
           return;
         }
       }
     }
-    setIsSubmitting(true);
-    try {
-      // Debug: log parties and their arrays
-      console.log('caseData.parties:', caseData.parties);
-      console.log('caseData.petitioners:', caseData.petitioners);
-      console.log('caseData.respondents:', caseData.respondents);
-      // Format the data according to the API schema (same as new case page)
-      const formattedData = {
+  }
+
+  // Validate lawyers/clients only if saving associated parties or everything
+  if ((isLawyer && (section === 'all' || section === 'associatedParties'))) {
+    if (!caseData.lawyers || caseData.lawyers.length === 0) {
+      toast({ title: "Error", description: "Please add at least one lawyer to the case.", variant: "destructive" });
+      return;
+    }
+    for (let i = 0; i < caseData.lawyers.length; i++) {
+      const lawyer = caseData.lawyers[i];
+      if (!lawyer.name || lawyer.name.trim() === '') {
+        toast({ title: "Error", description: `Please enter a name for Lawyer ${i + 1}.`, variant: "destructive" });
+        return;
+      }
+    }
+  }
+
+  if (isLawyer && (section === 'all' || section === 'associatedParties')) {
+    if (!caseData.clients || caseData.clients.length === 0) {
+      toast({ title: "Error", description: "Please add at least one client for the case.", variant: "destructive" });
+      return;
+    }
+    for (let i = 0; i < (caseData.clients || []).length; i++) {
+      const client = caseData.clients[i];
+      if (!client.name) {
+        toast({ title: "Error", description: `Please enter a name for Client ${i + 1}.`, variant: "destructive" });
+        return;
+      }
+    }
+  }
+
+  setIsSubmitting(true);
+
+  try {
+    // Build formattedData but include only relevant sections for smaller saves
+    const formattedData = {
+      // Always include basic fields only when saving details/all
+      ...(section === 'all' || section === 'details' ? {
         title: caseData.title,
         caseNumber: caseData.caseNumber,
         caseType: caseData.caseType,
@@ -287,111 +341,61 @@ export default function EditCasePage() {
         caseStage: caseData.caseStage || "filing",
         actSections: caseData.actSections || "",
         reliefSought: caseData.reliefSought || "",
-        notes: caseData.notes || "",
+        notes: caseData.notes || ""
+      } : {}),
+
+      // Include party arrays only when saving party/all
+      ...(section === 'all' || section === 'party' ? {
         parties: {
-          petitioner: (caseData.petitioners || []).map(petitioner => {
-            const obj = { name: petitioner.name };
-            if (petitioner.type) obj.type = petitioner.type;
-            if (petitioner.role) obj.role = petitioner.role;
-            if (petitioner.email) obj.email = petitioner.email;
-            if (petitioner.contact) obj.contact = petitioner.contact;
-            if (petitioner.address) obj.address = petitioner.address;
+          petitioner: (caseData.petitioners || []).map(p => {
+            const obj = { name: p.name };
+            if (p.type) obj.type = p.type;
+            if (p.role) obj.role = p.role;
+            if (p.email) obj.email = p.email;
+            if (p.contact) obj.contact = p.contact;
+            if (p.address) obj.address = p.address;
             return obj;
           }),
-          respondent: (caseData.respondents || []).map(respondent => {
-            const obj = { name: respondent.name };
-            if (respondent.type) obj.type = respondent.type;
-            if (respondent.role) obj.role = respondent.role;
-            if (respondent.email) obj.email = respondent.email;
-            if (respondent.contact) obj.contact = respondent.contact;
-            if (respondent.address) obj.address = respondent.address;
-            if (respondent.opposingCounsel) obj.opposingCounsel = respondent.opposingCounsel;
+          respondent: (caseData.respondents || []).map(r => {
+            const obj = { name: r.name };
+            if (r.type) obj.type = r.type;
+            if (r.role) obj.role = r.role;
+            if (r.email) obj.email = r.email;
+            if (r.contact) obj.contact = r.contact;
+            if (r.address) obj.address = r.address;
+            if (r.opposingCounsel) obj.opposingCounsel = r.opposingCounsel;
             return obj;
           })
-        },
-        ...(isLawyer 
-          ? {
-              // Ensure at least one lawyer (the logged-in user) is always included
-              lawyers: (caseData.lawyers && caseData.lawyers.length > 0) 
-                ? caseData.lawyers.map(lawyer => ({
-                    name: lawyer.name,
-                    email: lawyer.email || "",
-                    contact: lawyer.contact || "",
-                    company: lawyer.company || "",
-                    gst: lawyer.gst || "",
-                    role: lawyer.role || "associate",
-                    position: lawyer.position || "supporting",
-                    isPrimary: lawyer.isPrimary || false,
-                    level: lawyer.level || "Senior",
-                    chairPosition: lawyer.chairPosition || "supporting",
-                    addedBy: user._id
-                  }))
-                : [{
-                    name: user.name,
-                    email: user.email || "",
-                    contact: user.phone || "",
-                    role: "lead",
-                    position: "first_chair",
-                    isPrimary: true,
-                    level: "Senior",
-                    chairPosition: "first_chair",
-                    addedBy: user._id
-                  }],
-              clients: (caseData.clients || []).map(client => ({
-                name: client.name,
-                email: client.email || "",
-                contact: client.contact || "",
-                address: client.address || ""
-              })),
-              stakeholders: (caseData.stakeholders || []).map(stakeholder => ({
-                name: stakeholder.name,
-                email: stakeholder.email || "",
-                contact: stakeholder.contact || "",
-                address: stakeholder.address || "",
-                roleInCase: stakeholder.roleInCase || ""
-              }))
-            }
-          : { 
-              client: {
-                _id: user._id,
-                name: user.name,
-                email: user.email,
-                contact: user.phone || "",
-                role: "Primary Client",
-                isPrimary: true
-              },
-              advocates: (caseData.advocates || []).map(adv => ({
-                name: adv.name,
-                email: adv.email || "",
-                contact: adv.contact || "",
-                company: adv.company || "",
-                gst: adv.gst || "",
-                isLead: adv.isLead || false,
-                level: adv.level || "",
-                poc: adv.poc || "",
-                spock: adv.spock || ""
-              })),
-              lawyers: (caseData.lawyers || []),
-              stakeholders: (caseData.stakeholders || []).map(stakeholder => ({
-                name: stakeholder.name,
-                email: stakeholder.email || "",
-                contact: stakeholder.contact || "",
-                address: stakeholder.address || "",
-                roleInCase: stakeholder.roleInCase || ""
-              }))
-            }
-        )
-      };
-      console.log('Submitting formattedData:', formattedData);
-      await api.cases.update(id, formattedData);
-      toast({ title: "Success", description: "Case updated successfully." });
-      router.push(`/dashboard/cases/${id}`);
-    } catch (err) {
-      toast({ title: "Error", description: err.message || "Failed to update case." });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+        }
+      } : {}),
+
+      // Include associated parties only when saving them or all
+      ...(section === 'all' || section === 'associatedParties' ? (isLawyer ? {
+        lawyers: (caseData.lawyers || []).map(l => ({
+          name: l.name, email: l.email || "", contact: l.contact || "", company: l.company || "", gst: l.gst || "", role: l.role || "", position: l.position || "", isPrimary: l.isPrimary || false, level: l.level || "", chairPosition: l.chairPosition || ""
+        })),
+        clients: (caseData.clients || []).map(c => ({ name: c.name, email: c.email || "", contact: c.contact || "", address: c.address || "" })),
+        stakeholders: (caseData.stakeholders || []).map(s => ({ name: s.name, email: s.email || "", contact: s.contact || "", address: s.address || "", roleInCase: s.roleInCase || "" }))
+      } : {
+        client: { _id: user._id, name: user.name, email: user.email, contact: user.phone || "", role: "Primary Client", isPrimary: true },
+        advocates: (caseData.advocates || []).map(a => ({ name: a.name, email: a.email || "", contact: a.contact || "", company: a.company || "", gst: a.gst || "", isLead: a.isLead || false, level: a.level || "", poc: a.poc || "", spock: a.spock || "" })),
+        lawyers: (caseData.lawyers || []),
+        stakeholders: (caseData.stakeholders || []).map(s => ({ name: s.name, email: s.email || "", contact: s.contact || "", address: s.address || "", roleInCase: s.roleInCase || "" }))
+      }) : {})
+    };
+
+    // Submit update
+    await api.cases.update(id, formattedData);
+    toast({ title: "Success", description: section === 'all' ? "Case updated successfully." : `Section "${section}" saved.` });
+    // only redirect on full save
+    if (section === 'all') router.push(`/dashboard/cases/${id}`);
+  } catch (err) {
+    toast({ title: "Error", description: err.message || "Failed to update case." });
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
 
   const handleFileChange = (e) => {
     const files = e.target.files;

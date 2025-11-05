@@ -1,41 +1,44 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { SidebarProvider } from "@/context/sidebar-context"
-import Sidebar from "@/components/dashboard/sidebar"
-import Header from "@/components/dashboard/header"
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { SidebarProvider } from "@/context/sidebar-context";
+import Sidebar from "@/components/dashboard/sidebar";
+import Header from "@/components/dashboard/header";
+import NotificationListener from "@/components/NotificationListener";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 export default function DashboardLayout({ children }) {
-  const router = useRouter()
-  const [mounted, setMounted] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState(null)
+  const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
-    setMounted(true)
+    setMounted(true);
 
     // Check for user in localStorage
     const checkAuth = () => {
       try {
-        const storedUser = localStorage.getItem("user")
+        const storedUser = localStorage.getItem("user");
         if (storedUser) {
-          setUser(JSON.parse(storedUser))
+          setUser(JSON.parse(storedUser));
         } else {
-          router.push("/auth/login")
+          router.push("/auth/login");
         }
       } catch (error) {
-        console.error("Auth check error:", error)
-        router.push("/auth/login")
+        console.error("Auth check error:", error);
+        router.push("/auth/login");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
     if (mounted) {
-      checkAuth()
+      checkAuth();
     }
-  }, [router, mounted])
+  }, [router, mounted]);
 
   // Show loading state
   if (!mounted || loading) {
@@ -43,12 +46,12 @@ export default function DashboardLayout({ children }) {
       <div className="flex h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
       </div>
-    )
+    );
   }
 
   // If no user and not loading, redirect will happen in useEffect
   if (!user && !loading) {
-    return null
+    return null;
   }
 
   return (
@@ -57,11 +60,23 @@ export default function DashboardLayout({ children }) {
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header />
-          <main className="flex-1 overflow-y-auto p-4 md:p-6">
-            {children}
-          </main>
+          <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
         </div>
       </div>
+
+      <NotificationListener user={user} />
+
+      <ToastContainer
+        position="top-right"
+        autoClose={8000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
     </SidebarProvider>
-  )
+  );
 }

@@ -556,76 +556,68 @@ export default function NewCasePage() {
           })
         },
         
-        // Set advocates and clients based on user role
-        ...(isLawyer 
-          ? {
-            
-             // For lawyers (when isLawyer === true)
-  lawyers: (caseData.lawyers || []).map(lawyer => ({
-    name: lawyer.name,
-    email: lawyer.email,
-    contact: lawyer.contact,
-    company: lawyer.company,
-    gst: lawyer.gst,
-    role: lawyer.role,
-    position: lawyer.position,
-    isPrimary: lawyer.isPrimary,
-    level: lawyer.level,
-    chairPosition: lawyer.chairPosition
-  })),
-
-// For clients
-  clients: (caseData.clients || []).map(client => ({
-    name: client.name,
-    email: client.email,
-    contact: client.contact,
-    address: client.address,
-    isPrimary: client.isPrimary
-  })),
-
-              // Add stakeholders
-              stakeholders: (caseData.stakeholders || []).map(stakeholder => ({
-                name: stakeholder.name,
-                email: stakeholder.email || "",
-                contact: stakeholder.contact || "",
-                address: stakeholder.address || "",
-                roleInCase: stakeholder.roleInCase || ""
-              }))
-            }
-          : { 
-              // For clients, they can add advocates
-              client: {
-                _id: user._id,
-                name: user.name,
-                email: user.email,
-                contact: user.phone || "",
-                role: "Primary Client",
-                isPrimary: true
-              },
-              // Add advocates
-              advocates: (caseData.advocates || []).map(adv => ({
-                name: adv.name,
-                email: adv.email || "",
-                contact: adv.contact || "",
-                company: adv.company || "",
-                gst: adv.gst || "",
-                isLead: adv.isLead || false,
-                level: adv.level || "",
-                poc: adv.poc || "",
-                spock: adv.spock || ""
-              })),
-              // Add any additional lawyers
-              lawyers: (caseData.lawyers || []),
-              // Add stakeholders
-              stakeholders: (caseData.stakeholders || []).map(stakeholder => ({
-                name: stakeholder.name,
-                email: stakeholder.email || "",
-                contact: stakeholder.contact || "",
-                address: stakeholder.address || "",
-                roleInCase: stakeholder.roleInCase || ""
-              }))
-            }
-        )
+       ...(isLawyer 
+  ? {
+      // For lawyers (when isLawyer === true)
+      lawyers: (caseData.lawyers || []).map(lawyer => ({
+        name: lawyer.name,
+        email: lawyer.email,
+        contact: lawyer.contact,
+        company: lawyer.company,
+        gst: lawyer.gst,
+        role: lawyer.role,
+        position: lawyer.position,
+        isPrimary: lawyer.isPrimary,
+        level: lawyer.level,
+        chairPosition: lawyer.chairPosition
+      })),
+    clients: (caseData.clients || []).map(client => ({
+  name: client.name,
+  email: client.email,
+  contact: client.contact,
+  address: client.address
+})),
+      stakeholders: (caseData.stakeholders || []).map(stakeholder => ({
+        name: stakeholder.name,
+        email: stakeholder.email || "",
+        contact: stakeholder.contact || "",
+        address: stakeholder.address || "",
+        roleInCase: stakeholder.roleInCase || ""
+      }))
+    }
+  : { 
+      
+    // For clients - add themselves
+clients: [{
+  name: user.name,
+  email: user.email,
+  contact: user.phone || "",
+  address: user.address || ""
+}],
+      // Add advocates
+      advocates: (caseData.advocates || []).map(adv => ({
+        name: adv.name,
+        email: adv.email || "",
+        contact: adv.contact || "",
+        company: adv.company || "",
+        gst: adv.gst || "",
+        isLead: adv.isLead || false,
+        level: adv.level || "",
+        poc: adv.poc || "",
+        spock: adv.spock || ""
+      })),
+      // Add any additional lawyers
+      lawyers: (caseData.lawyers || []),
+      // Add stakeholders
+      stakeholders: (caseData.stakeholders || []).map(stakeholder => ({
+        name: stakeholder.name,
+        email: stakeholder.email || "",
+        contact: stakeholder.contact || "",
+        address: stakeholder.address || "",
+        roleInCase: stakeholder.roleInCase || ""
+      }))
+    }
+)
       };
 
       // Debug log the formatted data
