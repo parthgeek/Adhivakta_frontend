@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Bell, AlertCircle, CheckCircle, Clock, Info, Trash2, Check, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import { useNotifications } from "@/hooks/Usenotifications";
+import { useNotifications } from "@/hooks/UseNotifications";
 
 export default function NotificationsPageEnhanced() {
   const router = useRouter();
