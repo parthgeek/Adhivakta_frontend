@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+
 import { SidebarProvider } from "@/context/sidebar-context";
 import Sidebar from "@/components/dashboard/sidebar";
 import Header from "@/components/dashboard/header";
 import NotificationListener from "@/components/NotificationListener";
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+
+import Toaster from "@/components/Toaster";
 
 export default function DashboardLayout({ children }) {
   const router = useRouter();
@@ -17,14 +18,19 @@ export default function DashboardLayout({ children }) {
 
   useEffect(() => {
     setMounted(true);
+  }, []);
 
-    // Check for user in localStorage
+  useEffect(() => {
+    if (!mounted) return;
+
     const checkAuth = () => {
       try {
         const storedUser = localStorage.getItem("user");
         if (storedUser) {
-          setUser(JSON.parse(storedUser));
+          const userData = JSON.parse(storedUser);
+          setUser(userData);
         } else {
+          // Not authenticated -> send to login
           router.push("/auth/login");
         }
       } catch (error) {
@@ -35,22 +41,22 @@ export default function DashboardLayout({ children }) {
       }
     };
 
-    if (mounted) {
-      checkAuth();
-    }
-  }, [router, mounted]);
+    checkAuth();
+    // Only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted]);
 
-  // Show loading state
+  // Show loading spinner while checking auth / hydration
   if (!mounted || loading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
       </div>
     );
   }
 
-  // If no user and not loading, redirect will happen in useEffect
-  if (!user && !loading) {
+  // If user is missing after auth check, return null (router.push will redirect)
+  if (!user) {
     return null;
   }
 
@@ -64,19 +70,11 @@ export default function DashboardLayout({ children }) {
         </div>
       </div>
 
-      <NotificationListener user={user} />
+      {/* Global Toaster for your project's toast UI (use-toast.ts) */}
+      <Toaster />
 
-      <ToastContainer
-        position="top-right"
-        autoClose={8000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
+      {/* Real-time socket listener to trigger popups; pass the current user */}
+      <NotificationListener user={user} />
     </SidebarProvider>
   );
 }

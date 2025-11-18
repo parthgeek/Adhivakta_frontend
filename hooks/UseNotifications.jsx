@@ -22,6 +22,21 @@ export const useNotifications = () => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // keep this inside useNotifications (after state/hooks are declared)
+  useEffect(() => {
+    const onNew = (e) => {
+      const payload = e?.detail;
+      if (!payload) return;
+      setNotifications(prev => {
+        // avoid duplicates if already present
+        if (prev.some(n => n._id === payload._id)) return prev;
+        return [payload, ...prev];
+      });
+    };
+
+    window.addEventListener("app:notification", onNew);
+    return () => window.removeEventListener("app:notification", onNew);
+  }, []);
 
   // Normalize the API base so we can't accidentally build /api/api/...
   const RAW = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
