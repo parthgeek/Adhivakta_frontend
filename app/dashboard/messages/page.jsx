@@ -1,6 +1,6 @@
 "use client"
 import { useEffect } from 'react';
-import { initSocket } from '../';
+import { initSocket } from '../../../lib/socket';
 
 export default function MessagesPage() {
   useEffect(() => {
