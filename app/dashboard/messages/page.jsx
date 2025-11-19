@@ -25,8 +25,6 @@ useEffect(() => {
     return;
   }
   
-  
-
     const socket = initSocket(token);
     setSocket(socket);
 
