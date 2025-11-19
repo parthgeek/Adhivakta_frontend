@@ -1,8 +1,10 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { initSocket } from "../../../lib/socket";
-
+import api from "@/services/api";
 export default function MessagesPage() {
+  const router = useRouter();
   const [socket, setSocket] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -11,74 +13,107 @@ export default function MessagesPage() {
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState("chat");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
   const messagesEndRef = useRef(null);
-  if (typeof window === "undefined") return;
+
+  // Check authentication on mount
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const token = localStorage.getItem("auth_token");
-    const userData = JSON.parse(localStorage.getItem("user_data"));
+    const userDataStr = localStorage.getItem("user"); // ✅ CHANGED: Using "user" instead of "user_data"
 
-    if (!token || !userData) {
+    if (!token || !userDataStr) {
       console.error("No auth token or user data found");
+      router.push("/auth/login");
       return;
     }
 
-    const socket = initSocket(token);
-    setSocket(socket);
+    // Validate user data can be parsed
+    try {
+      const userData = JSON.parse(userDataStr);
+      if (!userData || !userData.id) {
+        console.error("Invalid user data");
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("user");
+        router.push("/auth/login");
+        return;
+      }
+      setIsAuthenticated(true);
+    } catch (error) {
+      console.error("Error parsing user data:", error);
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("user");
+      router.push("/auth/login");
+      return;
+    } finally {
+      setAuthChecking(false);
+    }
+  }, [router]);
+
+  // Initialize socket and load data after authentication
+  useEffect(() => {
+    if (!isAuthenticated || typeof window === "undefined") return;
+
+    const token = localStorage.getItem("auth_token");
+    const userDataStr = localStorage.getItem("user"); // ✅ CHANGED: Using "user"
+
+    if (!token || !userDataStr) return;
+
+    let userData;
+    try {
+      userData = JSON.parse(userDataStr);
+    } catch (error) {
+      console.error("Error parsing user data:", error);
+      return;
+    }
+
+    const socketInstance = initSocket(token);
+    setSocket(socketInstance);
 
     // Load initial data
     loadNotifications();
     loadGroups();
 
     // Socket event listeners
-    socket.on("notification", (notification) => {
+    socketInstance.on("notification", (notification) => {
       console.log("New notification received:", notification);
       setNotifications((prev) => [notification, ...prev]);
     });
 
-    socket.on("added_to_group", ({ group }) => {
+    socketInstance.on("added_to_group", ({ group }) => {
       console.log("Added to new group:", group);
       setGroups((prev) => [...prev, group]);
     });
 
-    socket.on("message", (message) => {
+    socketInstance.on("message", (message) => {
       console.log("New message received:", message);
       if (message.group === activeGroup) {
         setMessages((prev) => [...prev, message]);
       }
     });
 
-    socket.on("error", (error) => {
+    socketInstance.on("error", (error) => {
       console.error("Socket error:", error);
     });
 
     // Identify user to server
-    socket.emit("identify", { userId: userData.id });
+    socketInstance.emit("identify", { userId: userData.id });
 
     return () => {
-      socket.off("notification");
-      socket.off("added_to_group");
-      socket.off("new_message");
-      socket.off("error");
+      socketInstance.off("notification");
+      socketInstance.off("added_to_group");
+      socketInstance.off("message");
+      socketInstance.off("error");
+      socketInstance.disconnect();
     };
-  }, []);
+  }, [isAuthenticated, activeGroup]);
 
   const loadNotifications = async () => {
     try {
-      const token = localStorage.getItem("auth_token");
-      const response = await fetch("/api/notifications", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) throw new Error("Failed to fetch notifications");
-
-      const data = await response.json();
-      if (data.success) {
-        setNotifications(data.data);
-      }
+      const data = await api.notifications.getAll();
+      setNotifications(data);
     } catch (error) {
       console.error("Error loading notifications:", error);
     }
@@ -86,19 +121,8 @@ export default function MessagesPage() {
 
   const loadGroups = async () => {
     try {
-      const token = localStorage.getItem("auth_token");
-      const response = await fetch("/api/chat/groups", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) throw new Error("Failed to fetch groups");
-
-      const data = await response.json();
-      if (data.success) {
-        setGroups(data.data);
-      }
+      const data = await api.chat.getGroups();
+      setGroups(data);
     } catch (error) {
       console.error("Error loading groups:", error);
     }
@@ -107,28 +131,12 @@ export default function MessagesPage() {
   const loadMessages = async (groupId) => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("auth_token");
-      const response = await fetch(
-        `/api/chat/groups/${groupId}/messages?limit=100`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const data = await api.chat.getMessages(groupId, 100);
+      setMessages(data);
+      setActiveGroup(groupId);
 
-      if (!response.ok) throw new Error("Failed to fetch messages");
-
-      const data = await response.json();
-      if (data.success) {
-        setMessages(data.data);
-        setActiveGroup(groupId);
-
-        // Join group room for real-time updates
-        if (socket) {
-          const userData = JSON.parse(localStorage.getItem("user_data"));
-          socket.emit("join_group", { groupId });
-        }
+      if (socket) {
+        socket.emit("join_group", { groupId });
       }
     } catch (error) {
       console.error("Error loading messages:", error);
@@ -146,7 +154,17 @@ export default function MessagesPage() {
 
     try {
       if (socket && socket.connected) {
-        const userData = JSON.parse(localStorage.getItem("user_data"));
+        const userDataStr = localStorage.getItem("user"); // ✅ CHANGED: Using "user"
+        if (!userDataStr) return;
+
+        let userData;
+        try {
+          userData = JSON.parse(userDataStr);
+        } catch (error) {
+          console.error("Error parsing user data:", error);
+          return;
+        }
+
         socket.emit("send_message", {
           groupId: activeGroup,
           text: messageText,
@@ -154,48 +172,36 @@ export default function MessagesPage() {
         });
       } else {
         // Fallback to HTTP API
-        const token = localStorage.getItem("auth_token");
-        const response = await fetch(
-          `/api/chat/groups/${activeGroup}/messages`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ text: messageText }),
-          }
-        );
-
-        if (!response.ok) throw new Error("Failed to send message");
-
-        const data = await response.json();
-        if (data.success) {
-          // Message sent via HTTP, it will come back via socket
+        try {
+          await api.chat.sendMessage(activeGroup, { text: messageText });
           console.log("Message sent via HTTP");
+        } catch (error) {
+          if (error.message.includes("401")) {
+            localStorage.removeItem("auth_token");
+            localStorage.removeItem("user");
+            router.push("/auth/login");
+          }
+          throw error;
         }
       }
     } catch (error) {
       console.error("Error sending message:", error);
-      // Optionally show error to user
     }
   };
 
   const markAsRead = async (notificationId) => {
     try {
-      const token = localStorage.getItem("auth_token");
-      await fetch(`/api/notifications/${notificationId}/read`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
+      await api.notifications.markAsRead(notificationId);
       setNotifications((prev) =>
         prev.map((n) => (n._id === notificationId ? { ...n, read: true } : n))
       );
     } catch (error) {
       console.error("Error marking as read:", error);
+      if (error.message.includes("401")) {
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("user");
+        router.push("/auth/login");
+      }
     }
   };
 
@@ -206,6 +212,23 @@ export default function MessagesPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Show loading state while checking authentication
+  if (authChecking) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if not authenticated
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -219,7 +242,7 @@ export default function MessagesPage() {
         <div className="flex space-x-4 mb-6">
           <button
             onClick={() => setView("chat")}
-            className={`px-4 py-2 rounded-lg font-medium ${
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               view === "chat"
                 ? "bg-blue-500 text-white"
                 : "bg-white text-gray-700 border hover:bg-gray-50"
@@ -229,7 +252,7 @@ export default function MessagesPage() {
           </button>
           <button
             onClick={() => setView("notifications")}
-            className={`px-4 py-2 rounded-lg font-medium ${
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               view === "notifications"
                 ? "bg-blue-500 text-white"
                 : "bg-white text-gray-700 border hover:bg-gray-50"
@@ -305,6 +328,7 @@ export default function MessagesPage() {
                     <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
                       {loading ? (
                         <div className="text-center text-gray-500">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
                           Loading messages...
                         </div>
                       ) : messages.length === 0 ? (
@@ -401,7 +425,7 @@ export default function MessagesPage() {
                   {notifications.map((notification) => (
                     <div
                       key={notification._id}
-                      className={`p-4 border rounded-lg ${
+                      className={`p-4 border rounded-lg transition-colors ${
                         !notification.read
                           ? "bg-blue-50 border-blue-200"
                           : "bg-gray-50 border-gray-200"
@@ -419,7 +443,7 @@ export default function MessagesPage() {
                         {!notification.read && (
                           <button
                             onClick={() => markAsRead(notification._id)}
-                            className="ml-4 text-blue-500 hover:text-blue-700 text-sm font-medium"
+                            className="ml-4 text-blue-500 hover:text-blue-700 text-sm font-medium transition-colors"
                           >
                             Mark read
                           </button>

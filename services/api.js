@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL 
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 const handleResponse = async (response) => {
   let data;
   try {
@@ -10,58 +10,60 @@ const handleResponse = async (response) => {
 
   if (!response.ok) {
     // Handle 401 Unauthorized - trigger logout
-    if (response.status === 401 && typeof window !== "undefined" && window.__authLogout) {
+    if (
+      response.status === 401 &&
+      typeof window !== "undefined" &&
+      window.__authLogout
+    ) {
       window.__authLogout();
     }
-    
+
     const error = data.message || data.errors?.[0]?.msg || response.statusText;
     throw new Error(error);
   }
 
   return data;
-}
+};
 
 // Helper function to get auth token
 const getToken = () => {
   if (typeof window !== "undefined") {
-    const token = localStorage.getItem("auth_token")
-    console.log("Retrieved token:", token) // Debugging log
-    return token
+    const token = localStorage.getItem("auth_token");
+    console.log("Retrieved token:", token); // Debugging log
+    return token;
   }
-  return null
-}
+  return null;
+};
 
 // Helper function to create headers with auth token
 const createHeaders = (contentType = "application/json") => {
   const headers = {
     "Content-Type": contentType,
-  }
+  };
 
-  const token = getToken()
+  const token = getToken();
   if (token) {
-    headers["Authorization"] = `Bearer ${token}`
-    console.log("Request headers:", headers) // Debugging log
+    headers["Authorization"] = `Bearer ${token}`;
+    console.log("Request headers:", headers); // Debugging log
   }
 
-  return headers
-}
+  return headers;
+};
 
 const api = {
   auth: {
-    
+    register: async (userData) => {
+      console.log("API Register - Sending:", userData);
+      const response = await fetch(`${API_URL}/auth/signup`, {
+        method: "POST",
+        headers: createHeaders(),
+        body: JSON.stringify(userData),
+      });
 
-register: async (userData) => {
-  console.log("API Register - Sending:", userData);
-  const response = await fetch(`${API_URL}/auth/signup`, {
-    method: "POST",
-    headers: createHeaders(),
-    body: JSON.stringify(userData),
-  });
-
-  const data = await handleResponse(response);
-  console.log("API Register - Response:", data);
-  return data;
-},
+      const data = await handleResponse(response);
+      console.log("API Register - Response:", data);
+      return data;
+    },
 
     // Login endpoint - FIXED for better error handling
     login: async (credentials) => {
@@ -82,9 +84,9 @@ register: async (userData) => {
         method: "POST",
         headers: createHeaders(),
         body: JSON.stringify(data),
-      })
+      });
 
-      return handleResponse(response)
+      return handleResponse(response);
     },
 
     // Logout endpoint
@@ -92,9 +94,9 @@ register: async (userData) => {
       const response = await fetch(`${API_URL}/auth/logout`, {
         method: "POST",
         headers: createHeaders(),
-      })
+      });
 
-      return handleResponse(response)
+      return handleResponse(response);
     },
 
     // Verify token endpoint
@@ -102,9 +104,9 @@ register: async (userData) => {
       const response = await fetch(`${API_URL}/auth/verify`, {
         method: "GET",
         headers: createHeaders(),
-      })
+      });
 
-      return handleResponse(response)
+      return handleResponse(response);
     },
 
     // NEW: Forgot password endpoint
@@ -113,9 +115,9 @@ register: async (userData) => {
         method: "POST",
         headers: createHeaders(),
         body: JSON.stringify(data),
-      })
+      });
 
-      return handleResponse(response)
+      return handleResponse(response);
     },
 
     // NEW: Reset password endpoint
@@ -124,9 +126,9 @@ register: async (userData) => {
         method: "POST",
         headers: createHeaders(),
         body: JSON.stringify(data),
-      })
+      });
 
-      return handleResponse(response)
+      return handleResponse(response);
     },
 
     // NEW: Change password endpoint (protected)
@@ -135,9 +137,9 @@ register: async (userData) => {
         method: "POST",
         headers: createHeaders(),
         body: JSON.stringify(data),
-      })
+      });
 
-      return handleResponse(response)
+      return handleResponse(response);
     },
 
     // NEW: Get current user
@@ -145,9 +147,9 @@ register: async (userData) => {
       const response = await fetch(`${API_URL}/auth/me`, {
         method: "GET",
         headers: createHeaders(),
-      })
+      });
 
-      return handleResponse(response)
+      return handleResponse(response);
     },
 
     // NEW: Resend verification email
@@ -155,9 +157,9 @@ register: async (userData) => {
       const response = await fetch(`${API_URL}/auth/resend-verification`, {
         method: "POST",
         headers: createHeaders(),
-      })
+      });
 
-      return handleResponse(response)
+      return handleResponse(response);
     },
   },
 
@@ -166,9 +168,9 @@ register: async (userData) => {
       const response = await fetch(`${API_URL}/profile/profile`, {
         method: "GET",
         headers: createHeaders(),
-      })
+      });
 
-      return handleResponse(response)
+      return handleResponse(response);
     },
 
     updateProfile: async (profileData) => {
@@ -176,9 +178,9 @@ register: async (userData) => {
         method: "PUT",
         headers: createHeaders(),
         body: JSON.stringify(profileData),
-      })
+      });
 
-      return handleResponse(response)
+      return handleResponse(response);
     },
 
     changePassword: async (passwordData) => {
@@ -186,9 +188,9 @@ register: async (userData) => {
         method: "POST",
         headers: createHeaders(),
         body: JSON.stringify(passwordData),
-      })
+      });
 
-      return handleResponse(response)
+      return handleResponse(response);
     },
 
     updateAppearance: async (appearanceSettings) => {
@@ -196,9 +198,9 @@ register: async (userData) => {
         method: "PUT",
         headers: createHeaders(),
         body: JSON.stringify(appearanceSettings),
-      })
+      });
 
-      return handleResponse(response)
+      return handleResponse(response);
     },
 
     updateNotifications: async (notificationSettings) => {
@@ -206,9 +208,9 @@ register: async (userData) => {
         method: "PUT",
         headers: createHeaders(),
         body: JSON.stringify(notificationSettings),
-      })
+      });
 
-      return handleResponse(response)
+      return handleResponse(response);
     },
 
     updateSecurity: async (securitySettings) => {
@@ -216,71 +218,83 @@ register: async (userData) => {
         method: "PUT",
         headers: createHeaders(),
         body: JSON.stringify(securitySettings),
-      })
+      });
 
-      return handleResponse(response)
+      return handleResponse(response);
     },
   },
 
   cases: {
     getAll: async (filters = {}) => {
       // Convert filters object to query string
-      const queryParams = new URLSearchParams()
+      const queryParams = new URLSearchParams();
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== "") {
-          queryParams.append(key, value)
+          queryParams.append(key, value);
         }
-      })
+      });
 
       // Set a very high limit to get all cases without pagination
-      queryParams.append('limit', '1000')
+      queryParams.append("limit", "1000");
 
-      const response = await fetch(`${API_URL}/cases?${queryParams.toString()}`, {
-        method: "GET",
-        headers: createHeaders(),
-      })
+      const response = await fetch(
+        `${API_URL}/cases?${queryParams.toString()}`,
+        {
+          method: "GET",
+          headers: createHeaders(),
+        }
+      );
 
-      const data = await handleResponse(response)
-      console.log("API service - Raw response data:", data)
-      console.log("API service - data.data:", data.data)
-      console.log("API service - data.data length:", data.data ? data.data.length : "No data.data")
-      return data.data || []
+      const data = await handleResponse(response);
+      console.log("API service - Raw response data:", data);
+      console.log("API service - data.data:", data.data);
+      console.log(
+        "API service - data.data length:",
+        data.data ? data.data.length : "No data.data"
+      );
+      return data.data || [];
     },
 
     getById: async (id) => {
       const response = await fetch(`${API_URL}/cases/${id}`, {
         method: "GET",
         headers: createHeaders(),
-      })
+      });
 
-      return handleResponse(response)
+      return handleResponse(response);
     },
-addClientByEmail: async (caseId, email) => {
-  const response = await fetch(`${API_URL}/cases/${caseId}/clients-by-email`, {
-    method: 'POST',
-    headers: createHeaders(),
-    body: JSON.stringify({ email })
-  });
-  return handleResponse(response);
-},
+    addClientByEmail: async (caseId, email) => {
+      const response = await fetch(
+        `${API_URL}/cases/${caseId}/clients-by-email`,
+        {
+          method: "POST",
+          headers: createHeaders(),
+          body: JSON.stringify({ email }),
+        }
+      );
+      return handleResponse(response);
+    },
 
-addLawyerByEmail: async (caseId, email) => {
-  const response = await fetch(`${API_URL}/cases/${caseId}/lawyers-by-email`, {
-    method: 'POST',
-    headers: createHeaders(),
-    body: JSON.stringify({ email })
-  });
-  return handleResponse(response);
-},
+    addLawyerByEmail: async (caseId, email) => {
+      const response = await fetch(
+        `${API_URL}/cases/${caseId}/lawyers-by-email`,
+        {
+          method: "POST",
+          headers: createHeaders(),
+          body: JSON.stringify({ email }),
+        }
+      );
+      return handleResponse(response);
+    },
     create: async (caseData) => {
       const response = await fetch(`${API_URL}/cases`, {
         method: "POST",
         headers: createHeaders(),
         body: JSON.stringify(caseData),
-      })
+      });
 
-      const data = await handleResponse(response)
-      return data.data
+      const data = await handleResponse(response);
+      return data.data;
     },
 
     update: async (id, caseData) => {
@@ -288,181 +302,184 @@ addLawyerByEmail: async (caseId, email) => {
         method: "PUT",
         headers: createHeaders(),
         body: JSON.stringify(caseData),
-      })
+      });
 
-      const data = await handleResponse(response)
-      return data.data
+      const data = await handleResponse(response);
+      return data.data;
     },
 
     delete: async (id) => {
       const response = await fetch(`${API_URL}/cases/${id}`, {
         method: "DELETE",
         headers: createHeaders(),
-      })
+      });
 
-      return handleResponse(response)
+      return handleResponse(response);
     },
 
     getStats: async () => {
       const response = await fetch(`${API_URL}/cases/stats`, {
         method: "GET",
         headers: createHeaders(),
-      })
+      });
 
-      return handleResponse(response)
+      return handleResponse(response);
     },
 
     getRecent: async () => {
       const response = await fetch(`${API_URL}/cases/recent`, {
         method: "GET",
         headers: createHeaders(),
-      })
+      });
 
-      const data = await handleResponse(response)
-      return data.data || []
+      const data = await handleResponse(response);
+      return data.data || [];
     },
 
     getTimeline: async (id) => {
       const response = await fetch(`${API_URL}/cases/${id}/timeline`, {
         method: "GET",
         headers: createHeaders(),
-      })
+      });
 
-      const data = await handleResponse(response)
-      return data.data || []
+      const data = await handleResponse(response);
+      return data.data || [];
     },
   },
 
   documents: {
     getAll: async (filters = {}) => {
       // Convert filters object to query string
-      const queryParams = new URLSearchParams()
+      const queryParams = new URLSearchParams();
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== "") {
-          queryParams.append(key, value)
+          queryParams.append(key, value);
         }
-      })
+      });
 
-      const response = await fetch(`${API_URL}/documents?${queryParams.toString()}`, {
-        method: "GET",
-        headers: createHeaders(),
-      })
+      const response = await fetch(
+        `${API_URL}/documents?${queryParams.toString()}`,
+        {
+          method: "GET",
+          headers: createHeaders(),
+        }
+      );
 
-      const data = await handleResponse(response)
-      return data.data || []
+      const data = await handleResponse(response);
+      return data.data || [];
     },
 
     getById: async (id) => {
       const response = await fetch(`${API_URL}/documents/${id}`, {
         method: "GET",
         headers: createHeaders(),
-      })
+      });
 
-      const data = await handleResponse(response)
-      return data.data
+      const data = await handleResponse(response);
+      return data.data;
     },
 
     getByCaseId: async (caseId) => {
       const response = await fetch(`${API_URL}/documents?caseId=${caseId}`, {
         method: "GET",
         headers: createHeaders(),
-      })
+      });
 
-      const data = await handleResponse(response)
-      return data.data || []
+      const data = await handleResponse(response);
+      return data.data || [];
     },
 
     upload: async (formData, onProgress) => {
       // Create XMLHttpRequest to track upload progress
       return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest()
+        const xhr = new XMLHttpRequest();
 
         // Setup progress tracking
         if (onProgress) {
           xhr.upload.addEventListener("progress", (event) => {
             if (event.lengthComputable) {
-              onProgress(event)
+              onProgress(event);
             }
-          })
+          });
         }
 
         // Handle response
         xhr.onload = () => {
           if (xhr.status >= 200 && xhr.status < 300) {
             try {
-              const data = JSON.parse(xhr.responseText)
-              resolve(data)
+              const data = JSON.parse(xhr.responseText);
+              resolve(data);
             } catch (error) {
-              reject(new Error("Invalid JSON response"))
+              reject(new Error("Invalid JSON response"));
             }
           } else {
-            reject(new Error(`Upload failed with status ${xhr.status}`))
+            reject(new Error(`Upload failed with status ${xhr.status}`));
           }
-        }
+        };
 
         // Handle errors
         xhr.onerror = () => {
-          reject(new Error("Network error occurred during upload"))
-        }
+          reject(new Error("Network error occurred during upload"));
+        };
 
         // Setup and send request
-        xhr.open("POST", `${API_URL}/documents/upload`)
+        xhr.open("POST", `${API_URL}/documents/upload`);
 
         // Add authorization header
-        const token = getToken()
+        const token = getToken();
         if (token) {
-          xhr.setRequestHeader("Authorization", `Bearer ${token}`)
+          xhr.setRequestHeader("Authorization", `Bearer ${token}`);
         }
 
-        xhr.send(formData)
-      })
+        xhr.send(formData);
+      });
     },
-    
+
     // Upload documents directly to a case using multer
     uploadToCaseId: async (caseId, formData, onProgress) => {
       // Create XMLHttpRequest to track upload progress
       return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest()
+        const xhr = new XMLHttpRequest();
 
         // Setup progress tracking
         if (onProgress) {
           xhr.upload.addEventListener("progress", (event) => {
             if (event.lengthComputable) {
-              onProgress(event)
+              onProgress(event);
             }
-          })
+          });
         }
 
         // Handle response
         xhr.onload = () => {
           if (xhr.status >= 200 && xhr.status < 300) {
             try {
-              const data = JSON.parse(xhr.responseText)
-              resolve(data)
+              const data = JSON.parse(xhr.responseText);
+              resolve(data);
             } catch (error) {
-              reject(new Error("Invalid JSON response"))
+              reject(new Error("Invalid JSON response"));
             }
           } else {
-            reject(new Error(`Upload failed with status ${xhr.status}`))
+            reject(new Error(`Upload failed with status ${xhr.status}`));
           }
-        }
+        };
 
         // Handle errors
         xhr.onerror = () => {
-          reject(new Error("Network error occurred during upload"))
-        }
+          reject(new Error("Network error occurred during upload"));
+        };
 
         // Setup and send request
-        xhr.open("POST", `${API_URL}/cases/${caseId}/documents`)
+        xhr.open("POST", `${API_URL}/cases/${caseId}/documents`);
 
         // Add authorization header
-        const token = getToken()
+        const token = getToken();
         if (token) {
-          xhr.setRequestHeader("Authorization", `Bearer ${token}`)
+          xhr.setRequestHeader("Authorization", `Bearer ${token}`);
         }
 
-        xhr.send(formData)
-      })
+        xhr.send(formData);
+      });
     },
 
     update: async (id, documentData) => {
@@ -470,19 +487,19 @@ addLawyerByEmail: async (caseId, email) => {
         method: "PUT",
         headers: createHeaders(),
         body: JSON.stringify(documentData),
-      })
+      });
 
-      const data = await handleResponse(response)
-      return data.data
+      const data = await handleResponse(response);
+      return data.data;
     },
 
     delete: async (id) => {
       const response = await fetch(`${API_URL}/documents/${id}`, {
         method: "DELETE",
         headers: createHeaders(),
-      })
+      });
 
-      return handleResponse(response)
+      return handleResponse(response);
     },
 
     share: async (id, users) => {
@@ -490,58 +507,61 @@ addLawyerByEmail: async (caseId, email) => {
         method: "POST",
         headers: createHeaders(),
         body: JSON.stringify({ users }),
-      })
+      });
 
-      return handleResponse(response)
+      return handleResponse(response);
     },
 
     toggleFavorite: async (id) => {
       const response = await fetch(`${API_URL}/documents/${id}/favorite`, {
         method: "POST",
         headers: createHeaders(),
-      })
+      });
 
-      return handleResponse(response)
+      return handleResponse(response);
     },
   },
 
   events: {
     getAll: async (filters = {}) => {
       // Convert filters object to query string
-      const queryParams = new URLSearchParams()
+      const queryParams = new URLSearchParams();
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== "") {
-          queryParams.append(key, value)
+          queryParams.append(key, value);
         }
-      })
+      });
 
-      const response = await fetch(`${API_URL}/events?${queryParams.toString()}`, {
-        method: "GET",
-        headers: createHeaders(),
-      })
+      const response = await fetch(
+        `${API_URL}/events?${queryParams.toString()}`,
+        {
+          method: "GET",
+          headers: createHeaders(),
+        }
+      );
 
-      const data = await handleResponse(response)
-      return data.data || []
+      const data = await handleResponse(response);
+      return data.data || [];
     },
 
     getById: async (id) => {
       const response = await fetch(`${API_URL}/events/${id}`, {
         method: "GET",
         headers: createHeaders(),
-      })
+      });
 
-      const data = await handleResponse(response)
-      return data.data
+      const data = await handleResponse(response);
+      return data.data;
     },
 
     getByCaseId: async (caseId) => {
       const response = await fetch(`${API_URL}/events?caseId=${caseId}`, {
         method: "GET",
         headers: createHeaders(),
-      })
+      });
 
-      const data = await handleResponse(response)
-      return data.data || []
+      const data = await handleResponse(response);
+      return data.data || [];
     },
 
     create: async (eventData) => {
@@ -549,10 +569,10 @@ addLawyerByEmail: async (caseId, email) => {
         method: "POST",
         headers: createHeaders(),
         body: JSON.stringify(eventData),
-      })
+      });
 
-      const data = await handleResponse(response)
-      return data.data
+      const data = await handleResponse(response);
+      return data.data;
     },
 
     update: async (id, eventData) => {
@@ -560,19 +580,19 @@ addLawyerByEmail: async (caseId, email) => {
         method: "PUT",
         headers: createHeaders(),
         body: JSON.stringify(eventData),
-      })
+      });
 
-      const data = await handleResponse(response)
-      return data.data
+      const data = await handleResponse(response);
+      return data.data;
     },
 
     delete: async (id) => {
       const response = await fetch(`${API_URL}/events/${id}`, {
         method: "DELETE",
         headers: createHeaders(),
-      })
+      });
 
-      return handleResponse(response)
+      return handleResponse(response);
     },
   },
 
@@ -581,9 +601,9 @@ addLawyerByEmail: async (caseId, email) => {
       const response = await fetch(`${API_URL}/dashboard/summary`, {
         method: "GET",
         headers: createHeaders(),
-      })
+      });
 
-      const data = await handleResponse(response)
+      const data = await handleResponse(response);
       return (
         data.data || {
           totalCases: 0,
@@ -595,27 +615,27 @@ addLawyerByEmail: async (caseId, email) => {
           successRate: "0%",
           activeClients: 0,
         }
-      )
+      );
     },
 
     getRecentCases: async () => {
       const response = await fetch(`${API_URL}/dashboard/recent-cases`, {
         method: "GET",
         headers: createHeaders(),
-      })
+      });
 
-      const data = await handleResponse(response)
-      return data || []
+      const data = await handleResponse(response);
+      return data || [];
     },
 
     getUpcomingEvents: async () => {
       const response = await fetch(`${API_URL}/dashboard/upcoming-events`, {
         method: "GET",
         headers: createHeaders(),
-      })
+      });
 
-      const data = await handleResponse(response)
-      return data || []
+      const data = await handleResponse(response);
+      return data || [];
     },
   },
 
@@ -644,13 +664,48 @@ addLawyerByEmail: async (caseId, email) => {
       return handleResponse(response);
     },
   },
-}
+  chat: {
+    getGroups: async () => {
+      const response = await fetch(`${API_URL}/chat/groups`, {
+        method: "GET",
+        headers: createHeaders(),
+      });
+      const data = await handleResponse(response);
+      return data.data || [];
+    },
+
+    getMessages: async (groupId, limit = 100) => {
+      const response = await fetch(
+        `${API_URL}/chat/groups/${groupId}/messages?limit=${limit}`,
+        {
+          method: "GET",
+          headers: createHeaders(),
+        }
+      );
+      const data = await handleResponse(response);
+      return data.data || [];
+    },
+
+    sendMessage: async (groupId, messageData) => {
+      const response = await fetch(
+        `${API_URL}/chat/groups/${groupId}/messages`,
+        {
+          method: "POST",
+          headers: createHeaders(),
+          body: JSON.stringify(messageData),
+        }
+      );
+      const data = await handleResponse(response);
+      return data.data;
+    },
+  },
+};
 
 // Add this function to ensure consistent case data structure
 export const normalizeCaseData = (caseData) => {
   // If the case data is already in the expected format, return it
   if (caseData.title && (caseData.caseNumber || caseData.number)) {
-    return caseData
+    return caseData;
   }
 
   // Otherwise, transform it to the expected format
@@ -665,7 +720,7 @@ export const normalizeCaseData = (caseData) => {
     district: caseData.district || "Not specified",
     nextHearing: caseData.nextHearingDate || caseData.hearingDate || null,
     client: caseData.client?.name || caseData.client || "No Client",
-  }
-}
+  };
+};
 
-export default api
+export default api;
