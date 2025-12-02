@@ -16,7 +16,8 @@ export default function MessagesPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authChecking, setAuthChecking] = useState(true);
   const messagesEndRef = useRef(null);
-
+  const [socketConnected, setSocketConnected] = useState(false);
+  const activeGroupRef = useRef(activeGroup);
   // Check authentication on mount
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -51,7 +52,10 @@ export default function MessagesPage() {
       setAuthChecking(false);
     }
   }, [router]);
-
+  // Keep activeGroupRef in sync
+  useEffect(() => {
+    activeGroupRef.current = activeGroup;
+  }, [activeGroup]);
   // Initialize socket and load data after authentication
   useEffect(() => {
     if (!isAuthenticated || typeof window === "undefined") return;
@@ -71,7 +75,16 @@ export default function MessagesPage() {
 
     const socketInstance = initSocket(token);
     setSocket(socketInstance);
+    // Add these lines:
+    socketInstance.on("connect", () => {
+      console.log("Socket connected");
+      setSocketConnected(true);
+    });
 
+    socketInstance.on("disconnect", () => {
+      console.log("Socket disconnected");
+      setSocketConnected(false);
+    });
     // Load initial data
     loadNotifications();
     loadGroups();
@@ -89,7 +102,7 @@ export default function MessagesPage() {
 
     socketInstance.on("message", (message) => {
       console.log("New message received:", message);
-      if (message.group === activeGroup) {
+      if (message.group === activeGroupRef.current) {
         setMessages((prev) => [...prev, message]);
       }
     });
@@ -102,13 +115,16 @@ export default function MessagesPage() {
     socketInstance.emit("identify", { userId: userData.id });
 
     return () => {
+      socketInstance.off("connect");
+      socketInstance.off("disconnect");
+      socketInstance.off("notification");
       socketInstance.off("notification");
       socketInstance.off("added_to_group");
       socketInstance.off("message");
       socketInstance.off("error");
       socketInstance.disconnect();
     };
-  }, [isAuthenticated, activeGroup]);
+  }, [isAuthenticated]);
 
   const loadNotifications = async () => {
     try {
@@ -154,7 +170,7 @@ export default function MessagesPage() {
 
     try {
       if (socket && socket.connected) {
-        const userDataStr = localStorage.getItem("user"); // ✅ CHANGED: Using "user"
+        const userDataStr = localStorage.getItem("user");
         if (!userDataStr) return;
 
         let userData;
@@ -165,27 +181,22 @@ export default function MessagesPage() {
           return;
         }
 
+        console.log("Sending message via socket");
         socket.emit("send_message", {
           groupId: activeGroup,
           text: messageText,
           senderId: userData.id,
         });
       } else {
-        // Fallback to HTTP API
-        try {
-          await api.chat.sendMessage(activeGroup, { text: messageText });
-          console.log("Message sent via HTTP");
-        } catch (error) {
-          if (error.message.includes("401")) {
-            localStorage.removeItem("auth_token");
-            localStorage.removeItem("user");
-            router.push("/auth/login");
-          }
-          throw error;
-        }
+        console.warn("Socket not connected, using HTTP fallback");
+        const sentMessage = await api.chat.sendMessage(activeGroup, {
+          text: messageText,
+        });
+        setMessages((prev) => [...prev, sentMessage]);
       }
     } catch (error) {
       console.error("Error sending message:", error);
+      setNewMessage(messageText); // Restore message on error
     }
   };
 
@@ -315,13 +326,28 @@ export default function MessagesPage() {
                 {activeGroup ? (
                   <>
                     {/* Chat Header */}
+                    {/* Chat Header */}
                     <div className="p-4 border-b bg-white">
-                      <h3 className="font-semibold">
-                        {groups.find((g) => g._id === activeGroup)?.name}
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        Case discussion group
-                      </p>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h3 className="font-semibold">
+                            {groups.find((g) => g._id === activeGroup)?.name}
+                          </h3>
+                          <p className="text-sm text-gray-600">
+                            Case discussion group
+                          </p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <div
+                            className={`w-2 h-2 rounded-full ${
+                              socketConnected ? "bg-green-500" : "bg-red-500"
+                            }`}
+                          ></div>
+                          <span className="text-xs text-gray-500">
+                            {socketConnected ? "Connected" : "Disconnected"}
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Messages */}
