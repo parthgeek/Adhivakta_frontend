@@ -19,6 +19,7 @@ export default function MessagesPage() {
   const [socketConnected, setSocketConnected] = useState(false);
   const activeGroupRef = useRef(activeGroup);
   const [unreadCounts, setUnreadCounts] = useState({});
+  const socketRef = useRef(null);
   // Check authentication on mount
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -75,17 +76,33 @@ export default function MessagesPage() {
     }
 
     const socketInstance = initSocket(token);
+    socketRef.current = socketInstance;
     setSocket(socketInstance);
     // Add these lines:
     socketInstance.on("connect", () => {
-      console.log("Socket connected");
+      console.log("✅ Socket connected");
       setSocketConnected(true);
+
+      // Rejoin active group if user was in one (for reconnections)
+      if (activeGroupRef.current) {
+        console.log(
+          "🔄 Rejoining group after reconnect:",
+          activeGroupRef.current
+        );
+        socketInstance.emit("join_group", { groupId: activeGroupRef.current });
+      }
+    });
+
+    socketInstance.on("disconnect", () => {
+      console.log("❌ Socket disconnected");
+      setSocketConnected(false);
     });
 
     socketInstance.on("disconnect", () => {
       console.log("Socket disconnected");
       setSocketConnected(false);
     });
+
     // Load initial data
     loadNotifications();
     loadGroups();
@@ -106,7 +123,7 @@ export default function MessagesPage() {
       console.log("📍 Current active group:", activeGroupRef.current);
       console.log("📍 Message group:", message.group);
 
-      if (message.group === activeGroupRef.current) {
+      if (String(message.group) === String(activeGroupRef.current)) {
         console.log("✅ Message matches active group, adding to UI");
         setMessages((prev) => [...prev, message]);
       } else {
@@ -142,7 +159,6 @@ export default function MessagesPage() {
     return () => {
       socketInstance.off("connect");
       socketInstance.off("disconnect");
-      socketInstance.off("notification");
       socketInstance.off("notification");
       socketInstance.off("added_to_group");
       socketInstance.off("message");
@@ -233,12 +249,11 @@ export default function MessagesPage() {
         );
       }
       setActiveGroup(groupId);
-
-      if (socket && socket.connected) {
+      if (socket?.connected) {
         console.log("🔵 Joining group via socket:", groupId);
         socket.emit("join_group", { groupId });
       } else {
-        console.error("❌ Socket not connected when trying to join group");
+        console.warn("⚠️ Socket not connected yet. Will join on connect.");
       }
     } catch (error) {
       console.error("Error loading messages:", error);
@@ -372,16 +387,9 @@ export default function MessagesPage() {
                         <span className="text-xs text-gray-500">
                           {group.members?.length || 0} members
                         </span>
-                        <div className="flex items-center gap-2">
-                          {unreadCounts[group._id] > 0 && (
-                            <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
-                              {unreadCounts[group._id]}
-                            </span>
-                          )}
-                          <span className="text-xs text-gray-400">
-                            {new Date(group.updatedAt).toLocaleDateString()}
-                          </span>
-                        </div>
+                        <span className="text-xs text-gray-400">
+                          {new Date(group.updatedAt).toLocaleDateString()}
+                        </span>
                       </div>
                     </div>
                   ))

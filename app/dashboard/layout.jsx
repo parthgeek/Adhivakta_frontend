@@ -45,6 +45,39 @@ export default function DashboardLayout({ children }) {
     // Only run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted]);
+  //
+  useEffect(() => {
+    if (!mounted || !user) return;
+
+    const token = localStorage.getItem("auth_token");
+    if (!token) return;
+
+    const { initSocket } = require("@/lib/socket");
+    const socketInstance = initSocket(token);
+
+    socketInstance.on("message", (message) => {
+      console.log("🌍 Global message received:", message);
+
+      // Get current unread count
+      const currentCount = parseInt(
+        localStorage.getItem("unread_messages_count") || "0"
+      );
+
+      // Increment count
+      localStorage.setItem(
+        "unread_messages_count",
+        (currentCount + 1).toString()
+      );
+
+      // Dispatch event for sidebar update
+      window.dispatchEvent(new Event("unreadCountChanged"));
+    });
+
+    return () => {
+      socketInstance.off("message");
+      socketInstance.disconnect();
+    };
+  }, [mounted, user]);
 
   // Show loading spinner while checking auth / hydration
   if (!mounted || loading) {

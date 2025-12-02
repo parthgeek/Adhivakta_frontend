@@ -156,26 +156,24 @@ export default function Sidebar() {
   const { collapsed, toggleSidebar } = useSidebar();
 
   const [unreadCount, setUnreadCount] = useState(0);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+useEffect(() => {
+  const updateCount = () => {
+    const count = parseInt(
+      localStorage.getItem("unread_messages_count") || "0"
+    );
+    setUnreadCount(count);
+  };
 
-    const updateCount = () => {
-      const count = parseInt(
-        localStorage.getItem("unread_messages_count") || "0"
-      );
-      setUnreadCount(count);
-    };
-
-    // Initial update
-    updateCount();
-
-    // Listen for real-time updates
-    window.addEventListener("unreadCountChanged", updateCount);
-
-    return () => {
-      window.removeEventListener("unreadCountChanged", updateCount);
-    };
-  }, []);
+  // Initial update
+  updateCount();
+  
+  // Listen for real-time updates
+  window.addEventListener('unreadCountChanged', updateCount);
+  
+  return () => {
+    window.removeEventListener('unreadCountChanged', updateCount);
+  };
+}, []);
   const isLawyer = user?.role === "lawyer";
   const navItems = isLawyer
     ? getLawyerNavItems(unreadCount)
