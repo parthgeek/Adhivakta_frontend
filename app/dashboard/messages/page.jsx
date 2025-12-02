@@ -101,10 +101,20 @@ export default function MessagesPage() {
     });
 
     socketInstance.on("message", (message) => {
-      console.log("New message received:", message);
+      console.log("💬 New message received:", message);
+      console.log("📍 Current active group:", activeGroupRef.current);
+      console.log("📍 Message group:", message.group);
+
       if (message.group === activeGroupRef.current) {
+        console.log("✅ Message matches active group, adding to UI");
         setMessages((prev) => [...prev, message]);
+      } else {
+        console.log("⚠️ Message doesn't match active group, ignoring");
       }
+    });
+
+    socketInstance.on("joined_group", ({ groupId }) => {
+      console.log("✅ Successfully joined group:", groupId);
     });
 
     socketInstance.on("error", (error) => {
@@ -151,8 +161,12 @@ export default function MessagesPage() {
       setMessages(data);
       setActiveGroup(groupId);
 
-      if (socket) {
+      // ✅ ADD: Check socket connection and join group
+      if (socket && socket.connected) {
+        console.log("🔵 Joining group via socket:", groupId);
         socket.emit("join_group", { groupId });
+      } else {
+        console.error("❌ Socket not connected when trying to join group");
       }
     } catch (error) {
       console.error("Error loading messages:", error);
