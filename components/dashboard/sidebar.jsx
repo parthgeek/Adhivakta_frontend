@@ -157,6 +157,8 @@ export default function Sidebar() {
 
   const [unreadCount, setUnreadCount] = useState(0);
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
     const updateCount = () => {
       const count = parseInt(
         localStorage.getItem("unread_messages_count") || "0"
@@ -164,9 +166,15 @@ export default function Sidebar() {
       setUnreadCount(count);
     };
 
+    // Initial update
     updateCount();
-    const interval = setInterval(updateCount, 1000);
-    return () => clearInterval(interval);
+
+    // Listen for real-time updates
+    window.addEventListener("unreadCountChanged", updateCount);
+
+    return () => {
+      window.removeEventListener("unreadCountChanged", updateCount);
+    };
   }, []);
   const isLawyer = user?.role === "lawyer";
   const navItems = isLawyer

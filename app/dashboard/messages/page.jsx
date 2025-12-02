@@ -151,13 +151,15 @@ export default function MessagesPage() {
     };
   }, [isAuthenticated]);
   //
-  // Store total unread count in localStorage
   useEffect(() => {
     const totalUnread = Object.values(unreadCounts).reduce(
       (sum, count) => sum + count,
       0
     );
     localStorage.setItem("unread_messages_count", totalUnread.toString());
+
+    // Dispatch event for real-time sidebar update
+    window.dispatchEvent(new Event("unreadCountChanged"));
   }, [unreadCounts]);
   //
   const loadNotifications = async () => {
@@ -370,9 +372,16 @@ export default function MessagesPage() {
                         <span className="text-xs text-gray-500">
                           {group.members?.length || 0} members
                         </span>
-                        <span className="text-xs text-gray-400">
-                          {new Date(group.updatedAt).toLocaleDateString()}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          {unreadCounts[group._id] > 0 && (
+                            <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
+                              {unreadCounts[group._id]}
+                            </span>
+                          )}
+                          <span className="text-xs text-gray-400">
+                            {new Date(group.updatedAt).toLocaleDateString()}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   ))
