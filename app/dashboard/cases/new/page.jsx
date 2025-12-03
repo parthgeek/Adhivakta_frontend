@@ -729,6 +729,17 @@ export default function NewCasePage() {
       if (response.error) {
         throw new Error(response.error);
       }
+      console.log("📦 Full response:", response);
+      console.log("📦 response.data:", response.data);
+      console.log("📦 response.data.case:", response.data?.case);
+      // Upload documents after case is created
+      const caseId = response?.case?._id || response?._id;
+      console.log("🆔 Extracted caseId:", caseId);
+      if (caseId && selectedFiles.length > 0) {
+        console.log("📤 Uploading", selectedFiles.length, "files...");
+        await uploadDocuments(caseId);
+        console.log("✅ Upload complete!");
+      }
 
       // If this is a partial save, update the local state with the saved data
       if (section !== "all") {

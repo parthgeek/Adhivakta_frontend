@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useAuth } from "@/context/auth-context"
+import { useState, useEffect } from "react";
+import { useAuth } from "@/context/auth-context";
 import {
   FileTextIcon,
   FileIcon,
@@ -15,13 +15,19 @@ import {
   Trash2,
   Share2,
   Star,
-} from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -29,12 +35,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Label } from "@/components/ui/label"
-import api from "@/services/api"
-import { useToast } from "@/components/ui/use-toast"
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import api from "@/services/api";
+import { useToast } from "@/components/ui/use-toast";
 
 // Document categories
 const DOCUMENT_CATEGORIES = [
@@ -48,190 +59,216 @@ const DOCUMENT_CATEGORIES = [
   "Correspondence",
   "Legal Research",
   "Billing",
-]
+];
 
 // Document statuses
-const DOCUMENT_STATUSES = ["All Statuses", "Approved", "Pending", "Rejected"]
+const DOCUMENT_STATUSES = ["All Statuses", "Approved", "Pending", "Rejected"];
 
 // Function to get icon based on file type
 const getFileIcon = (type) => {
   switch (type) {
     case "pdf":
-      return <FileTextIcon className="h-6 w-6 text-red-500" />
+      return <FileTextIcon className="h-6 w-6 text-red-500" />;
     case "docx":
-      return <FileTextIcon className="h-6 w-6 text-blue-500" />
+      return <FileTextIcon className="h-6 w-6 text-blue-500" />;
     case "jpg":
     case "png":
-      return <ImageIcon className="h-6 w-6 text-green-500" />
+      return <ImageIcon className="h-6 w-6 text-green-500" />;
     case "zip":
-      return <FileArchiveIcon className="h-6 w-6 text-yellow-500" />
+      return <FileArchiveIcon className="h-6 w-6 text-yellow-500" />;
     default:
-      return <FileIcon className="h-6 w-6 text-gray-500" />
+      return <FileIcon className="h-6 w-6 text-gray-500" />;
   }
-}
+};
 
 // Function to get status badge
 const getStatusBadge = (status) => {
   switch (status.toLowerCase()) {
     case "approved":
-      return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Approved</Badge>
+      return (
+        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+          Approved
+        </Badge>
+      );
     case "pending":
-      return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Pending</Badge>
+      return (
+        <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
+          Pending
+        </Badge>
+      );
     case "rejected":
-      return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Rejected</Badge>
+      return (
+        <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
+          Rejected
+        </Badge>
+      );
     default:
-      return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">{status}</Badge>
+      return (
+        <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">
+          {status}
+        </Badge>
+      );
   }
-}
+};
 
 export default function DocumentsPage() {
-  const { user } = useAuth()
-  const { toast } = useToast()
-  const [isLawyer, setIsLawyer] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [caseFilter, setCaseFilter] = useState("all")
-  const [categoryFilter, setCategoryFilter] = useState("All Categories")
-  const [statusFilter, setStatusFilter] = useState("All Statuses")
-  const [dateFilter, setDateFilter] = useState("all")
-  const [activeTab, setActiveTab] = useState("all")
-  const [sortBy, setSortBy] = useState("date")
-  const [sortOrder, setSortOrder] = useState("desc")
-  const [selectedDocuments, setSelectedDocuments] = useState([])
-  const [viewDocument, setViewDocument] = useState(null)
-  const [showUploadDialog, setShowUploadDialog] = useState(false)
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
-  const [tagFilter, setTagFilter] = useState("")
-  const [documents, setDocuments] = useState([])
-  const [cases, setCases] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [isLawyer, setIsLawyer] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [caseFilter, setCaseFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("All Categories");
+  const [statusFilter, setStatusFilter] = useState("All Statuses");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState("all");
+  const [sortBy, setSortBy] = useState("date");
+  const [sortOrder, setSortOrder] = useState("desc");
+  const [selectedDocuments, setSelectedDocuments] = useState([]);
+  const [viewDocument, setViewDocument] = useState(null);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [tagFilter, setTagFilter] = useState("");
+  const [documents, setDocuments] = useState([]);
+  const [cases, setCases] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [uploadForm, setUploadForm] = useState({
     file: null,
     case: "",
     category: "",
     tags: "",
     description: "",
-  })
-  const [uploadProgress, setUploadProgress] = useState({})
+  });
+  const [uploadProgress, setUploadProgress] = useState({});
 
   // Fetch cases separately
   // Update the fetchCases function in your DocumentsPage component
-const fetchCases = async () => {
-  try {
-    const response = await api.cases.getAll()
-    console.log("Cases API Response:", response) // Debug log
-    
-    // Handle different response structures
-    let casesData = []
-    
-    if (Array.isArray(response)) {
-      casesData = response
-    } else if (response && Array.isArray(response.data)) {
-      casesData = response.data
-    } else if (response && response.data && Array.isArray(response.data.data)) {
-      casesData = response.data.data
-    } else if (response && response.data) {
-      // If data is an object, convert to array
-      casesData = [response.data].flat()
-    }
-    
-    console.log("Processed cases data:", casesData) // Debug log
-    setCases(casesData)
-  } catch (error) {
-    console.error("Error fetching cases:", error)
-    
-    // More appropriate fallback - empty array instead of sample data
-    setCases([])
-    
-    toast({
-      title: "Failed to load cases",
-      description: "Could not load your cases. Please try again.",
-      variant: "destructive",
-    })
-  }
-}
+  const fetchCases = async () => {
+    try {
+      const response = await api.cases.getAll();
+      console.log("Cases API Response:", response); // Debug log
 
-// Also update the case filter in your JSX to handle empty cases
-<Select value={caseFilter} onValueChange={setCaseFilter}>
-  <SelectTrigger className="w-[180px]">
-    <SelectValue placeholder="Filter by case" />
-  </SelectTrigger>
-  <SelectContent>
-    <SelectItem value="all">All Cases</SelectItem>
-    {cases.length > 0 ? (
-      cases.map((caseItem) => (
-        <SelectItem key={caseItem._id || caseItem.id} value={caseItem._id || caseItem.id}>
-          {caseItem.title}
+      // Handle different response structures
+      let casesData = [];
+
+      if (Array.isArray(response)) {
+        casesData = response;
+      } else if (response && Array.isArray(response.data)) {
+        casesData = response.data;
+      } else if (
+        response &&
+        response.data &&
+        Array.isArray(response.data.data)
+      ) {
+        casesData = response.data.data;
+      } else if (response && response.data) {
+        // If data is an object, convert to array
+        casesData = [response.data].flat();
+      }
+
+      console.log("Processed cases data:", casesData); // Debug log
+      setCases(casesData);
+    } catch (error) {
+      console.error("Error fetching cases:", error);
+
+      // More appropriate fallback - empty array instead of sample data
+      setCases([]);
+
+      toast({
+        title: "Failed to load cases",
+        description: "Could not load your cases. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Also update the case filter in your JSX to handle empty cases
+  <Select value={caseFilter} onValueChange={setCaseFilter}>
+    <SelectTrigger className="w-[180px]">
+      <SelectValue placeholder="Filter by case" />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="all">All Cases</SelectItem>
+      {cases.length > 0 ? (
+        cases.map((caseItem) => (
+          <SelectItem
+            key={caseItem._id || caseItem.id}
+            value={caseItem._id || caseItem.id}
+          >
+            {caseItem.title}
+          </SelectItem>
+        ))
+      ) : (
+        <SelectItem value="no-cases" disabled>
+          No cases available
         </SelectItem>
-      ))
-    ) : (
-      <SelectItem value="no-cases" disabled>
-        No cases available
-      </SelectItem>
-    )}
-  </SelectContent>
-</Select>
+      )}
+    </SelectContent>
+  </Select>;
 
+  const fetchDocuments = async () => {
+    setLoading(true);
+    try {
+      // Prepare filter parameters
+      const filters = {
+        search: searchTerm,
+        case: caseFilter !== "all" ? caseFilter : undefined,
+        category:
+          categoryFilter !== "All Categories" ? categoryFilter : undefined,
+        status:
+          statusFilter !== "All Statuses"
+            ? statusFilter.toLowerCase()
+            : undefined,
+        date: dateFilter !== "all" ? dateFilter : undefined,
+        tag: tagFilter || undefined,
+        tab: activeTab !== "all" ? activeTab : undefined,
+        sortBy,
+        sortOrder,
+      };
 
-const fetchDocuments = async () => {
-  setLoading(true)
-  try {
-    // Prepare filter parameters
-    const filters = {
-      search: searchTerm,
-      case: caseFilter !== "all" ? caseFilter : undefined,
-      category: categoryFilter !== "All Categories" ? categoryFilter : undefined,
-      status: statusFilter !== "All Statuses" ? statusFilter.toLowerCase() : undefined,
-      date: dateFilter !== "all" ? dateFilter : undefined,
-      tag: tagFilter || undefined,
-      tab: activeTab !== "all" ? activeTab : undefined,
-      sortBy,
-      sortOrder,
+      // API call to fetch documents only
+      const documentsResponse = await api.documents.getAll(filters);
+      const docs = documentsResponse.data?.data || documentsResponse.data || [];
+
+      // Transform backend fields to frontend expected fields
+      const transformedDocs = docs.map((doc) => ({
+        id: doc._id || doc.id,
+        name: doc.name,
+        type: doc.fileType?.split("/")[1] || "file", // Extract extension from fileType
+        size: doc.fileSize,
+        category: doc.category,
+        status: doc.status,
+        case: doc.case,
+        uploadedBy: doc.uploadedBy,
+        createdAt: doc.createdAt,
+        tags: doc.tags,
+        fileUrl: doc.filePath, // Map filePath to fileUrl for frontend
+      }));
+
+      setDocuments(transformedDocs);
+    } catch (error) {
+      console.error("Error fetching documents:", error);
+      setError("Failed to load documents. Please try again.");
+      setDocuments([]); // Use empty array instead of sample data
+    } finally {
+      setLoading(false);
     }
-
-    // API call to fetch documents only
-    const documentsResponse = await api.documents.getAll(filters)
-    const docs = documentsResponse.data?.data || documentsResponse.data || []
-    
-    // Transform backend fields to frontend expected fields
-    const transformedDocs = docs.map(doc => ({
-      id: doc._id || doc.id,
-      name: doc.name,
-      type: doc.fileType?.split('/')[1] || 'file', // Extract extension from fileType
-      size: doc.fileSize,
-      category: doc.category,
-      status: doc.status,
-      case: doc.case,
-      uploadedBy: doc.uploadedBy,
-      createdAt: doc.createdAt,
-      tags: doc.tags,
-      fileUrl: doc.filePath // Map filePath to fileUrl for frontend
-    }))
-    
-    setDocuments(transformedDocs)
-  } catch (error) {
-    console.error("Error fetching documents:", error)
-    setError("Failed to load documents. Please try again.")
-    setDocuments([]) // Use empty array instead of sample data
-  } finally {
-    setLoading(false)
-  }
-}
+  };
 
   useEffect(() => {
     // Check if user is lawyer or client
     if (user) {
-      setIsLawyer(user.role === "lawyer")
+      setIsLawyer(user.role === "lawyer");
     }
-  }, [user])
+  }, [user]);
 
   useEffect(() => {
-    fetchCases()
-  }, [])
+    fetchCases();
+  }, []);
 
   useEffect(() => {
-    fetchDocuments()
+    fetchDocuments();
   }, [
     isLawyer,
     searchTerm,
@@ -243,139 +280,152 @@ const fetchDocuments = async () => {
     activeTab,
     sortBy,
     sortOrder,
-  ])
+  ]);
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       setUploadForm({
         ...uploadForm,
         file: e.target.files[0],
-      })
+      });
     }
-  }
+  };
 
   const handleUploadSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!uploadForm.file || !uploadForm.case) {
       toast({
         title: "Missing required fields",
         description: "Please select a file and case",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
     try {
-      const formData = new FormData()
-      formData.append("file", uploadForm.file)
-      formData.append("caseId", uploadForm.case)
-      formData.append("name", uploadForm.file.name)
-      formData.append("description", uploadForm.description || `File for case ${uploadForm.case}`)
+      const formData = new FormData();
+      formData.append("file", uploadForm.file);
+      formData.append("caseId", uploadForm.case);
+      formData.append("name", uploadForm.file.name);
+      formData.append(
+        "description",
+        uploadForm.description || `File for case ${uploadForm.case}`
+      );
 
       if (uploadForm.category) {
-        formData.append("category", uploadForm.category)
+        formData.append("category", uploadForm.category);
       }
 
       if (uploadForm.tags) {
-        formData.append("tags", uploadForm.tags)
+        formData.append("tags", uploadForm.tags);
       }
 
       await api.documents.upload(formData, (progressEvent) => {
-        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-        setUploadProgress((prev) => ({ ...prev, [uploadForm.file.name]: percentCompleted }))
-      })
+        const percentCompleted = Math.round(
+          (progressEvent.loaded * 100) / progressEvent.total
+        );
+        setUploadProgress((prev) => ({
+          ...prev,
+          [uploadForm.file.name]: percentCompleted,
+        }));
+      });
 
       toast({
         title: "Document uploaded successfully",
-        description: "Your document has been uploaded and attached to the case.",
-      })
+        description:
+          "Your document has been uploaded and attached to the case.",
+      });
 
       // Refresh documents
-      fetchDocuments()
+      fetchDocuments();
 
-      setShowUploadDialog(false)
+      setShowUploadDialog(false);
       setUploadForm({
         file: null,
         case: "",
         category: "",
         tags: "",
         description: "",
-      })
+      });
     } catch (error) {
-      console.error("Error uploading document:", error)
+      console.error("Error uploading document:", error);
       toast({
         title: "Upload failed",
         description: "Failed to upload document. Please try again.",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   const handleDeleteDocument = async (id) => {
     try {
-      await api.documents.delete(id)
+      await api.documents.delete(id);
 
       // Remove from state
-      setDocuments(documents.filter((doc) => doc.id !== id))
-      setShowDeleteDialog(false)
-      setViewDocument(null)
+      setDocuments(documents.filter((doc) => doc.id !== id));
+      setShowDeleteDialog(false);
+      setViewDocument(null);
     } catch (error) {
-      console.error("Error deleting document:", error)
-      alert("Failed to delete document. Please try again.")
+      console.error("Error deleting document:", error);
+      alert("Failed to delete document. Please try again.");
     }
-  }
+  };
 
   const handleBulkDelete = async () => {
     try {
-      await Promise.all(selectedDocuments.map((id) => api.documents.delete(id)))
+      await Promise.all(
+        selectedDocuments.map((id) => api.documents.delete(id))
+      );
 
       // Remove from state
-      setDocuments(documents.filter((doc) => !selectedDocuments.includes(doc.id)))
-      setSelectedDocuments([])
+      setDocuments(
+        documents.filter((doc) => !selectedDocuments.includes(doc.id))
+      );
+      setSelectedDocuments([]);
     } catch (error) {
-      console.error("Error deleting documents:", error)
-      alert("Failed to delete documents. Please try again.")
+      console.error("Error deleting documents:", error);
+      alert("Failed to delete documents. Please try again.");
     }
-  }
+  };
 
   const toggleSelectDocument = (id) => {
     if (selectedDocuments.includes(id)) {
-      setSelectedDocuments(selectedDocuments.filter((docId) => docId !== id))
+      setSelectedDocuments(selectedDocuments.filter((docId) => docId !== id));
     } else {
-      setSelectedDocuments([...selectedDocuments, id])
+      setSelectedDocuments([...selectedDocuments, id]);
     }
-  }
+  };
 
   const selectAllDocuments = () => {
     if (selectedDocuments.length === documents.length) {
-      setSelectedDocuments([])
+      setSelectedDocuments([]);
     } else {
-      setSelectedDocuments(documents.map((doc) => doc.id))
+      setSelectedDocuments(documents.map((doc) => doc.id));
     }
-  }
+  };
 
   const formatFileSize = (bytes) => {
-    if (bytes < 1024) return bytes + " B"
-    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB"
-    else return (bytes / 1048576).toFixed(1) + " MB"
-  }
+    if (bytes < 1024) return bytes + " B";
+    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+    else return (bytes / 1048576).toFixed(1) + " MB";
+  };
 
   const formatDate = (dateString) => {
-    const date = new Date(dateString)
+    const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
-    })
-  }
+    });
+  };
 
   if (loading) {
     return (
       <div className="flex justify-center items-center h-full">
         <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
       </div>
-    )
+    );
   }
 
   return (
@@ -409,13 +459,19 @@ const fetchDocuments = async () => {
               <SelectContent>
                 <SelectItem value="all">All Cases</SelectItem>
                 {cases.map((caseItem) => (
-                  <SelectItem key={caseItem._id || caseItem.id} value={caseItem._id || caseItem.id}>
+                  <SelectItem
+                    key={caseItem._id || caseItem.id}
+                    value={caseItem._id || caseItem.id}
+                  >
                     {caseItem.title}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Button variant="outline" onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+            >
               <Filter className="mr-2 h-4 w-4" />
               Filters
             </Button>
@@ -428,7 +484,10 @@ const fetchDocuments = async () => {
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div>
                   <Label htmlFor="category-filter">Category</Label>
-                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <Select
+                    value={categoryFilter}
+                    onValueChange={setCategoryFilter}
+                  >
                     <SelectTrigger id="category-filter">
                       <SelectValue placeholder="Filter by category" />
                     </SelectTrigger>
@@ -535,10 +594,10 @@ const fetchDocuments = async () => {
           <TabsContent value="recent" className="mt-4">
             <DocumentsTable
               documents={documents.filter((doc) => {
-                const docDate = new Date(doc.createdAt)
-                const sevenDaysAgo = new Date()
-                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-                return docDate >= sevenDaysAgo
+                const docDate = new Date(doc.createdAt);
+                const sevenDaysAgo = new Date();
+                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                return docDate >= sevenDaysAgo;
               })}
               selectedDocuments={selectedDocuments}
               toggleSelectDocument={toggleSelectDocument}
@@ -553,7 +612,9 @@ const fetchDocuments = async () => {
           </TabsContent>
           <TabsContent value="shared" className="mt-4">
             <DocumentsTable
-              documents={documents.filter((doc) => doc.sharedWith?.includes(user?.id))}
+              documents={documents.filter((doc) =>
+                doc.sharedWith?.includes(user?.id)
+              )}
               selectedDocuments={selectedDocuments}
               toggleSelectDocument={toggleSelectDocument}
               selectAllDocuments={selectAllDocuments}
@@ -567,7 +628,9 @@ const fetchDocuments = async () => {
           </TabsContent>
           <TabsContent value="favorites" className="mt-4">
             <DocumentsTable
-              documents={documents.filter((doc) => doc.favoritedBy?.includes(user?.id))}
+              documents={documents.filter((doc) =>
+                doc.favoritedBy?.includes(user?.id)
+              )}
               selectedDocuments={selectedDocuments}
               toggleSelectDocument={toggleSelectDocument}
               selectAllDocuments={selectAllDocuments}
@@ -587,17 +650,19 @@ const fetchDocuments = async () => {
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Upload Document</DialogTitle>
-            <DialogDescription>Upload a document to associate with a case</DialogDescription>
+            <DialogDescription>
+              Upload a document to associate with a case
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUploadSubmit}>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
                 <Label htmlFor="file">Document File</Label>
-                <Input 
-                  id="file" 
-                  type="file" 
-                  onChange={handleFileChange} 
-                  required 
+                <Input
+                  id="file"
+                  type="file"
+                  onChange={handleFileChange}
+                  required
                   accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt,.xls,.xlsx,.ppt,.pptx"
                 />
                 {uploadForm.file && (
@@ -610,7 +675,9 @@ const fetchDocuments = async () => {
                 <Label htmlFor="case">Case *</Label>
                 <Select
                   value={uploadForm.case}
-                  onValueChange={(value) => setUploadForm({ ...uploadForm, case: value })}
+                  onValueChange={(value) =>
+                    setUploadForm({ ...uploadForm, case: value })
+                  }
                   required
                 >
                   <SelectTrigger id="case">
@@ -619,7 +686,10 @@ const fetchDocuments = async () => {
                   <SelectContent>
                     {cases.length > 0 ? (
                       cases.map((caseItem) => (
-                        <SelectItem key={caseItem._id || caseItem.id} value={caseItem._id || caseItem.id}>
+                        <SelectItem
+                          key={caseItem._id || caseItem.id}
+                          value={caseItem._id || caseItem.id}
+                        >
                           {caseItem.title}
                         </SelectItem>
                       ))
@@ -640,7 +710,9 @@ const fetchDocuments = async () => {
                 <Label htmlFor="category">Category</Label>
                 <Select
                   value={uploadForm.category}
-                  onValueChange={(value) => setUploadForm({ ...uploadForm, category: value })}
+                  onValueChange={(value) =>
+                    setUploadForm({ ...uploadForm, category: value })
+                  }
                 >
                   <SelectTrigger id="category">
                     <SelectValue placeholder="Select category" />
@@ -660,7 +732,9 @@ const fetchDocuments = async () => {
                   id="tags"
                   placeholder="important, court-filing, etc."
                   value={uploadForm.tags}
-                  onChange={(e) => setUploadForm({ ...uploadForm, tags: e.target.value })}
+                  onChange={(e) =>
+                    setUploadForm({ ...uploadForm, tags: e.target.value })
+                  }
                 />
               </div>
               <div className="grid gap-2">
@@ -669,15 +743,27 @@ const fetchDocuments = async () => {
                   id="description"
                   placeholder="Document description"
                   value={uploadForm.description}
-                  onChange={(e) => setUploadForm({ ...uploadForm, description: e.target.value })}
+                  onChange={(e) =>
+                    setUploadForm({
+                      ...uploadForm,
+                      description: e.target.value,
+                    })
+                  }
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setShowUploadDialog(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowUploadDialog(false)}
+              >
                 Cancel
               </Button>
-              <Button type="submit" disabled={!uploadForm.file || !uploadForm.case}>
+              <Button
+                type="submit"
+                disabled={!uploadForm.file || !uploadForm.case}
+              >
                 Upload
               </Button>
             </DialogFooter>
@@ -688,12 +774,16 @@ const fetchDocuments = async () => {
       {/* Rest of the dialogs remain the same */}
       {/* View Document Dialog */}
       {viewDocument && (
-        <Dialog open={!!viewDocument} onOpenChange={() => setViewDocument(null)}>
+        <Dialog
+          open={!!viewDocument}
+          onOpenChange={() => setViewDocument(null)}
+        >
           <DialogContent className="sm:max-w-[700px]">
             <DialogHeader>
               <DialogTitle>{viewDocument.name}</DialogTitle>
               <DialogDescription>
-                Uploaded on {formatDate(viewDocument.createdAt)} by {viewDocument.uploadedBy?.name}
+                Uploaded on {formatDate(viewDocument.createdAt)} by{" "}
+                {viewDocument.uploadedBy?.name}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -744,8 +834,8 @@ const fetchDocuments = async () => {
                 <Button
                   variant="destructive"
                   onClick={() => {
-                    setShowDeleteDialog(true)
-                    setViewDocument(null)
+                    setShowDeleteDialog(true);
+                    setViewDocument(null);
                   }}
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
@@ -764,23 +854,28 @@ const fetchDocuments = async () => {
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
               Are you sure you want to delete{" "}
-              {selectedDocuments.length > 0 ? `${selectedDocuments.length} documents` : "this document"}? This action
-              cannot be undone.
+              {selectedDocuments.length > 0
+                ? `${selectedDocuments.length} documents`
+                : "this document"}
+              ? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+            >
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={() => {
                 if (selectedDocuments.length > 0) {
-                  handleBulkDelete()
+                  handleBulkDelete();
                 } else if (viewDocument) {
-                  handleDeleteDocument(viewDocument.id)
+                  handleDeleteDocument(viewDocument.id);
                 }
-                setShowDeleteDialog(false)
+                setShowDeleteDialog(false);
               }}
             >
               Delete
@@ -789,7 +884,7 @@ const fetchDocuments = async () => {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }
 
 // DocumentsTable component remains the same
@@ -810,9 +905,11 @@ function DocumentsTable({
       <div className="text-center py-10">
         <FileTextIcon className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
         <h3 className="text-lg font-medium">No documents found</h3>
-        <p className="text-muted-foreground">Upload documents or adjust your filters to see results.</p>
+        <p className="text-muted-foreground">
+          Upload documents or adjust your filters to see results.
+        </p>
       </div>
-    )
+    );
   }
 
   return (
@@ -823,7 +920,10 @@ function DocumentsTable({
             <tr className="border-b bg-muted/50">
               <th className="h-10 px-2 text-left font-medium">
                 <Checkbox
-                  checked={selectedDocuments.length === documents.length && documents.length > 0}
+                  checked={
+                    selectedDocuments.length === documents.length &&
+                    documents.length > 0
+                  }
                   onCheckedChange={selectAllDocuments}
                 />
               </th>
@@ -848,7 +948,10 @@ function DocumentsTable({
                 <td className="p-2">
                   <div className="flex items-center space-x-2">
                     {getFileIcon(doc.type)}
-                    <span className="font-medium cursor-pointer hover:underline" onClick={() => setViewDocument(doc)}>
+                    <span
+                      className="font-medium cursor-pointer hover:underline"
+                      onClick={() => setViewDocument(doc)}
+                    >
                       {doc.name}
                     </span>
                   </div>
@@ -866,7 +969,9 @@ function DocumentsTable({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setViewDocument(doc)}>View Details</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setViewDocument(doc)}>
+                        View Details
+                      </DropdownMenuItem>
                       <DropdownMenuItem>
                         <Download className="mr-2 h-4 w-4" />
                         Download
@@ -894,5 +999,5 @@ function DocumentsTable({
         </table>
       </div>
     </div>
-  )
+  );
 }
