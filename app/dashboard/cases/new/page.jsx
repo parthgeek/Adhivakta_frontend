@@ -387,59 +387,67 @@ export default function NewCasePage() {
     }));
   };
 
-  const handleFileChange = (e) => {
-    const files = Array.from(e.target.files);
-    setSelectedFiles(files);
-  };
 
-  const uploadDocuments = async (caseId) => {
-    if (selectedFiles.length === 0) return [];
+const handleFileChange = (e) => {
+  const files = Array.from(e.target.files);
+  setSelectedFiles(files);
+};
 
-    const uploadedDocs = [];
+async function uploadDocuments(caseId) {
+  if (!caseId || selectedFiles.length === 0) return [];
+
+  const uploadedDocs = [];
+
+  // upload each selected file one by one
+  for (const file of selectedFiles) {
+    // start progress at 0 for this file
+    setUploadProgress((prev) => ({
+      ...prev,
+      [file.name]: 0,
+    }));
+
+    const formData = new FormData();
+    // 👇 MUST be "file" (singular) because the backend uses upload.single("file")
+    formData.append("file", file);
+
+    // optional metadata (your controller can use these if needed)
+    formData.append("name", file.name);
+    formData.append(
+      "description",
+      `Document for case ${caseData.title || "Case"}`
+    );
+    formData.append("category", caseData.caseType || "other");
+    // formData.append("caseId", caseId); // not required, route sets req.body.caseId
 
     try {
-      // Create a single FormData object for all files
-      const formData = new FormData();
-
-      // Append all files with the same field name 'files'
-      selectedFiles.forEach((file) => {
-        formData.append("files", file);
-        setUploadProgress((prev) => ({ ...prev, [file.name]: 0 }));
-      });
-
-      // Add metadata
-      formData.append("name", "Files for " + caseData.title);
-      formData.append("description", `Documents for case ${caseData.title}`);
-      formData.append("category", caseData.caseType);
-
-      // Upload all documents in a single request
       const response = await api.documents.uploadToCaseId(
         caseId,
         formData,
-        (progressEvent) => {
-          const percentCompleted = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total
+        (event) => {
+          if (!event.lengthComputable) return;
+          const percent = Math.round(
+            (event.loaded * 100) / event.total
           );
-          // Update progress for all files
-          const newProgress = {};
-          selectedFiles.forEach((file) => {
-            newProgress[file.name] = percentCompleted;
-          });
-          setUploadProgress((prev) => ({ ...prev, ...newProgress }));
+
+          setUploadProgress((prev) => ({
+            ...prev,
+            [file.name]: percent,
+          }));
         }
       );
 
+      // your /documents/upload style response is { success, data: document }
       if (response && response.data) {
-        uploadedDocs.push(
-          ...(Array.isArray(response.data) ? response.data : [response.data])
-        );
+        uploadedDocs.push(response.data);
       }
-    } catch (error) {
-      console.error(`Error uploading documents:`, error);
+    } catch (err) {
+      console.error(`Error uploading document ${file.name}:`, err);
     }
+  }
 
-    return uploadedDocs;
-  };
+  return uploadedDocs;
+}
+
 
   const handleSubmit = async (e, section = "all") => {
     e.preventDefault();

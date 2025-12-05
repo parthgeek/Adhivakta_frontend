@@ -15,6 +15,11 @@ import {
   Trash2,
   Share2,
   Star,
+  Grid,
+  List,
+  Folder,
+  ChevronRight,
+  FolderOpen,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,6 +51,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import api from "@/services/api";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Document categories
 const DOCUMENT_CATEGORIES = [
@@ -83,7 +94,7 @@ const getFileIcon = (type) => {
 
 // Function to get status badge
 const getStatusBadge = (status) => {
-  switch (status.toLowerCase()) {
+  switch (status?.toLowerCase()) {
     case "approved":
       return (
         <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
@@ -105,7 +116,7 @@ const getStatusBadge = (status) => {
     default:
       return (
         <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">
-          {status}
+          {status || "Unknown"}
         </Badge>
       );
   }
@@ -116,7 +127,7 @@ export default function DocumentsPage() {
   const { toast } = useToast();
   const [isLawyer, setIsLawyer] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [caseFilter, setCaseFilter] = useState("all");
+  const [selectedCase, setSelectedCase] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState("All Categories");
   const [statusFilter, setStatusFilter] = useState("All Statuses");
   const [dateFilter, setDateFilter] = useState("all");
@@ -133,6 +144,7 @@ export default function DocumentsPage() {
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [viewMode, setViewMode] = useState("grid"); // 'grid' or 'list'
   const [uploadForm, setUploadForm] = useState({
     file: null,
     case: "",
@@ -142,122 +154,132 @@ export default function DocumentsPage() {
   });
   const [uploadProgress, setUploadProgress] = useState({});
 
-  // Fetch cases separately
-  // Update the fetchCases function in your DocumentsPage component
-  const fetchCases = async () => {
-    try {
-      const response = await api.cases.getAll();
-      console.log("Cases API Response:", response); // Debug log
+const fetchCases = async () => {
+  try {
+    const response = await api.cases.getAll();
+    console.log("Cases API Response:", response);
 
-      // Handle different response structures
-      let casesData = [];
-
-      if (Array.isArray(response)) {
-        casesData = response;
-      } else if (response && Array.isArray(response.data)) {
-        casesData = response.data;
-      } else if (
-        response &&
-        response.data &&
-        Array.isArray(response.data.data)
-      ) {
-        casesData = response.data.data;
-      } else if (response && response.data) {
-        // If data is an object, convert to array
-        casesData = [response.data].flat();
-      }
-
-      console.log("Processed cases data:", casesData); // Debug log
-      setCases(casesData);
-    } catch (error) {
-      console.error("Error fetching cases:", error);
-
-      // More appropriate fallback - empty array instead of sample data
-      setCases([]);
-
-      toast({
-        title: "Failed to load cases",
-        description: "Could not load your cases. Please try again.",
-        variant: "destructive",
-      });
+    let casesData = [];
+    
+    if (Array.isArray(response)) {
+      casesData = response;
+    } else if (response && Array.isArray(response.data)) {
+      casesData = response.data;
+    } else if (response && response.data && Array.isArray(response.data.data)) {
+      casesData = response.data.data;
+    } else if (response && response.data) {
+      casesData = [response.data].flat();
     }
-  };
 
-  // Also update the case filter in your JSX to handle empty cases
-  <Select value={caseFilter} onValueChange={setCaseFilter}>
-    <SelectTrigger className="w-[180px]">
-      <SelectValue placeholder="Filter by case" />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem value="all">All Cases</SelectItem>
-      {cases.length > 0 ? (
-        cases.map((caseItem) => (
-          <SelectItem
-            key={caseItem._id || caseItem.id}
-            value={caseItem._id || caseItem.id}
-          >
-            {caseItem.title}
-          </SelectItem>
-        ))
-      ) : (
-        <SelectItem value="no-cases" disabled>
-          No cases available
-        </SelectItem>
-      )}
-    </SelectContent>
-  </Select>;
+    // Get user ID from JWT token or user object
+    const userId = user?._id;
+    
+    // If no userId, we can't filter
+    if (!userId) {
+      console.log("No user ID, cannot filter cases");
+      setCases(casesData); // Show all for now
+      return;
+    }
 
+    console.log("Filtering cases for user ID:", userId);
+    
+    // Simple filter based on dashboard query structure
+    const userCases = casesData.filter(caseItem => {
+      // Check all possible ID fields
+      const caseCreator = caseItem.creator;
+      const caseLawyer = caseItem.lawyer;
+      const caseClient = caseItem.client;
+      
+      // For debugging
+      if (casesData.indexOf(caseItem) < 3) { // Log first 3 cases
+        console.log(`Case "${caseItem.title}":`, {
+          creator: caseCreator,
+          lawyer: caseLawyer,
+          client: caseClient,
+          userId
+        });
+      }
+      
+      // Check if any field matches userId
+      return caseCreator === userId || 
+             caseLawyer === userId || 
+             caseClient === userId;
+    });
+
+    console.log("Filtered cases:", userCases.length);
+    
+    setCases(userCases);
+    
+    // Auto-select first case if none selected
+    if (!selectedCase && userCases.length > 0) {
+      setSelectedCase(userCases[0]);
+    }
+    
+  } catch (error) {
+    console.error("Error fetching cases:", error);
+    setCases([]);
+  }
+};
+
+  // Fetch documents for the selected case
   const fetchDocuments = async () => {
+    if (!selectedCase) {
+      setDocuments([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       // Prepare filter parameters
       const filters = {
         search: searchTerm,
-        case: caseFilter !== "all" ? caseFilter : undefined,
-        category:
-          categoryFilter !== "All Categories" ? categoryFilter : undefined,
-        status:
-          statusFilter !== "All Statuses"
-            ? statusFilter.toLowerCase()
-            : undefined,
+        case: selectedCase._id || selectedCase.id,
+        category: categoryFilter !== "All Categories" ? categoryFilter : undefined,
+        status: statusFilter !== "All Statuses" ? statusFilter.toLowerCase() : undefined,
         date: dateFilter !== "all" ? dateFilter : undefined,
         tag: tagFilter || undefined,
-        tab: activeTab !== "all" ? activeTab : undefined,
         sortBy,
         sortOrder,
       };
 
-      // API call to fetch documents only
-      const documentsResponse = await api.documents.getAll(filters);
-      const docs = documentsResponse.data?.data || documentsResponse.data || [];
-
+      console.log("Fetching documents with filters:", filters);
+      
+      // API call to fetch documents for the selected case
+      const response = await api.documents.getAll(filters);
+      console.log("Documents API response:", response);
+      
+      const docs = response.data?.data || response.data || response || [];
+      
       // Transform backend fields to frontend expected fields
       const transformedDocs = docs.map((doc) => ({
         id: doc._id || doc.id,
-        name: doc.name,
-        type: doc.fileType?.split("/")[1] || "file", // Extract extension from fileType
-        size: doc.fileSize,
-        category: doc.category,
-        status: doc.status,
-        case: doc.case,
-        uploadedBy: doc.uploadedBy,
-        createdAt: doc.createdAt,
-        tags: doc.tags,
-        fileUrl: doc.filePath, // Map filePath to fileUrl for frontend
+        name: doc.name || doc.fileName || "Unnamed Document",
+        type: doc.fileType?.split("/")[1] || doc.type || "file",
+        size: doc.fileSize || doc.size || 0,
+        category: doc.category || "Uncategorized",
+        status: doc.status || "pending",
+        case: doc.case || selectedCase,
+        uploadedBy: doc.uploadedBy || user,
+        createdAt: doc.createdAt || new Date().toISOString(),
+        tags: doc.tags || [],
+        fileUrl: doc.filePath || doc.url,
+        description: doc.description || "",
       }));
 
+      console.log("Transformed documents:", transformedDocs);
       setDocuments(transformedDocs);
+      setError(null);
     } catch (error) {
       console.error("Error fetching documents:", error);
       setError("Failed to load documents. Please try again.");
-      setDocuments([]); // Use empty array instead of sample data
+      setDocuments([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    // Check if user is lawyer or client
     if (user) {
       setIsLawyer(user.role === "lawyer");
     }
@@ -265,22 +287,29 @@ export default function DocumentsPage() {
 
   useEffect(() => {
     fetchCases();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
-    fetchDocuments();
+    if (selectedCase) {
+      fetchDocuments();
+    } else {
+      setDocuments([]);
+    }
   }, [
-    isLawyer,
+    selectedCase,
     searchTerm,
-    caseFilter,
     categoryFilter,
     statusFilter,
     dateFilter,
     tagFilter,
-    activeTab,
     sortBy,
     sortOrder,
   ]);
+
+  const handleCaseSelect = (caseItem) => {
+    setSelectedCase(caseItem);
+    setSelectedDocuments([]); // Clear selections when switching cases
+  };
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
@@ -366,9 +395,18 @@ export default function DocumentsPage() {
       setDocuments(documents.filter((doc) => doc.id !== id));
       setShowDeleteDialog(false);
       setViewDocument(null);
+      
+      toast({
+        title: "Document deleted",
+        description: "The document has been deleted successfully.",
+      });
     } catch (error) {
       console.error("Error deleting document:", error);
-      alert("Failed to delete document. Please try again.");
+      toast({
+        title: "Delete failed",
+        description: "Failed to delete document. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -383,9 +421,18 @@ export default function DocumentsPage() {
         documents.filter((doc) => !selectedDocuments.includes(doc.id))
       );
       setSelectedDocuments([]);
+      
+      toast({
+        title: "Documents deleted",
+        description: `${selectedDocuments.length} documents have been deleted.`,
+      });
     } catch (error) {
       console.error("Error deleting documents:", error);
-      alert("Failed to delete documents. Please try again.");
+      toast({
+        title: "Delete failed",
+        description: "Failed to delete documents. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -406,12 +453,13 @@ export default function DocumentsPage() {
   };
 
   const formatFileSize = (bytes) => {
-    if (bytes < 1024) return bytes + " B";
+    if (!bytes || bytes < 1024) return bytes + " B";
     else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
     else return (bytes / 1048576).toFixed(1) + " MB";
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return "Unknown date";
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
       year: "numeric",
@@ -420,7 +468,12 @@ export default function DocumentsPage() {
     });
   };
 
-  if (loading) {
+  const getCaseDocumentCount = (caseId) => {
+    // This would ideally come from the API, but for now we'll filter from current documents
+    return documents.filter(doc => doc.case?._id === caseId || doc.case?.id === caseId).length;
+  };
+
+  if (loading && !selectedCase) {
     return (
       <div className="flex justify-center items-center h-full">
         <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
@@ -431,218 +484,322 @@ export default function DocumentsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Documents</h1>
-        {isLawyer && (
-          <Button onClick={() => setShowUploadDialog(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Upload Document
-          </Button>
-        )}
-      </div>
-
-      <div className="flex flex-col space-y-4">
-        <div className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search documents..."
-              className="pl-8"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <div className="flex space-x-2">
-            <Select value={caseFilter} onValueChange={setCaseFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by case" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Cases</SelectItem>
-                {cases.map((caseItem) => (
-                  <SelectItem
-                    key={caseItem._id || caseItem.id}
-                    value={caseItem._id || caseItem.id}
-                  >
-                    {caseItem.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <div className="flex items-center space-x-2">
+          <h1 className="text-3xl font-bold">Documents</h1>
+          {selectedCase && (
+            <>
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              <span className="text-lg font-medium text-muted-foreground">
+                {selectedCase.title}
+              </span>
+            </>
+          )}
+        </div>
+        <div className="flex items-center space-x-2">
+          <div className="flex bg-muted rounded-md p-1">
             <Button
-              variant="outline"
-              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              variant={viewMode === "grid" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("grid")}
+              className="px-3"
             >
-              <Filter className="mr-2 h-4 w-4" />
-              Filters
+              <Grid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "list" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("list")}
+              className="px-3"
+            >
+              <List className="h-4 w-4" />
             </Button>
           </div>
+          {isLawyer && selectedCase && (
+            <Button onClick={() => setShowUploadDialog(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Upload Document
+            </Button>
+          )}
         </div>
+      </div>
 
-        {showAdvancedFilters && (
+      {/* Case Selection Sidebar and Document Canvas */}
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Cases Sidebar */}
+        <div className="lg:w-1/4">
           <Card>
             <CardContent className="p-4">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div>
-                  <Label htmlFor="category-filter">Category</Label>
-                  <Select
-                    value={categoryFilter}
-                    onValueChange={setCategoryFilter}
-                  >
-                    <SelectTrigger id="category-filter">
-                      <SelectValue placeholder="Filter by category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DOCUMENT_CATEGORIES.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="status-filter">Status</Label>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger id="status-filter">
-                      <SelectValue placeholder="Filter by status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DOCUMENT_STATUSES.map((status) => (
-                        <SelectItem key={status} value={status}>
-                          {status}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="date-filter">Date</Label>
-                  <Select value={dateFilter} onValueChange={setDateFilter}>
-                    <SelectTrigger id="date-filter">
-                      <SelectValue placeholder="Filter by date" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Time</SelectItem>
-                      <SelectItem value="today">Today</SelectItem>
-                      <SelectItem value="week">This Week</SelectItem>
-                      <SelectItem value="month">This Month</SelectItem>
-                      <SelectItem value="year">This Year</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="tag-filter">Tag</Label>
-                  <Input
-                    id="tag-filter"
-                    placeholder="Filter by tag"
-                    value={tagFilter}
-                    onChange={(e) => setTagFilter(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="sort-by">Sort By</Label>
-                  <Select value={sortBy} onValueChange={setSortBy}>
-                    <SelectTrigger id="sort-by">
-                      <SelectValue placeholder="Sort by" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="date">Date</SelectItem>
-                      <SelectItem value="name">Name</SelectItem>
-                      <SelectItem value="size">Size</SelectItem>
-                      <SelectItem value="category">Category</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="sort-order">Order</Label>
-                  <Select value={sortOrder} onValueChange={setSortOrder}>
-                    <SelectTrigger id="sort-order">
-                      <SelectValue placeholder="Sort order" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="asc">Ascending</SelectItem>
-                      <SelectItem value="desc">Descending</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <h2 className="font-semibold mb-4">Your Cases</h2>
+              <div className="space-y-2">
+                {cases.length > 0 ? (
+                  cases.map((caseItem) => (
+                    <div
+                      key={caseItem._id || caseItem.id}
+                      className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                        selectedCase?._id === caseItem._id
+                          ? "bg-primary/10 border border-primary/20"
+                          : "hover:bg-muted"
+                      }`}
+                      onClick={() => handleCaseSelect(caseItem)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          {selectedCase?._id === caseItem._id ? (
+                            <FolderOpen className="h-4 w-4 text-primary" />
+                          ) : (
+                            <Folder className="h-4 w-4 text-muted-foreground" />
+                          )}
+                          <span className="font-medium truncate">
+                            {caseItem.title}
+                          </span>
+                        </div>
+                        <Badge variant="secondary">
+                          {getCaseDocumentCount(caseItem._id || caseItem.id)}
+                        </Badge>
+                      </div>
+                      {caseItem.client && (
+                        <p className="text-sm text-muted-foreground mt-1 truncate">
+                          Client: {caseItem.client.name}
+                        </p>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-4 text-muted-foreground">
+                    <Folder className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No cases found</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
-        )}
+        </div>
 
-        <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="all">All Documents</TabsTrigger>
-            <TabsTrigger value="recent">Recent</TabsTrigger>
-            <TabsTrigger value="shared">Shared with Me</TabsTrigger>
-            <TabsTrigger value="favorites">Favorites</TabsTrigger>
-          </TabsList>
-          <TabsContent value="all" className="mt-4">
-            <DocumentsTable
-              documents={documents}
-              selectedDocuments={selectedDocuments}
-              toggleSelectDocument={toggleSelectDocument}
-              selectAllDocuments={selectAllDocuments}
-              setViewDocument={setViewDocument}
-              formatFileSize={formatFileSize}
-              formatDate={formatDate}
-              getFileIcon={getFileIcon}
-              getStatusBadge={getStatusBadge}
-              isLawyer={isLawyer}
-            />
-          </TabsContent>
-          <TabsContent value="recent" className="mt-4">
-            <DocumentsTable
-              documents={documents.filter((doc) => {
-                const docDate = new Date(doc.createdAt);
-                const sevenDaysAgo = new Date();
-                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-                return docDate >= sevenDaysAgo;
-              })}
-              selectedDocuments={selectedDocuments}
-              toggleSelectDocument={toggleSelectDocument}
-              selectAllDocuments={selectAllDocuments}
-              setViewDocument={setViewDocument}
-              formatFileSize={formatFileSize}
-              formatDate={formatDate}
-              getFileIcon={getFileIcon}
-              getStatusBadge={getStatusBadge}
-              isLawyer={isLawyer}
-            />
-          </TabsContent>
-          <TabsContent value="shared" className="mt-4">
-            <DocumentsTable
-              documents={documents.filter((doc) =>
-                doc.sharedWith?.includes(user?.id)
+        {/* Document Canvas */}
+        <div className="lg:w-3/4">
+          {selectedCase ? (
+            <>
+              {/* Search and Filters */}
+              <div className="mb-6">
+                <div className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Search documents in this case..."
+                      className="pl-8"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                    >
+                      <Filter className="mr-2 h-4 w-4" />
+                      Filters
+                    </Button>
+                  </div>
+                </div>
+
+                {showAdvancedFilters && (
+                  <Card className="mt-4">
+                    <CardContent className="p-4">
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div>
+                          <Label htmlFor="category-filter">Category</Label>
+                          <Select
+                            value={categoryFilter}
+                            onValueChange={setCategoryFilter}
+                          >
+                            <SelectTrigger id="category-filter">
+                              <SelectValue placeholder="Filter by category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {DOCUMENT_CATEGORIES.map((category) => (
+                                <SelectItem key={category} value={category}>
+                                  {category}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="status-filter">Status</Label>
+                          <Select
+                            value={statusFilter}
+                            onValueChange={setStatusFilter}
+                          >
+                            <SelectTrigger id="status-filter">
+                              <SelectValue placeholder="Filter by status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {DOCUMENT_STATUSES.map((status) => (
+                                <SelectItem key={status} value={status}>
+                                  {status}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="date-filter">Date</Label>
+                          <Select
+                            value={dateFilter}
+                            onValueChange={setDateFilter}
+                          >
+                            <SelectTrigger id="date-filter">
+                              <SelectValue placeholder="Filter by date" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Time</SelectItem>
+                              <SelectItem value="today">Today</SelectItem>
+                              <SelectItem value="week">This Week</SelectItem>
+                              <SelectItem value="month">This Month</SelectItem>
+                              <SelectItem value="year">This Year</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="tag-filter">Tag</Label>
+                          <Input
+                            id="tag-filter"
+                            placeholder="Filter by tag"
+                            value={tagFilter}
+                            onChange={(e) => setTagFilter(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="sort-by">Sort By</Label>
+                          <Select value={sortBy} onValueChange={setSortBy}>
+                            <SelectTrigger id="sort-by">
+                              <SelectValue placeholder="Sort by" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="date">Date</SelectItem>
+                              <SelectItem value="name">Name</SelectItem>
+                              <SelectItem value="size">Size</SelectItem>
+                              <SelectItem value="category">Category</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="sort-order">Order</Label>
+                          <Select value={sortOrder} onValueChange={setSortOrder}>
+                            <SelectTrigger id="sort-order">
+                              <SelectValue placeholder="Sort order" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="asc">Ascending</SelectItem>
+                              <SelectItem value="desc">Descending</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+
+              {/* Bulk Actions Bar */}
+              {selectedDocuments.length > 0 && (
+                <div className="mb-4 p-3 bg-primary/10 rounded-lg flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <span className="font-medium">
+                      {selectedDocuments.length} document(s) selected
+                    </span>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setShowDeleteDialog(true)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Selected
+                    </Button>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedDocuments([])}
+                  >
+                    Clear Selection
+                  </Button>
+                </div>
               )}
-              selectedDocuments={selectedDocuments}
-              toggleSelectDocument={toggleSelectDocument}
-              selectAllDocuments={selectAllDocuments}
-              setViewDocument={setViewDocument}
-              formatFileSize={formatFileSize}
-              formatDate={formatDate}
-              getFileIcon={getFileIcon}
-              getStatusBadge={getStatusBadge}
-              isLawyer={isLawyer}
-            />
-          </TabsContent>
-          <TabsContent value="favorites" className="mt-4">
-            <DocumentsTable
-              documents={documents.filter((doc) =>
-                doc.favoritedBy?.includes(user?.id)
+
+              {/* Document Display */}
+              {loading ? (
+                <div className="flex justify-center items-center h-64">
+                  <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
+                </div>
+              ) : error ? (
+                <Card>
+                  <CardContent className="p-6 text-center">
+                    <FileTextIcon className="h-12 w-12 mx-auto text-destructive mb-4" />
+                    <h3 className="text-lg font-medium mb-2">Error Loading Documents</h3>
+                    <p className="text-muted-foreground mb-4">{error}</p>
+                    <Button onClick={fetchDocuments}>Try Again</Button>
+                  </CardContent>
+                </Card>
+              ) : documents.length > 0 ? (
+                viewMode === "grid" ? (
+                  <DocumentsGrid
+                    documents={documents}
+                    selectedDocuments={selectedDocuments}
+                    toggleSelectDocument={toggleSelectDocument}
+                    setViewDocument={setViewDocument}
+                    formatFileSize={formatFileSize}
+                    formatDate={formatDate}
+                    getFileIcon={getFileIcon}
+                    getStatusBadge={getStatusBadge}
+                    isLawyer={isLawyer}
+                  />
+                ) : (
+                  <DocumentsTable
+                    documents={documents}
+                    selectedDocuments={selectedDocuments}
+                    toggleSelectDocument={toggleSelectDocument}
+                    selectAllDocuments={selectAllDocuments}
+                    setViewDocument={setViewDocument}
+                    formatFileSize={formatFileSize}
+                    formatDate={formatDate}
+                    getFileIcon={getFileIcon}
+                    getStatusBadge={getStatusBadge}
+                    isLawyer={isLawyer}
+                  />
+                )
+              ) : (
+                <Card>
+                  <CardContent className="p-6 text-center">
+                    <FileTextIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No Documents Found</h3>
+                    <p className="text-muted-foreground mb-4">
+                      {searchTerm || categoryFilter !== "All Categories" || statusFilter !== "All Statuses"
+                        ? "No documents match your search criteria. Try adjusting your filters."
+                        : "This case doesn't have any documents yet."}
+                    </p>
+                    {isLawyer && (
+                      <Button onClick={() => setShowUploadDialog(true)}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Upload First Document
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
               )}
-              selectedDocuments={selectedDocuments}
-              toggleSelectDocument={toggleSelectDocument}
-              selectAllDocuments={selectAllDocuments}
-              setViewDocument={setViewDocument}
-              formatFileSize={formatFileSize}
-              formatDate={formatDate}
-              getFileIcon={getFileIcon}
-              getStatusBadge={getStatusBadge}
-              isLawyer={isLawyer}
-            />
-          </TabsContent>
-        </Tabs>
+            </>
+          ) : (
+            <Card>
+              <CardContent className="p-6 text-center">
+                <FolderOpen className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-xl font-medium mb-2">Select a Case</h3>
+                <p className="text-muted-foreground">
+                  Choose a case from the sidebar to view its documents
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
 
       {/* Upload Document Dialog */}
@@ -651,7 +808,8 @@ export default function DocumentsPage() {
           <DialogHeader>
             <DialogTitle>Upload Document</DialogTitle>
             <DialogDescription>
-              Upload a document to associate with a case
+              Upload a document to attach to{" "}
+              {selectedCase ? `"${selectedCase.title}"` : "the selected case"}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUploadSubmit}>
@@ -674,7 +832,7 @@ export default function DocumentsPage() {
               <div className="grid gap-2">
                 <Label htmlFor="case">Case *</Label>
                 <Select
-                  value={uploadForm.case}
+                  value={uploadForm.case || (selectedCase?._id || selectedCase?.id)}
                   onValueChange={(value) =>
                     setUploadForm({ ...uploadForm, case: value })
                   }
@@ -771,7 +929,6 @@ export default function DocumentsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Rest of the dialogs remain the same */}
       {/* View Document Dialog */}
       {viewDocument && (
         <Dialog
@@ -783,18 +940,23 @@ export default function DocumentsPage() {
               <DialogTitle>{viewDocument.name}</DialogTitle>
               <DialogDescription>
                 Uploaded on {formatDate(viewDocument.createdAt)} by{" "}
-                {viewDocument.uploadedBy?.name}
+                {viewDocument.uploadedBy?.name || "Unknown"}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="flex items-center justify-center h-64 bg-muted rounded-md">
-                {getFileIcon(viewDocument.type)}
-                <span className="ml-2">{viewDocument.name}</span>
+                <div className="text-center">
+                  {getFileIcon(viewDocument.type)}
+                  <p className="mt-2 font-medium">{viewDocument.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatFileSize(viewDocument.size)}
+                  </p>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-muted-foreground">Case</Label>
-                  <p>{viewDocument.case?.title}</p>
+                  <p>{viewDocument.case?.title || selectedCase?.title}</p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Category</Label>
@@ -802,13 +964,19 @@ export default function DocumentsPage() {
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Status</Label>
-                  <p>{getStatusBadge(viewDocument.status)}</p>
+                  <div className="mt-1">{getStatusBadge(viewDocument.status)}</div>
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Size</Label>
                   <p>{formatFileSize(viewDocument.size)}</p>
                 </div>
               </div>
+              {viewDocument.description && (
+                <div>
+                  <Label className="text-muted-foreground">Description</Label>
+                  <p className="mt-1">{viewDocument.description}</p>
+                </div>
+              )}
               {viewDocument.tags && viewDocument.tags.length > 0 && (
                 <div>
                   <Label className="text-muted-foreground">Tags</Label>
@@ -822,11 +990,11 @@ export default function DocumentsPage() {
                 </div>
               )}
             </div>
-            <DialogFooter>
+            <DialogFooter className="gap-2">
               <Button variant="outline" onClick={() => setViewDocument(null)}>
                 Close
               </Button>
-              <Button>
+              <Button onClick={() => window.open(viewDocument.fileUrl, '_blank')}>
                 <Download className="mr-2 h-4 w-4" />
                 Download
               </Button>
@@ -855,7 +1023,7 @@ export default function DocumentsPage() {
             <DialogDescription>
               Are you sure you want to delete{" "}
               {selectedDocuments.length > 0
-                ? `${selectedDocuments.length} documents`
+                ? `${selectedDocuments.length} selected documents`
                 : "this document"}
               ? This action cannot be undone.
             </DialogDescription>
@@ -887,7 +1055,111 @@ export default function DocumentsPage() {
   );
 }
 
-// DocumentsTable component remains the same
+// DocumentsGrid Component
+function DocumentsGrid({
+  documents,
+  selectedDocuments,
+  toggleSelectDocument,
+  setViewDocument,
+  formatFileSize,
+  formatDate,
+  getFileIcon,
+  getStatusBadge,
+  isLawyer,
+}) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {documents.map((doc) => (
+        <Card
+          key={doc.id}
+          className={`cursor-pointer transition-all hover:shadow-md ${
+            selectedDocuments.includes(doc.id)
+              ? "border-primary ring-2 ring-primary/20"
+              : ""
+          }`}
+        >
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  checked={selectedDocuments.includes(doc.id)}
+                  onCheckedChange={() => toggleSelectDocument(doc.id)}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <div onClick={(e) => e.stopPropagation()}>
+                  {getStatusBadge(doc.status)}
+                </div>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setViewDocument(doc)}>
+                    View Details
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => window.open(doc.fileUrl, '_blank')}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Download
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Star className="mr-2 h-4 w-4" />
+                    Add to Favorites
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Share2 className="mr-2 h-4 w-4" />
+                    Share
+                  </DropdownMenuItem>
+                  {isLawyer && (
+                    <DropdownMenuItem className="text-red-600">
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            
+            <div
+              className="text-center mb-4"
+              onClick={() => setViewDocument(doc)}
+            >
+              <div className="flex justify-center mb-3">
+                {getFileIcon(doc.type)}
+              </div>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <h3 className="font-semibold text-sm truncate" title={doc.name}>
+                      {doc.name}
+                    </h3>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{doc.name}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <p className="text-xs text-muted-foreground mt-1">
+                {doc.category}
+              </p>
+            </div>
+            
+            <div className="border-t pt-3">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>{formatFileSize(doc.size)}</span>
+                <span>{formatDate(doc.createdAt)}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// DocumentsTable Component
 function DocumentsTable({
   documents,
   selectedDocuments,
@@ -928,7 +1200,6 @@ function DocumentsTable({
                 />
               </th>
               <th className="h-10 px-2 text-left font-medium">Name</th>
-              <th className="h-10 px-2 text-left font-medium">Case</th>
               <th className="h-10 px-2 text-left font-medium">Category</th>
               <th className="h-10 px-2 text-left font-medium">Status</th>
               <th className="h-10 px-2 text-left font-medium">Size</th>
@@ -956,7 +1227,6 @@ function DocumentsTable({
                     </span>
                   </div>
                 </td>
-                <td className="p-2">{doc.case?.title}</td>
                 <td className="p-2">{doc.category}</td>
                 <td className="p-2">{getStatusBadge(doc.status)}</td>
                 <td className="p-2">{formatFileSize(doc.size)}</td>
@@ -972,7 +1242,7 @@ function DocumentsTable({
                       <DropdownMenuItem onClick={() => setViewDocument(doc)}>
                         View Details
                       </DropdownMenuItem>
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => window.open(doc.fileUrl, '_blank')}>
                         <Download className="mr-2 h-4 w-4" />
                         Download
                       </DropdownMenuItem>
