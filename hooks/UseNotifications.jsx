@@ -1,20 +1,13 @@
-// UseNotifications.jsx
+// hooks/UseNotifications.jsx
 import { useState, useEffect, useCallback } from 'react';
+import { useRealTimeCounts } from '@/context/realtime-counts-context';
 
 /**
  * Safe helper: normalize a raw API URL so it ALWAYS ends with exactly one "/api"
- * Examples:
- *  - "http://localhost:5000"         -> "http://localhost:5000/api"
- *  - "http://localhost:5000/"        -> "http://localhost:5000/api"
- *  - "http://localhost:5000/api"     -> "http://localhost:5000/api"
- *  - "http://localhost:5000/api/"    -> "http://localhost:5000/api"
  */
-const normalizeApiBase = (raw = 'http://localhost:5000') => {
-  // remove trailing slashes
+const normalizeApiBase = (raw = process.env.NEXT_PUBLIC_API_URL ||'http://localhost:5050') => {
   const noTrailing = String(raw).replace(/\/+$/, '');
-  // remove any trailing "/api" (case: env already contains /api)
   const noApi = noTrailing.replace(/\/api$/i, '');
-  // append a single "/api"
   return `${noApi}/api`;
 };
 
@@ -22,13 +15,15 @@ export const useNotifications = () => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  // keep this inside useNotifications (after state/hooks are declared)
+  const { markNotificationAsRead: socketMarkAsRead, markAllNotificationsAsRead: socketMarkAllAsRead } = useRealTimeCounts();
+
+  // Listen for new notifications from socket
   useEffect(() => {
     const onNew = (e) => {
       const payload = e?.detail;
       if (!payload) return;
       setNotifications(prev => {
-        // avoid duplicates if already present
+        // Avoid duplicates if already present
         if (prev.some(n => n._id === payload._id)) return prev;
         return [payload, ...prev];
       });
@@ -38,13 +33,10 @@ export const useNotifications = () => {
     return () => window.removeEventListener("app:notification", onNew);
   }, []);
 
-  // Normalize the API base so we can't accidentally build /api/api/...
-  const RAW = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-  const API_BASE = normalizeApiBase(RAW); // e.g. "http://localhost:5000/api"
+  const RAW = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050';
+  const API_BASE = normalizeApiBase(RAW);
 
-  // helper to build endpoint URLs safely
   const url = (path) => {
-    // ensure path starts with a single slash
     const cleanPath = `/${String(path || '').replace(/^\/+/, '')}`;
     return `${API_BASE}${cleanPath}`;
   };
@@ -92,6 +84,10 @@ export const useNotifications = () => {
             notif._id === notificationId ? { ...notif, read: true } : notif
           )
         );
+        
+        // Update real-time count via socket
+        socketMarkAsRead(notificationId);
+        
         return { success: true };
       }
       throw new Error('Failed to mark as read');
@@ -99,15 +95,19 @@ export const useNotifications = () => {
       console.error('Error marking notification as read:', err);
       return { success: false, error: err.message };
     }
-  }, [API_BASE]);
+  }, [API_BASE, socketMarkAsRead]);
 
   const markAllAsRead = useCallback(async () => {
     const unreadNotifications = notifications.filter(n => !n.read);
     const results = await Promise.all(
       unreadNotifications.map(n => markAsRead(n._id))
     );
+    
+    // Update all via socket
+    socketMarkAllAsRead();
+    
     return results.every(r => r.success);
-  }, [notifications, markAsRead]);
+  }, [notifications, markAsRead, socketMarkAllAsRead]);
 
   const deleteNotification = useCallback(async (notificationId) => {
     try {
@@ -118,6 +118,11 @@ export const useNotifications = () => {
 
       if (res.ok) {
         setNotifications(prev => prev.filter(notif => notif._id !== notificationId));
+        
+        // The socket will automatically update counts when notification is deleted
+        // Request count update to sync
+        window.dispatchEvent(new CustomEvent('request:count_update'));
+        
         return { success: true };
       }
       throw new Error('Failed to delete notification');

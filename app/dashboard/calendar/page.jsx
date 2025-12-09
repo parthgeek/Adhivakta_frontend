@@ -158,36 +158,46 @@ export default function CalendarPage() {
     setNewEvent((prev) => ({ ...prev, date }))
   }
 
-  // Fetch events from backend
   const fetchEvents = async () => {
-    try {
-      const response = await api.events.getAll()
-      console.log('Raw events response:', response)
-      // response is already an array, not an object with .data
-      if (Array.isArray(response)) {
-        const formattedEvents = response.map((event) => ({
-          id: event._id || event.id,
-          title: event.title,
-          date: event.start ? new Date(event.start).toISOString().split("T")[0] : null,
-          time: event.start
-            ? new Date(event.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-            : null,
-          type: event.type || "hearing",
-          location: event.location || "",
-          description: event.description || "",
-          case: event.case?.title || "",
-          caseId: event.case?._id || "",
-        }))
-        setEvents(formattedEvents)
-        console.log('Events after fetch:', formattedEvents)
-      } else {
-        setEvents([])
-        console.error('Events fetch did not return an array:', response)
-      }
-    } catch (error) {
-      console.error("Error fetching events:", error)
+  try {
+    const response = await api.events.getAll();
+    console.log('Raw events response:', response);
+    
+    if (Array.isArray(response)) {
+      // ✅ Deduplicate events by ID
+      const eventMap = new Map();
+      response.forEach(event => {
+        const id = event._id || event.id;
+        if (id && !eventMap.has(id)) {
+          eventMap.set(id, event);
+        }
+      });
+      
+      const uniqueEvents = Array.from(eventMap.values());
+      const formattedEvents = uniqueEvents.map((event) => ({
+        id: event._id || event.id,
+        title: event.title,
+        date: event.start ? new Date(event.start).toISOString().split("T")[0] : null,
+        time: event.start
+          ? new Date(event.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+          : null,
+        type: event.type || "hearing",
+        location: event.location || "",
+        description: event.description || "",
+        case: event.case?.title || "",
+        caseId: event.case?._id || "",
+      }));
+      
+      setEvents(formattedEvents);
+      console.log('Deduplicated events:', formattedEvents.length);
+    } else {
+      setEvents([]);
+      console.error('Events fetch did not return an array:', response);
     }
+  } catch (error) {
+    console.error("Error fetching events:", error);
   }
+};
 
   useEffect(() => {
     fetchEvents()

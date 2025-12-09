@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { useSidebar } from "@/context/sidebar-context";
+import { useRealTimeCounts } from "@/context/realtime-counts-context";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -31,7 +32,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-const getLawyerNavItems = (unreadCount) => [
+const getLawyerNavItems = (counts) => [
   {
     name: "Dashboard",
     href: "/dashboard",
@@ -55,6 +56,7 @@ const getLawyerNavItems = (unreadCount) => [
     href: "/dashboard/calendar",
     icon: Calendar,
     tooltip: "Calendar",
+    badge: counts.events,
   },
   {
     name: "Clients & Parties",
@@ -73,17 +75,18 @@ const getLawyerNavItems = (unreadCount) => [
     href: "/dashboard/notifications",
     icon: Bell,
     tooltip: "Notifications",
+    badge: counts.notifications,
   },
   {
     name: "Messages",
     href: "/dashboard/messages",
     icon: MessageSquare,
     tooltip: "Messages",
-    badge: unreadCount,
+    badge: counts.messages,
   },
 ];
 
-const getClientNavItems = (unreadCount) => [
+const getClientNavItems = (counts) => [
   {
     name: "Dashboard",
     href: "/dashboard",
@@ -107,6 +110,7 @@ const getClientNavItems = (unreadCount) => [
     href: "/dashboard/calendar",
     icon: Calendar,
     tooltip: "Calendar",
+    badge: counts.events,
   },
   {
     name: "My Lawyers",
@@ -119,13 +123,14 @@ const getClientNavItems = (unreadCount) => [
     href: "/dashboard/notifications",
     icon: Bell,
     tooltip: "Notifications",
+    badge: counts.notifications,
   },
   {
     name: "Messages",
     href: "/dashboard/messages",
     icon: MessageSquare,
     tooltip: "Messages",
-    badge: unreadCount,
+    badge: counts.messages,
   },
 ];
 
@@ -154,30 +159,13 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { logout, user } = useAuth();
   const { collapsed, toggleSidebar } = useSidebar();
+  const { counts } = useRealTimeCounts();
 
-  const [unreadCount, setUnreadCount] = useState(0);
-useEffect(() => {
-  const updateCount = () => {
-    const count = parseInt(
-      localStorage.getItem("unread_messages_count") || "0"
-    );
-    setUnreadCount(count);
-  };
-
-  // Initial update
-  updateCount();
-  
-  // Listen for real-time updates
-  window.addEventListener('unreadCountChanged', updateCount);
-  
-  return () => {
-    window.removeEventListener('unreadCountChanged', updateCount);
-  };
-}, []);
   const isLawyer = user?.role === "lawyer";
   const navItems = isLawyer
-    ? getLawyerNavItems(unreadCount)
-    : getClientNavItems(unreadCount);
+    ? getLawyerNavItems(counts)
+    : getClientNavItems(counts);
+
   return (
     <div
       className={cn(
@@ -312,13 +300,19 @@ useEffect(() => {
         </TooltipProvider>
       </div>
 
+      {/* User Profile Section with Total Count Badge */}
       {!collapsed && (
         <div className="border-t p-4">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium">
+          <div className="flex items-center gap-3 relative">
+            <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium relative">
               {user?.name?.charAt(0) || "U"}
+              {counts.total > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                  {counts.total > 99 ? "99+" : counts.total}
+                </span>
+              )}
             </div>
-            <div className="overflow-hidden">
+            <div className="overflow-hidden flex-1">
               <p className="text-sm font-medium truncate">
                 {user?.name || "User"}
               </p>
@@ -331,11 +325,30 @@ useEffect(() => {
       )}
       {collapsed && (
         <div className="border-t p-2">
-          <div className="flex justify-center">
-            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium text-sm">
-              {user?.name?.charAt(0) || "U"}
-            </div>
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex justify-center cursor-pointer">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium text-sm relative">
+                  {user?.name?.charAt(0) || "U"}
+                  {counts.total > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                      {counts.total > 9 ? "9+" : counts.total}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="ml-2">
+              <div className="text-sm">
+                <p className="font-medium">{user?.name || "User"}</p>
+                {counts.total > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {counts.total} new update{counts.total > 1 ? "s" : ""}
+                  </p>
+                )}
+              </div>
+            </TooltipContent>
+          </Tooltip>
         </div>
       )}
     </div>
