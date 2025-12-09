@@ -1,0 +1,188 @@
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/context/auth-context"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Loader2, Mail } from "lucide-react"
+import { toast } from "@/components/ui/use-toast"
+
+export function RegisterFormEmail() {
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    role: "client",
+  })
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
+  const { register } = useAuth()
+  const router = useRouter()
+
+  const handleChange = (e) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleRoleChange = (value) => {
+    setFormData(prev => ({ ...prev, role: value }))
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError("")
+
+    // Validation
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match")
+      return
+    }
+
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters")
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      const result = await register({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+      })
+
+      if (result.needsVerification) {
+        toast({
+          title: "Check your email",
+          description: "We've sent a verification link to your email address.",
+        })
+        // Show success message and redirect to login
+        setTimeout(() => {
+          router.push("/auth/login")
+        }, 3000)
+      } else {
+        toast({
+          title: "Registration successful",
+          description: "Welcome to Adhivakta!",
+        })
+        router.push("/dashboard")
+      }
+    } catch (err) {
+      console.error("Registration error:", err)
+      
+      // Firebase specific error codes
+      if (err.code === "auth/email-already-in-use") {
+        setError("An account already exists with this email. Please sign in.")
+      } else if (err.code === "auth/invalid-email") {
+        setError("Please enter a valid email address.")
+      } else if (err.code === "auth/weak-password") {
+        setError("Password is too weak. Please choose a stronger password.")
+      } else if (err.message?.includes("already registered")) {
+        setError("This email is already registered. Please sign in instead.")
+      } else {
+        setError(err.message || "Failed to create account. Please try again.")
+      }
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="name">Full Name</Label>
+        <Input
+          id="name"
+          name="name"
+          placeholder="John Doe"
+          value={formData.name}
+          onChange={handleChange}
+          required
+          disabled={isLoading}
+        />
+      </div>
+      
+      <div className="space-y-2">
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          name="email"
+          type="email"
+          placeholder="name@example.com"
+          value={formData.email}
+          onChange={handleChange}
+          required
+          disabled={isLoading}
+        />
+      </div>
+      
+      <div className="space-y-2">
+        <Label htmlFor="role">Account Type</Label>
+        <Select value={formData.role} onValueChange={handleRoleChange} disabled={isLoading}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select account type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="client">Client</SelectItem>
+            <SelectItem value="lawyer">Lawyer</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      <div className="space-y-2">
+        <Label htmlFor="password">Password</Label>
+        <Input
+          id="password"
+          name="password"
+          type="password"
+          placeholder="At least 6 characters"
+          value={formData.password}
+          onChange={handleChange}
+          required
+          disabled={isLoading}
+        />
+      </div>
+      
+      <div className="space-y-2">
+        <Label htmlFor="confirmPassword">Confirm Password</Label>
+        <Input
+          id="confirmPassword"
+          name="confirmPassword"
+          type="password"
+          placeholder="Confirm your password"
+          value={formData.confirmPassword}
+          onChange={handleChange}
+          required
+          disabled={isLoading}
+        />
+      </div>
+      
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+      
+      <Button type="submit" className="w-full" disabled={isLoading}>
+        {isLoading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Creating account...
+          </>
+        ) : (
+          <>
+            <Mail className="mr-2 h-4 w-4" />
+            Sign up with Email
+          </>
+        )}
+      </Button>
+    </form>
+  )
+}

@@ -1,45 +1,79 @@
-import { LoginForm } from "@/components/auth/login-form"
+import { AuthForm } from "@/components/auth/auth-form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Image from "next/image"
 import Link from "next/link"
-import { LogoAvatar } from "@/components/ui/avatar"
 
 export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
       <div className="grid w-full max-w-[1000px] grid-cols-1 md:grid-cols-2 gap-8 rounded-lg border bg-background shadow">
         <div className="flex flex-col justify-center p-8">
-          <div className="flex justify-center items-center my-8">
-            <Image src="/adhi_logo_main.png" alt="Adhivakta Logo" width={160} height={160} style={{objectFit: 'contain'}} />
-          </div>
-          <Card>
-            <CardHeader>
-              <CardTitle>Welcome back</CardTitle>
-              <CardDescription>Sign in to your account to continue</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <LoginForm />
-            </CardContent>
-          </Card>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{" "}
-            <Link href="/auth/register" className="text-primary underline underline-offset-4">
-              Register
+          <div className="flex justify-center items-center mb-8">
+            <Link href="/">
+              <Image 
+                src="/adhi_logo_main.png" 
+                alt="Adhivakta Logo" 
+                width={160} 
+                height={160} 
+                style={{ objectFit: 'contain' }} 
+                className="hover:opacity-90 transition-opacity"
+              />
             </Link>
-          </p>
+          </div>
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold tracking-tight">Welcome back</h1>
+            <p className="text-muted-foreground mt-2">
+              Sign in to continue to your legal case management dashboard
+            </p>
+          </div>
+          
+          <AuthForm />
+          
+          <div className="mt-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              By signing in, you agree to our{" "}
+              <Link href="/terms" className="text-primary hover:underline">
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link href="/privacy" className="text-primary hover:underline">
+                Privacy Policy
+              </Link>
+            </p>
+          </div>
         </div>
-        <div className="hidden md:flex items-center justify-center bg-muted rounded-r-lg p-8">
-          <div className="max-w-md space-y-4 text-center">
-            <div className="flex justify-center">
-              <div className="relative h-40 w-40">
-                <Image src="/images/bg_2.jpg" alt="Law scales" fill className="object-cover" />
+        
+        <div className="hidden md:flex flex-col items-center justify-center bg-gradient-to-br from-primary/10 to-muted rounded-r-lg p-12">
+          <div className="max-w-md space-y-8 text-center">
+            <div className="relative h-64 w-64 mx-auto">
+              <Image 
+                src="/images/bg_2.jpg" 
+                alt="Legal scales" 
+                fill 
+                className="object-cover rounded-lg shadow-lg"
+              />
+            </div>
+            <div className="space-y-4">
+              <h2 className="text-2xl font-bold">Streamline Your Legal Practice</h2>
+              <p className="text-muted-foreground">
+                Join thousands of legal professionals who trust Adhivakta to manage their cases, 
+                documents, and client relationships efficiently.
+              </p>
+            </div>
+            <div className="grid grid-cols-3 gap-4 pt-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">5000+</div>
+                <div className="text-sm text-muted-foreground">Active Cases</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">98%</div>
+                <div className="text-sm text-muted-foreground">Client Satisfaction</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">24/7</div>
+                <div className="text-sm text-muted-foreground">Support Available</div>
               </div>
             </div>
-            <h2 className="text-2xl font-bold">Manage your legal practice efficiently</h2>
-            <p className="text-muted-foreground">
-              Streamline case management, document handling, and client communications with our comprehensive legal
-              practice management solution.
-            </p>
           </div>
         </div>
       </div>

@@ -51,10 +51,10 @@ const createHeaders = (contentType = "application/json") => {
 };
 
 const api = {
-  auth: {
+   auth: {
     register: async (userData) => {
       console.log("API Register - Sending:", userData);
-      const response = await fetch(`${API_URL}/auth/signup`, {
+      const response = await fetch(`${API_URL}/auth/register`, {  // Changed from /auth/signup
         method: "POST",
         headers: createHeaders(),
         body: JSON.stringify(userData),
@@ -65,7 +65,6 @@ const api = {
       return data;
     },
 
-    // Login endpoint - FIXED for better error handling
     login: async (credentials) => {
       console.log("API Login - Sending:", { email: credentials.email });
       const response = await fetch(`${API_URL}/auth/login`, {
@@ -78,7 +77,7 @@ const api = {
       console.log("API Login - Response:", data);
       return data;
     },
-    // Google login endpoint
+
     googleLogin: async (data) => {
       const response = await fetch(`${API_URL}/auth/google-login`, {
         method: "POST",
@@ -89,7 +88,6 @@ const api = {
       return handleResponse(response);
     },
 
-    // Logout endpoint
     logout: async () => {
       const response = await fetch(`${API_URL}/auth/logout`, {
         method: "POST",
@@ -99,7 +97,6 @@ const api = {
       return handleResponse(response);
     },
 
-    // Verify token endpoint
     verifyToken: async () => {
       const response = await fetch(`${API_URL}/auth/verify`, {
         method: "GET",
@@ -109,7 +106,6 @@ const api = {
       return handleResponse(response);
     },
 
-    // NEW: Forgot password endpoint
     forgotPassword: async (data) => {
       const response = await fetch(`${API_URL}/auth/forgot-password`, {
         method: "POST",
@@ -120,7 +116,6 @@ const api = {
       return handleResponse(response);
     },
 
-    // NEW: Reset password endpoint
     resetPassword: async (token, data) => {
       const response = await fetch(`${API_URL}/auth/reset-password/${token}`, {
         method: "POST",
@@ -131,7 +126,6 @@ const api = {
       return handleResponse(response);
     },
 
-    // NEW: Change password endpoint (protected)
     changePassword: async (data) => {
       const response = await fetch(`${API_URL}/auth/change-password`, {
         method: "POST",
@@ -141,6 +135,34 @@ const api = {
 
       return handleResponse(response);
     },
+
+    getMe: async () => {
+      const response = await fetch(`${API_URL}/auth/me`, {
+        method: "GET",
+        headers: createHeaders(),
+      });
+
+      return handleResponse(response);
+    },
+
+    resendVerification: async () => {
+      const response = await fetch(`${API_URL}/auth/resend-verification`, {
+        method: "POST",
+        headers: createHeaders(),
+      });
+
+      return handleResponse(response);
+    },
+    
+    verifyEmail: async (token) => {
+      const response = await fetch(`${API_URL}/auth/verify-email/${token}`, {
+        method: "GET",
+        headers: createHeaders(),
+      });
+
+      return handleResponse(response);
+    },
+  
 
     // NEW: Get current user
     getMe: async () => {

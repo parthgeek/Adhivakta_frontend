@@ -10,10 +10,11 @@ import {
   GoogleAuthProvider,
   signOut as firebaseSignOut,
   sendEmailVerification,
+  sendPasswordResetEmail, // Add this
+  updateProfile,
 } from "firebase/auth"
 import { initializeApp } from "firebase/app"
 import api from "@/services/api"
-
 
 export const AuthContext = createContext()
 
@@ -22,7 +23,6 @@ const isTokenExpired = (token) => {
   try {
     const payload = JSON.parse(atob(token.split('.')[1]))
     const expiry = payload.exp * 1000
-    // Add 30 second buffer before actual expiry
     return Date.now() >= (expiry - 30000)
   } catch (error) {
     console.error("Error checking token expiry:", error)
@@ -52,7 +52,6 @@ export const AuthProvider = ({ children }) => {
       }
       initializeApp(firebaseConfig)
     } catch (error) {
-      // Firebase already initialized or config missing
       console.log("Firebase initialization skipped:", error.message)
     }
   }, [])
@@ -71,49 +70,41 @@ export const AuthProvider = ({ children }) => {
   // Logout function
   const logout = useCallback(async () => {
     try {
-      // Try to call backend logout (ignore errors)
       const token = localStorage.getItem("auth_token")
       if (token && !isTokenExpired(token)) {
         try {
           await api.auth.logout()
         } catch (err) {
-          console.log("Backend logout failed (continuing anyway):", err.message)
+          console.log("Backend logout failed:", err.message)
         }
       }
 
-      // Sign out from Firebase
       try {
         const auth = getAuth()
         await firebaseSignOut(auth)
       } catch (err) {
-        console.log("Firebase signout failed (continuing anyway):", err.message)
+        console.log("Firebase signout failed:", err.message)
       }
     } catch (error) {
       console.error("Logout error:", error)
     } finally {
-      // Always clear auth data and redirect
       clearAuthData()
-      
-      // Force hard redirect to clear any cached state
       if (typeof window !== "undefined") {
         window.location.href = "/auth/login"
       }
     }
   }, [clearAuthData])
 
-  // Validate session with backend - LESS AGGRESSIVE
+  // Validate session
   const validateSession = useCallback(async (force = false) => {
-    // Skip validation on auth pages
     if (pathname?.includes('/auth/')) {
       return isAuthenticated
     }
 
-    // Prevent concurrent validations
     if (isValidatingRef.current && !force) {
       return isAuthenticated
     }
 
-    // Rate limit validations (max once per 30 seconds unless forced)
     const now = Date.now()
     if (!force && (now - lastValidationRef.current) < 30000) {
       return isAuthenticated
@@ -130,14 +121,12 @@ export const AuthProvider = ({ children }) => {
         return false
       }
 
-      // Check if token is expired
       if (isTokenExpired(token)) {
         console.log("Token expired, logging out")
         await logout()
         return false
       }
 
-      // Verify token with backend
       try {
         const response = await api.auth.verifyToken()
         
@@ -150,16 +139,14 @@ export const AuthProvider = ({ children }) => {
           throw new Error("Invalid response from server")
         }
       } catch (error) {
-        // If 401, token is invalid
         if (error.message?.includes("401") || error.message?.includes("Unauthorized")) {
           console.log("Token invalid, logging out")
           await logout()
           return false
         }
         
-        // For other errors, don't logout immediately (might be network issue)
         console.error("Session validation failed:", error)
-        return isAuthenticated // Keep current state
+        return isAuthenticated
       }
     } finally {
       isValidatingRef.current = false
@@ -180,13 +167,11 @@ export const AuthProvider = ({ children }) => {
         return
       }
 
-      // Quick check: if token is expired, logout immediately
       if (isTokenExpired(token)) {
         await logout()
         return
       }
 
-      // Set user from storage first for faster UI
       if (storedUser) {
         try {
           setUser(JSON.parse(storedUser))
@@ -196,7 +181,6 @@ export const AuthProvider = ({ children }) => {
         }
       }
 
-      // Then validate with backend only if not on auth pages
       if (!pathname?.includes('/auth/')) {
         await validateSession(true)
       } else {
@@ -205,78 +189,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     initAuth()
-  }, []) // Only run once on mount
-
-  // Listen for visibility change (tab switching) - LESS AGGRESSIVE
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden && isAuthenticated && !pathname?.includes('/auth/')) {
-        // Only validate if away for more than 5 minutes
-        const timeSinceLastValidation = Date.now() - lastValidationRef.current
-        if (timeSinceLastValidation > 5 * 60 * 1000) {
-          console.log("Tab became visible after long time, validating session...")
-          validateSession(true)
-        }
-      }
-    }
-
-    document.addEventListener("visibilitychange", handleVisibilityChange)
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange)
-  }, [isAuthenticated, validateSession, pathname])
-
-  // Listen for storage changes (logout from another tab)
-  useEffect(() => {
-    const handleStorageChange = (e) => {
-      if (e.key === "auth_token") {
-        if (!e.newValue) {
-          // Token removed in another tab
-          console.log("Token removed in another tab, logging out...")
-          clearAuthData()
-          if (pathname !== "/auth/login") {
-            window.location.href = "/auth/login"
-          }
-        } else if (e.oldValue !== e.newValue) {
-          // Token changed in another tab, revalidate
-          validateSession(true)
-        }
-      }
-    }
-
-    window.addEventListener("storage", handleStorageChange)
-    return () => window.removeEventListener("storage", handleStorageChange)
-  }, [pathname, clearAuthData, validateSession])
-
-  // Periodic session validation (every 10 minutes instead of 5)
-  useEffect(() => {
-    if (!isAuthenticated || pathname?.includes('/auth/')) return
-
-    const interval = setInterval(() => {
-      console.log("Periodic session validation...")
-      validateSession(false)
-    }, 10 * 60 * 1000) // 10 minutes
-
-    return () => clearInterval(interval)
-  }, [isAuthenticated, validateSession, pathname])
-
-  // Setup API interceptor for 401 responses
-  useEffect(() => {
-    // Add response interceptor to handle 401 globally
-    const handleUnauthorized = async () => {
-      console.log("Received 401, logging out...")
-      await logout()
-    }
-
-    // Store the handler so we can access it from API errors
-    if (typeof window !== "undefined") {
-      window.__authLogout = handleUnauthorized
-    }
-
-    return () => {
-      if (typeof window !== "undefined") {
-        delete window.__authLogout
-      }
-    }
-  }, [logout])
+  }, [])
 
   // Handle successful authentication
   const handleAuthSuccess = useCallback((response) => {
@@ -298,29 +211,39 @@ export const AuthProvider = ({ children }) => {
       handleAuthSuccess(response)
       return response.user
     } catch (backendErr) {
-      console.log("Backend login failed, trying Firebase fallback if available:", backendErr.message)
-      // Optional fallback to Firebase auth
+      console.log("Backend login failed, trying Firebase:", backendErr.message)
       try {
         const auth = getAuth()
-        await signInWithEmailAndPassword(auth, email, password)
-        const idToken = await auth.currentUser.getIdToken()
+        const userCredential = await signInWithEmailAndPassword(auth, email, password)
+        const fbUser = userCredential.user
+        
+        // Check if email is verified
+        if (!fbUser.emailVerified) {
+          throw {
+            code: 'auth/email-not-verified',
+            message: 'Please verify your email before logging in'
+          }
+        }
+        
+        const idToken = await fbUser.getIdToken()
         const response = await api.auth.googleLogin({ idToken })
         handleAuthSuccess(response)
         return response.user
       } catch (firebaseErr) {
-        console.error("Firebase fallback login failed:", firebaseErr)
+        console.error("Firebase login failed:", firebaseErr)
         throw firebaseErr
       }
     }
   }, [handleAuthSuccess])
 
+  // Register with email/password
 const register = useCallback(async (userData) => {
   if (!['lawyer', 'client'].includes(userData.role)) {
     userData.role = 'client';
   }
 
   try {
-    const { email, password } = userData;
+    const { email, password, name } = userData;
     let firebaseUser = null;
 
     if (email && password) {
@@ -329,25 +252,29 @@ const register = useCallback(async (userData) => {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         firebaseUser = userCredential.user;
 
-        console.log("Firebase user created:", firebaseUser.uid);
-
-        // ✅ CRITICAL: Send verification email and wait a bit
-        try {
-          await sendEmailVerification(firebaseUser);
-          console.log("✅ Verification email sent to:", email);
-          
-          // Small delay to ensure Firebase processes the request
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        } catch (verifErr) {
-          console.error("❌ Failed to send verification email:", verifErr);
+        // Update profile with name
+        if (name) {
+          await updateProfile(firebaseUser, {
+            displayName: name
+          });
         }
 
+        // Send verification email
+        await sendEmailVerification(firebaseUser);
+        console.log("Verification email sent to:", email);
+
         userData.firebaseUID = firebaseUser.uid;
-        userData.idToken = await firebaseUser.getIdToken();
+        // Don't need idToken for registration
 
       } catch (firebaseError) {
         console.error("Firebase registration failed:", firebaseError);
-        // Continue without Firebase - backend will handle it
+        if (firebaseError.code === 'auth/email-already-in-use') {
+          throw {
+            code: 'auth/email-already-in-use',
+            message: 'An account already exists with this email. Please sign in.'
+          }
+        }
+        throw firebaseError;
       }
     }
 
@@ -355,30 +282,27 @@ const register = useCallback(async (userData) => {
     const response = await api.auth.register(userData);
     console.log("Backend registration response:", response);
 
-    // Always treat as needing verification for new email/password users
-    if (email && password) {
-      return {
-        success: true,
-        needsVerification: true,
-        message: "Please check your email for verification link",
-        user: response.user,
-        email: email,
-      };
+    // Sign out from Firebase immediately after registration
+    // User needs to verify email before logging in
+    if (firebaseUser) {
+      const auth = getAuth();
+      await firebaseSignOut(auth);
     }
 
-    handleAuthSuccess(response);
+    // Always return success with verification needed
     return {
       success: true,
-      needsVerification: false,
+      needsVerification: true,
+      message: "Please check your email for verification link",
       user: response.user,
+      email: email,
     };
 
   } catch (error) {
     console.error("Registration error:", error);
     throw error;
   }
-}, [handleAuthSuccess]);
-
+}, []);
 
   // Google login
   const loginWithGoogle = useCallback(async (role = null) => {
@@ -386,15 +310,11 @@ const register = useCallback(async (userData) => {
     const provider = new GoogleAuthProvider()
 
     try {
-      console.log("Starting Google signInWithPopup()")
       const result = await signInWithPopup(auth, provider)
-      if (!result || !result.user) throw new Error("No user returned from signInWithPopup")
+      if (!result || !result.user) throw new Error("No user returned")
 
       const fbUser = result.user
-      console.log("Firebase user:", { uid: fbUser.uid, email: fbUser.email })
-
       const idToken = await fbUser.getIdToken()
-      if (!idToken) throw new Error("Could not obtain Firebase ID token")
 
       const payload = { idToken }
       if (role) payload.role = role
@@ -406,7 +326,6 @@ const register = useCallback(async (userData) => {
     } catch (err) {
       console.error("loginWithGoogle error:", err)
       
-      // Check if backend requires role for new user
       if (err.response?.data?.message?.includes("role required") || 
           err.message?.includes("role required")) {
         const roleError = new Error("Role selection required for new user")
@@ -433,9 +352,8 @@ const register = useCallback(async (userData) => {
       return true
     } catch (error) {
       console.error("Failed to send verification email:", error)
-      // Also try backend endpoint
       try {
-        await api.auth.resendVerificationEmail()
+        await api.auth.resendVerification()
         return true
       } catch (backendError) {
         console.error("Backend verification email failed:", backendError)
@@ -444,51 +362,57 @@ const register = useCallback(async (userData) => {
     }
   }, [])
 
-// Check if email is verified
-const checkEmailVerified = useCallback(async () => {
-  try {
-    // Always check with backend first
-    const response = await api.auth.checkEmailVerification();
-    
-    if (response?.isVerified) {
-      return true;
-    }
-
-    // Also check Firebase directly
-    const auth = getAuth();
-    const currentUser = auth.currentUser;
-    
-    if (currentUser) {
-      await currentUser.reload();
-      if (currentUser.emailVerified) {
-        // If Firebase says verified but backend doesn't, force backend update
-        await api.auth.checkEmailVerification();
+  // Check if email is verified
+  const checkEmailVerified = useCallback(async () => {
+    try {
+      const response = await api.auth.getMe();
+      
+      if (response?.user?.emailVerified) {
         return true;
       }
-    }
 
-    return false;
-  } catch (error) {
-    console.error("Failed to check email verification:", error);
-    return false;
-  }
-}, []);
-  // Refresh user data
-  const refreshUser = useCallback(async () => {
-    try {
-      const response = await api.users.getProfile()
-      if (response && response.data) {
-        setUser(response.data)
-        localStorage.setItem("user", JSON.stringify(response.data))
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      
+      if (currentUser) {
+        await currentUser.reload();
+        if (currentUser.emailVerified) {
+          return true;
+        }
       }
+
+      return false;
     } catch (error) {
-      console.error("Failed to refresh user profile:", error)
-      // If profile fetch fails with 401, logout
-      if (error.message?.includes("401")) {
-        await logout()
-      }
+      console.error("Failed to check email verification:", error);
+      return false;
     }
-  }, [logout])
+  }, []);
+
+  // Password reset
+  const resetPassword = useCallback(async (email) => {
+    try {
+      const auth = getAuth()
+      await sendPasswordResetEmail(auth, email)
+      return true
+    } catch (error) {
+      console.error("Password reset error:", error)
+      throw error
+    }
+  }, [])
+
+  // Change password
+  const changePassword = useCallback(async (currentPassword, newPassword) => {
+    try {
+      const response = await api.auth.changePassword({
+        currentPassword,
+        newPassword
+      })
+      return response
+    } catch (error) {
+      console.error("Change password error:", error)
+      throw error
+    }
+  }, [])
 
   const value = {
     user,
@@ -498,7 +422,8 @@ const checkEmailVerified = useCallback(async () => {
     register,
     logout,
     loginWithGoogle,
-    refreshUser,
+    resetPassword,
+    changePassword,
     sendVerificationEmail,
     checkEmailVerified,
     validateSession: () => validateSession(true),

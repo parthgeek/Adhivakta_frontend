@@ -9,19 +9,21 @@ export function AuthForm() {
   const [activeTab, setActiveTab] = useState("login")
 
   return (
-    <Tabs defaultValue={activeTab} className="w-full" onValueChange={(value) => setActiveTab(value)}>
-      <TabsList className="grid w-full grid-cols-2 mb-6">
-        <TabsTrigger value="login">Login</TabsTrigger>
-        <TabsTrigger value="register">Register</TabsTrigger>
-      </TabsList>
+    <div className="w-full max-w-md mx-auto">
+      <Tabs defaultValue={activeTab} className="w-full" onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsTrigger value="login">Login</TabsTrigger>
+          <TabsTrigger value="register">Register</TabsTrigger>
+        </TabsList>
 
-      <TabsContent value="login">
-        <LoginForm />
-      </TabsContent>
+        <TabsContent value="login">
+          <LoginForm />
+        </TabsContent>
 
-      <TabsContent value="register">
-        <RegisterForm />
-      </TabsContent>
-    </Tabs>
+        <TabsContent value="register">
+          <RegisterForm />
+        </TabsContent>
+      </Tabs>
+    </div>
   )
 }
