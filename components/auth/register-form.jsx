@@ -20,35 +20,69 @@ export function RegisterForm() {
   const router = useRouter()
   const { loginWithGoogle } = useAuth()
 
-  const handleGoogleLogin = async () => {
-    setError('')
+const handleGoogleLogin = async () => {
+  setError("")
 
-    if (!accountType) {
-      setError('Please select an account type before continuing with Google.')
+  if (!accountType) {
+    setError("Please select an account type before continuing with Google.")
+    toast({
+      variant: 'destructive',
+      title: 'Account Type Required',
+      description: 'Please choose whether you are a lawyer or client first.',
+    })
+    return
+  }
+
+  setIsLoading(true)
+  try {
+    // Pass isRegisterFlow flag for registration
+    const result = await loginWithGoogle({ 
+      role: accountType, 
+      isRegisterFlow: true 
+    })
+    
+    if (result) {
+      toast({ 
+        title: 'Success!', 
+        description: 'You have successfully signed up with Google.' 
+      })
+      router.push('/dashboard')
+    }
+  } catch (err) {
+    console.error('Google sign-up failed:', err)
+    
+    // Handle specific errors
+    if (err.code === "auth/user-not-found" || 
+        err.message?.includes("Account not found")) {
+      setError("This email is not registered. Please sign in instead or use email registration.")
       toast({
         variant: 'destructive',
-        title: 'Account Type Required',
-        description: 'Please choose whether you are a lawyer or client first.',
+        title: 'Account Not Found',
+        description: 'This email is not registered. Please use email registration or sign in if you already have an account.',
       })
-      return
-    }
-
-    setIsLoading(true)
-    try {
-      await loginWithGoogle(accountType)
-      toast({ title: 'Success!', description: 'You have successfully signed up with Google.' })
-      router.push('/dashboard')
-    } catch (err) {
-      console.error('Google sign-up failed:', err)
+    } else if (err.message?.includes("already exists")) {
+      setError("This email is already registered. Please sign in instead.")
+      toast({
+        variant: 'destructive',
+        title: 'Email Already Registered',
+        description: 'Please sign in instead.',
+      })
+    } else if (err.message?.includes("Role required")) {
+      setError("Please select an account type first.")
+    } else if (err.requiresRole) {
+      setError("Role selection required. Please select an account type.")
+    } else {
+      setError(err.message || "Failed to sign up with Google. Please try again.")
       toast({ 
         variant: 'destructive', 
         title: 'Sign-up Failed', 
         description: err?.message || 'Could not complete Google sign-up. Try again.' 
       })
-    } finally {
-      setIsLoading(false)
     }
+  } finally {
+    setIsLoading(false)
   }
+}
 
   const handleEmailSignup = () => {
     if (!accountType) {

@@ -236,10 +236,10 @@ const NewDashboard = () => {
           <StatsCard
             title="Active Cases"
             value={dashboardData.stats.activeCases}
-            change="+3 this month"
-            changeType="positive"
-            icon={FileText}
-            iconColor="text-blue-600"
+            
+            
+          
+            
           />
           <StatsCard
             title="Total Clients"

@@ -32,67 +32,96 @@ export function RegisterFormEmail() {
   const handleRoleChange = (value) => {
     setFormData(prev => ({ ...prev, role: value }))
   }
+const handleSubmit = async (e) => {
+  e.preventDefault()
+  setError("")
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setError("")
-
-    // Validation
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match")
-      return
-    }
-
-    if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters")
-      return
-    }
-
-    setIsLoading(true)
-
-    try {
-      const result = await register({
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-        role: formData.role,
-      })
-
-      if (result.needsVerification) {
-        toast({
-          title: "Check your email",
-          description: "We've sent a verification link to your email address.",
-        })
-        // Show success message and redirect to login
-        setTimeout(() => {
-          router.push("/auth/login")
-        }, 3000)
-      } else {
-        toast({
-          title: "Registration successful",
-          description: "Welcome to Adhivakta!",
-        })
-        router.push("/dashboard")
-      }
-    } catch (err) {
-      console.error("Registration error:", err)
-      
-      // Firebase specific error codes
-      if (err.code === "auth/email-already-in-use") {
-        setError("An account already exists with this email. Please sign in.")
-      } else if (err.code === "auth/invalid-email") {
-        setError("Please enter a valid email address.")
-      } else if (err.code === "auth/weak-password") {
-        setError("Password is too weak. Please choose a stronger password.")
-      } else if (err.message?.includes("already registered")) {
-        setError("This email is already registered. Please sign in instead.")
-      } else {
-        setError(err.message || "Failed to create account. Please try again.")
-      }
-    } finally {
-      setIsLoading(false)
-    }
+  // Validation
+  if (formData.password !== formData.confirmPassword) {
+    setError("Passwords do not match")
+    return
   }
+
+  if (formData.password.length < 6) {
+    setError("Password must be at least 6 characters")
+    return
+  }
+
+  setIsLoading(true)
+
+  try {
+    const result = await register({
+      name: formData.name,
+      email: formData.email,
+      password: formData.password,
+      role: formData.role,
+    })
+
+    // Handle verification required
+    if (result.needsVerification) {
+      toast({
+        title: "Registration successful!",
+        description: "Please check your email for verification link before logging in.",
+        variant: "default",
+      })
+      
+      // Redirect to verification page or show message
+      router.push("/auth/verification-sent?email=" + encodeURIComponent(formData.email))
+      return
+    }
+    
+    // If no verification needed (shouldn't happen with our current flow)
+    toast({
+      title: "Registration successful!",
+      description: "Welcome to Adhivakta!",
+    })
+    router.push("/dashboard")
+    
+  } catch (err) {
+    console.error("Registration error:", err)
+    
+    // Handle specific error messages
+    if (err.code === "auth/email-already-in-use" || 
+        err.message?.includes("already exists")) {
+      setError("An account already exists with this email. Please sign in instead.")
+      toast({
+        variant: 'destructive',
+        title: 'Email Already Registered',
+        description: 'Please sign in instead.',
+      })
+    } else if (err.message?.includes("registered with Google")) {
+      setError("This email is registered with Google. Please use Google login.")
+    } else if (err.message?.includes("Invalid email")) {
+      setError("Please enter a valid email address.")
+    } else if (err.message?.includes("Password must be at least")) {
+      setError("Password must be at least 6 characters long.")
+    } else if (err.message?.includes("Invalid role")) {
+      setError("Please select a valid account type (lawyer or client).")
+    } else if (err.message?.includes("verification email")) {
+      // Handle case where verification email was resent
+      setError(err.message)
+      toast({
+        title: "Verification Email Sent",
+        description: err.message,
+      })
+    } else {
+      setError(err.message || "Failed to create account. Please try again.")
+      
+      // Show toast only for non-validation errors
+      if (!err.message?.includes("already exists") && 
+          !err.message?.includes("Password must be") &&
+          !err.message?.includes("Invalid")) {
+        toast({
+          variant: "destructive",
+          title: "Registration Failed",
+          description: err.message || "Failed to create account",
+        })
+      }
+    }
+  } finally {
+    setIsLoading(false)
+  }
+}
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">

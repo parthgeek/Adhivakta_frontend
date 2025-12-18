@@ -167,6 +167,7 @@ export default function Sidebar() {
     : getClientNavItems(counts);
 
   return (
+     <TooltipProvider> 
     <div
       className={cn(
         "flex h-full flex-col border-r bg-background transition-all duration-300 ease-in-out",
@@ -352,5 +353,6 @@ export default function Sidebar() {
         </div>
       )}
     </div>
+    </TooltipProvider>
   );
 }

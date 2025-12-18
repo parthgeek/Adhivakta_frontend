@@ -80,34 +80,43 @@ export function LoginForm() {
   }
 
   const handleGoogleLogin = async () => {
-    setError("")
-    setIsLoading(true)
+  setError("")
+  setIsLoading(true)
 
-    try {
-      await loginWithGoogle()
+  try {
+    await loginWithGoogle()
+    toast({
+      title: "Welcome!",
+      description: "Successfully logged in with Google.",
+    })
+    router.push("/dashboard")
+  } catch (error) {
+    console.error("Google login error:", error)
+    
+    // Handle specific error for new users
+    if (error.message && error.message.includes("Please register first")) {
+      setError("Account not found. Please register first from the sign-up page.")
       toast({
-        title: "Welcome!",
-        description: "Successfully logged in with Google.",
+        variant: "destructive",
+        title: "Account Not Found",
+        description: "Please register first from the sign-up page.",
       })
-      router.push("/dashboard")
-    } catch (error) {
-      // Check if error indicates role is required for new user
-      if (error.requiresRole) {
-        setPendingGoogleAuth(error.authData || {})
-        setShowRoleDialog(true)
-      } else {
-        console.error("Google login error:", error)
-        setError("Google login failed. Please try again.")
-        toast({
-          variant: "destructive",
-          title: "Google Login Failed",
-          description: error.message || "Could not sign in with Google",
-        })
-      }
-    } finally {
-      setIsLoading(false)
+      // Optionally redirect to register page after showing error
+      setTimeout(() => {
+        router.push("/auth/register")
+      }, 2000)
+    } else {
+      setError(error.message || "Google login failed. Please try again.")
+      toast({
+        variant: "destructive",
+        title: "Google Login Failed",
+        description: error.message || "Could not sign in with Google",
+      })
     }
+  } finally {
+    setIsLoading(false)
   }
+}
 
   const handleRoleSelection = async () => {
     if (!selectedRole) {
