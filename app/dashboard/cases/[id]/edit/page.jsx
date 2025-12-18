@@ -377,9 +377,10 @@ const handleSubmit = async (e, section = 'all') => {
         clients: (caseData.clients || []).map(c => ({ name: c.name, email: c.email || "", contact: c.contact || "", address: c.address || "" })),
         stakeholders: (caseData.stakeholders || []).map(s => ({ name: s.name, email: s.email || "", contact: s.contact || "", address: s.address || "", roleInCase: s.roleInCase || "" }))
       } : {
-        client: { _id: user._id, name: user.name, email: user.email, contact: user.phone || "", role: "Primary Client", isPrimary: true },
+        // For clients, only send client field and advocates, NOT lawyers
+        client: user._id || user.id,
         advocates: (caseData.advocates || []).map(a => ({ name: a.name, email: a.email || "", contact: a.contact || "", company: a.company || "", gst: a.gst || "", isLead: a.isLead || false, level: a.level || "", poc: a.poc || "", spock: a.spock || "" })),
-        lawyers: (caseData.lawyers || []),
+        // Remove lawyers field for clients
         stakeholders: (caseData.stakeholders || []).map(s => ({ name: s.name, email: s.email || "", contact: s.contact || "", address: s.address || "", roleInCase: s.roleInCase || "" }))
       }) : {})
     };
