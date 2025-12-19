@@ -60,7 +60,7 @@ export default function ClientView({ caseData, setCaseData }) {
 
                 <div className="space-y-1">
                   <Label htmlFor={`adv-email-${idx}`} className="text-sm font-medium">
-                    Email
+                    Email <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id={`adv-email-${idx}`}
@@ -73,6 +73,7 @@ export default function ClientView({ caseData, setCaseData }) {
                     }}
                     placeholder="email@example.com"
                     className="h-9 text-sm"
+                    required
                   />
                 </div>
 

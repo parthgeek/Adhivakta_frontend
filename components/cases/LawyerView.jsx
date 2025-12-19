@@ -61,7 +61,7 @@ export default function LawyerView({ caseData, setCaseData, updateClientField, r
 
                 <div className="space-y-1">
                   <Label htmlFor={`lawyer-email-${idx}`} className="text-sm font-medium">
-                    Email
+                    Email <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id={`lawyer-email-${idx}`}
@@ -74,6 +74,7 @@ export default function LawyerView({ caseData, setCaseData, updateClientField, r
                     }}
                     placeholder="email@example.com"
                     className="h-9 text-sm"
+                    required
                   />
                 </div>
 
@@ -258,13 +259,16 @@ export default function LawyerView({ caseData, setCaseData, updateClientField, r
                   />
                 </div>
                 <div>
-                  <Label htmlFor={`client-email-${idx}`}>Email</Label>
+                  <Label htmlFor={`client-email-${idx}`}>
+                    Email <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id={`client-email-${idx}`}
                     type="email"
                     value={client.email || ""}
                     onChange={(e) => updateClientField(idx, "email", e.target.value)}
                     placeholder="email@example.com"
+                    required
                   />
                 </div>
                 <div>

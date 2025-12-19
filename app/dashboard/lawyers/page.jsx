@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
+import { useRouter } from "next/navigation";
 import api from "@/services/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,11 +25,27 @@ import {
   Search,
   Users,
   Scale,
-  CheckCircle
+  CheckCircle,
+  FileCheck,
+  FileX,
+  Hash
 } from "lucide-react";
+
+// Helper to normalize case status
+const normalizeStatus = (status) => {
+  if (!status) return 'active';
+  const s = status.toLowerCase().trim();
+  
+  const closedKeywords = ['closed', 'disposed', 'dismissed', 'settled', 'withdrawn', 'resolved', 'decided'];
+  for (const kw of closedKeywords) {
+    if (s.includes(kw)) return 'closed';
+  }
+  return 'active';
+};
 
 export default function MyLawyersPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [lawyers, setLawyers] = useState([]);
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,7 +60,7 @@ export default function MyLawyersPage() {
     try {
       setLoading(true);
       
-      // Fetch all cases for the client
+      // Fetch all cases for the client from database
       const casesResponse = await api.cases.getAll();
       const clientCases = Array.isArray(casesResponse) ? casesResponse : [];
       setCases(clientCases);
@@ -52,6 +69,8 @@ export default function MyLawyersPage() {
       const lawyersMap = new Map();
       
       clientCases.forEach(caseItem => {
+        const caseStatus = normalizeStatus(caseItem.status);
+        
         // Check for lawyers array
         if (caseItem.lawyers && Array.isArray(caseItem.lawyers)) {
           caseItem.lawyers.forEach(lawyer => {
@@ -59,14 +78,24 @@ export default function MyLawyersPage() {
             if (!lawyersMap.has(lawyerId)) {
               lawyersMap.set(lawyerId, {
                 ...lawyer,
-                cases: [caseItem],
+                cases: [{
+                  ...caseItem,
+                  normalizedStatus: caseStatus
+                }],
                 totalCases: 1,
-                isPrimary: lawyer.isPrimary || false
+                isPrimary: lawyer.isPrimary || false,
+                activeCount: caseStatus === 'active' ? 1 : 0,
+                closedCount: caseStatus === 'closed' ? 1 : 0
               });
             } else {
               const existingLawyer = lawyersMap.get(lawyerId);
-              existingLawyer.cases.push(caseItem);
+              existingLawyer.cases.push({
+                ...caseItem,
+                normalizedStatus: caseStatus
+              });
               existingLawyer.totalCases += 1;
+              if (caseStatus === 'active') existingLawyer.activeCount += 1;
+              if (caseStatus === 'closed') existingLawyer.closedCount += 1;
             }
           });
         }
@@ -78,32 +107,52 @@ export default function MyLawyersPage() {
           if (!lawyersMap.has(lawyerId)) {
             lawyersMap.set(lawyerId, {
               ...lawyer,
-              cases: [caseItem],
+              cases: [{
+                ...caseItem,
+                normalizedStatus: caseStatus
+              }],
               totalCases: 1,
-              isPrimary: true
+              isPrimary: true,
+              activeCount: caseStatus === 'active' ? 1 : 0,
+              closedCount: caseStatus === 'closed' ? 1 : 0
             });
           } else {
             const existingLawyer = lawyersMap.get(lawyerId);
-            existingLawyer.cases.push(caseItem);
+            existingLawyer.cases.push({
+              ...caseItem,
+              normalizedStatus: caseStatus
+            });
             existingLawyer.totalCases += 1;
+            if (caseStatus === 'active') existingLawyer.activeCount += 1;
+            if (caseStatus === 'closed') existingLawyer.closedCount += 1;
           }
         }
 
-        // Check for advocates array (if client created case and added advocates)
+        // Check for advocates array
         if (caseItem.advocates && Array.isArray(caseItem.advocates)) {
           caseItem.advocates.forEach(advocate => {
             const advocateId = advocate._id || advocate.id || advocate.name;
             if (!lawyersMap.has(advocateId)) {
               lawyersMap.set(advocateId, {
                 ...advocate,
-                cases: [caseItem],
+                cases: [{
+                  ...caseItem,
+                  normalizedStatus: caseStatus
+                }],
                 totalCases: 1,
-                isPrimary: advocate.isLead || false
+                isPrimary: advocate.isLead || false,
+                activeCount: caseStatus === 'active' ? 1 : 0,
+                closedCount: caseStatus === 'closed' ? 1 : 0
               });
             } else {
               const existingAdvocate = lawyersMap.get(advocateId);
-              existingAdvocate.cases.push(caseItem);
+              existingAdvocate.cases.push({
+                ...caseItem,
+                normalizedStatus: caseStatus
+              });
               existingAdvocate.totalCases += 1;
+              if (caseStatus === 'active') existingAdvocate.activeCount += 1;
+              if (caseStatus === 'closed') existingAdvocate.closedCount += 1;
             }
           });
         }
@@ -121,6 +170,16 @@ export default function MyLawyersPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Function to redirect to cases page with filters
+  const viewCasesByStatus = (lawyerId, status) => {
+    const params = new URLSearchParams({
+      lawyerId,
+      status,
+      view: 'client-lawyer-cases'
+    });
+    router.push(`/dashboard/cases?${params.toString()}`);
   };
 
   const filteredLawyers = lawyers.filter(lawyer =>
@@ -153,7 +212,7 @@ export default function MyLawyersPage() {
                 <p className="text-gray-600 mb-6">
                   You don't have any lawyers assigned to your cases yet. Once a lawyer is assigned to your case, they will appear here.
                 </p>
-                <Button onClick={() => window.location.href = "/dashboard/cases"}>
+                <Button onClick={() => router.push("/dashboard/cases")}>
                   View My Cases
                 </Button>
               </div>
@@ -228,16 +287,19 @@ export default function MyLawyersPage() {
                           {lawyer.company && (
                             <p className="text-sm text-gray-600 truncate">{lawyer.company}</p>
                           )}
-                          <div className="flex items-center gap-2 mt-2">
+                          {/* Case Statistics */}
+                          <div className="flex items-center gap-3 mt-2">
+                            <div className="text-xs text-gray-500 flex items-center gap-1">
+                              <FileCheck className="h-3 w-3 text-green-600" />
+                              <span className="font-medium text-green-700">{lawyer.activeCount || 0}</span>
+                            </div>
+                            <div className="text-xs text-gray-500 flex items-center gap-1">
+                              <FileX className="h-3 w-3 text-gray-500" />
+                              <span className="font-medium text-gray-700">{lawyer.closedCount || 0}</span>
+                            </div>
                             <Badge variant="outline" className="text-xs">
-                              <FileText className="h-3 w-3 mr-1" />
-                              {lawyer.totalCases} {lawyer.totalCases === 1 ? 'case' : 'cases'}
+                              {lawyer.totalCases} total
                             </Badge>
-                            {lawyer.level && (
-                              <Badge variant="outline" className="text-xs">
-                                {lawyer.level}
-                              </Badge>
-                            )}
                           </div>
                         </div>
                       </div>
@@ -291,7 +353,7 @@ export default function MyLawyersPage() {
                           )}
                         </div>
                         <Button
-                          onClick={() => window.location.href = "/dashboard/messages"}
+                          onClick={() => router.push("/dashboard/messages")}
                           className="flex items-center gap-2"
                         >
                           <MessageSquare className="h-4 w-4" />
@@ -299,31 +361,72 @@ export default function MyLawyersPage() {
                         </Button>
                       </div>
 
-                      {/* Stats Grid */}
-                      <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+                      {/* Case Statistics Buttons */}
+                      <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="font-semibold text-gray-900">Case Statistics</h3>
+                          <Badge variant="secondary">
+                            {selectedLawyer.totalCases || 0} Total Cases
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <Button 
+                            variant="default"
+                            className="flex items-center justify-between w-full"
+                            onClick={() => viewCasesByStatus(selectedLawyer._id || selectedLawyer.id, 'active')}
+                            disabled={!selectedLawyer.activeCount}
+                          >
+                            <div className="flex items-center gap-2">
+                              <FileCheck className="h-4 w-4" />
+                              <span>Active Cases</span>
+                            </div>
+                            <Badge variant="secondary">
+                              {selectedLawyer.activeCount || 0}
+                            </Badge>
+                          </Button>
+                          
+                          <Button 
+                            variant="outline"
+                            className="flex items-center justify-between w-full"
+                            onClick={() => viewCasesByStatus(selectedLawyer._id || selectedLawyer.id, 'closed')}
+                            disabled={!selectedLawyer.closedCount}
+                          >
+                            <div className="flex items-center gap-2">
+                              <FileX className="h-4 w-4" />
+                              <span>Closed/Disposed</span>
+                            </div>
+                            <Badge variant="secondary">
+                              {selectedLawyer.closedCount || 0}
+                            </Badge>
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Stats Grid - REMOVED CHAIR POSITION */}
+                      <div className="grid grid-cols-3 gap-4 p-4 bg-blue-50 rounded-lg">
                         <div className="text-center">
-                          <div className="text-2xl font-bold text-gray-900">
+                          <div className="text-2xl font-bold text-blue-900">
                             {selectedLawyer.totalCases}
                           </div>
-                          <div className="text-sm text-gray-600">Your Cases</div>
+                          <div className="text-sm text-blue-700">Total Cases</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-green-900">
+                            {selectedLawyer.activeCount || 0}
+                          </div>
+                          <div className="text-sm text-green-700">Active</div>
                         </div>
                         <div className="text-center">
                           <div className="text-2xl font-bold text-gray-900">
-                            {selectedLawyer.cases?.filter(c => c.status === 'active').length || 0}
+                            {selectedLawyer.closedCount || 0}
                           </div>
-                          <div className="text-sm text-gray-600">Active</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-gray-900">
-                            {selectedLawyer.chairPosition?.includes('first') ? '1st' : '2nd'} Chair
-                          </div>
-                          <div className="text-sm text-gray-600">Position</div>
+                          <div className="text-sm text-gray-700">Closed</div>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
 
-                  {/* Professional Info */}
+                  {/* Professional Info - REMOVED CHAIR POSITION SECTION */}
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-lg">Professional Information</CardTitle>
@@ -339,14 +442,12 @@ export default function MyLawyersPage() {
                         </div>
                       )}
                       
-                      {selectedLawyer.chairPosition && (
+                      {selectedLawyer.barNumber && (
                         <div className="flex items-start gap-3">
                           <Award className="h-5 w-5 text-gray-400 mt-0.5" />
                           <div>
-                            <div className="font-medium text-gray-900">Chair Position</div>
-                            <div className="text-gray-600 capitalize">
-                              {selectedLawyer.chairPosition.replace(/_/g, ' ')}
-                            </div>
+                            <div className="font-medium text-gray-900">Bar Registration</div>
+                            <div className="text-gray-600">{selectedLawyer.barNumber}</div>
                           </div>
                         </div>
                       )}
@@ -385,20 +486,23 @@ export default function MyLawyersPage() {
                           {selectedLawyer.cases.map((caseItem) => (
                             <div
                               key={caseItem._id || caseItem.id}
-                              onClick={() => window.location.href = `/dashboard/cases/${caseItem._id || caseItem.id}`}
+                              onClick={() => router.push(`/dashboard/cases/${caseItem._id || caseItem.id}`)}
                               className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
                             >
                               <div className="flex items-start justify-between mb-2">
                                 <div>
                                   <h4 className="font-semibold text-gray-900">{caseItem.title}</h4>
-                                  <p className="text-sm text-gray-600">{caseItem.caseNumber}</p>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <Hash className="h-3 w-3 text-gray-400" />
+                                    <p className="text-sm text-gray-600">{caseItem.caseNumber}</p>
+                                  </div>
                                 </div>
                                 <Badge className={
-                                  caseItem.status === 'active' 
+                                  caseItem.normalizedStatus === 'active' 
                                     ? 'bg-green-100 text-green-800' 
                                     : 'bg-gray-100 text-gray-800'
                                 }>
-                                  {caseItem.status || 'Active'}
+                                  {caseItem.normalizedStatus === 'active' ? 'Active' : 'Closed'}
                                 </Badge>
                               </div>
                               <div className="flex items-center gap-4 text-sm text-gray-600">
@@ -493,7 +597,7 @@ export default function MyLawyersPage() {
                           <Button 
                             variant="outline" 
                             className="w-full"
-                            onClick={() => window.location.href = "/dashboard/messages"}
+                            onClick={() => router.push("/dashboard/messages")}
                           >
                             <MessageSquare className="h-4 w-4 mr-2" />
                             Send Message
@@ -501,7 +605,7 @@ export default function MyLawyersPage() {
                           <Button 
                             variant="outline" 
                             className="w-full"
-                            onClick={() => window.location.href = "/dashboard/calendar"}
+                            onClick={() => router.push("/dashboard/calendar")}
                           >
                             <Calendar className="h-4 w-4 mr-2" />
                             Schedule Meeting
@@ -509,7 +613,7 @@ export default function MyLawyersPage() {
                         </div>
                       </div>
 
-                      {/* Office Hours (Optional) */}
+                      {/* Office Hours */}
                       <div className="p-4 bg-gray-50 rounded-lg">
                         <div className="flex items-start gap-2">
                           <Clock className="h-5 w-5 text-gray-400 mt-0.5" />

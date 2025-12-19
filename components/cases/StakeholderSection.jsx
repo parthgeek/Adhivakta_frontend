@@ -52,13 +52,16 @@ export default function StakeholderSection({
                   />
                 </div>
                 <div>
-                  <Label htmlFor={`stakeholder-email-${idx}`}>Email</Label>
+                  <Label htmlFor={`stakeholder-email-${idx}`}>
+                    Email <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id={`stakeholder-email-${idx}`}
                     type="email"
                     value={stakeholder.email || ""}
                     onChange={(e) => updateStakeholderField(idx, "email", e.target.value)}
                     placeholder="email@example.com"
+                    required
                   />
                 </div>
                 <div>

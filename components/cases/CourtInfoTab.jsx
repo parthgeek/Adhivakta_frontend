@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -137,12 +136,15 @@ export default function CourtInfoTab({
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="court">Court Name</Label>
+                <Label htmlFor="court">
+                  Court Name <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="court"
                   name="court"
                   value={caseData.court}
                   onChange={handleChange}
+                  required
                 />
               </div>
 
