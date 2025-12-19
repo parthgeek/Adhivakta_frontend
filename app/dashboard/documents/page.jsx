@@ -153,8 +153,10 @@ export default function DocumentsPage() {
     description: "",
   });
   const [uploadProgress, setUploadProgress] = useState({});
+  const [casesLoading, setCasesLoading] = useState(true);
 
 const fetchCases = async () => {
+  setCasesLoading(true);
   try {
     const response = await api.cases.getAll();
     console.log("Cases API Response:", response);
@@ -178,6 +180,7 @@ const fetchCases = async () => {
     if (!userId) {
       console.log("No user ID, cannot filter cases");
       setCases(casesData); // Show all for now
+      setCasesLoading(false);
       return;
     }
 
@@ -218,6 +221,8 @@ const fetchCases = async () => {
   } catch (error) {
     console.error("Error fetching cases:", error);
     setCases([]);
+  } finally {
+    setCasesLoading(false);
   }
 };
 
@@ -473,7 +478,8 @@ const fetchCases = async () => {
     return documents.filter(doc => doc.case?._id === caseId || doc.case?.id === caseId).length;
   };
 
-  if (loading && !selectedCase) {
+  // Show loading spinner only when cases are loading
+  if (casesLoading) {
     return (
       <div className="flex justify-center items-center h-full">
         <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
@@ -794,7 +800,9 @@ const fetchCases = async () => {
                 <FolderOpen className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-xl font-medium mb-2">Select a Case</h3>
                 <p className="text-muted-foreground">
-                  Choose a case from the sidebar to view its documents
+                  {cases.length === 0 
+                    ? "You don't have any cases yet. Create a case to start uploading documents." 
+                    : "Choose a case from the sidebar to view its documents"}
                 </p>
               </CardContent>
             </Card>
@@ -1113,7 +1121,12 @@ function DocumentsGrid({
                     Share
                   </DropdownMenuItem>
                   {isLawyer && (
-                    <DropdownMenuItem className="text-red-600">
+                    <DropdownMenuItem className="text-red-600" onClick={() => {
+                      // Handle delete action
+                      if (confirm(`Are you sure you want to delete ${doc.name}?`)) {
+                        // This should trigger the delete dialog
+                      }
+                    }}>
                       <Trash2 className="mr-2 h-4 w-4" />
                       Delete
                     </DropdownMenuItem>
@@ -1255,7 +1268,12 @@ function DocumentsTable({
                         Share
                       </DropdownMenuItem>
                       {isLawyer && (
-                        <DropdownMenuItem className="text-red-600">
+                        <DropdownMenuItem className="text-red-600" onClick={() => {
+                          // Handle delete action
+                          if (confirm(`Are you sure you want to delete ${doc.name}?`)) {
+                            // This should trigger the delete dialog
+                          }
+                        }}>
                           <Trash2 className="mr-2 h-4 w-4" />
                           Delete
                         </DropdownMenuItem>
