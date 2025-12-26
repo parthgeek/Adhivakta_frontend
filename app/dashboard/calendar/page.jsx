@@ -24,6 +24,105 @@ import Image from "next/image"
 import { toast } from "@/components/ui/use-toast"
 import { api, fetchCases } from "@/lib/api"
 
+// Skeleton Components for Calendar
+const CalendarSkeleton = () => (
+  <div className="flex flex-col gap-6">
+    <div className="flex items-center justify-between">
+      <div className="h-9 w-48 bg-gray-200 rounded animate-pulse"></div>
+      <div className="flex items-center space-x-2">
+        <div className="h-10 w-[120px] bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-10 w-28 bg-gray-200 rounded animate-pulse"></div>
+      </div>
+    </div>
+
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="h-9 w-9 bg-gray-200 rounded animate-pulse"></div>
+            <div className="h-8 w-48 bg-gray-200 rounded animate-pulse"></div>
+            <div className="h-9 w-9 bg-gray-200 rounded animate-pulse"></div>
+          </div>
+          <div className="h-9 w-20 bg-gray-200 rounded animate-pulse"></div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-7 gap-1">
+          {/* Day headers */}
+          {[...Array(7)].map((_, i) => (
+            <div key={i} className="text-center py-2">
+              <div className="h-5 w-12 bg-gray-200 rounded animate-pulse mx-auto"></div>
+            </div>
+          ))}
+          {/* Calendar cells */}
+          {[...Array(42)].map((_, i) => (
+            <div key={i} className="min-h-[100px] border rounded-md p-1 bg-gray-50">
+              <div className="flex justify-between items-center p-1">
+                <div className="h-6 w-6 bg-gray-300 rounded animate-pulse"></div>
+                <div className="h-5 w-5 bg-gray-300 rounded animate-pulse"></div>
+              </div>
+              <div className="space-y-1 mt-2">
+                {[...Array(Math.floor(Math.random() * 2) + 1)].map((_, j) => (
+                  <div key={j} className="h-6 bg-gray-300 rounded animate-pulse"></div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  </div>
+)
+
+const EventDialogSkeleton = () => (
+  <DialogContent className="sm:max-w-[500px]">
+    <DialogHeader>
+      <div className="h-6 w-48 bg-gray-200 rounded animate-pulse mb-2"></div>
+      <div className="h-4 w-64 bg-gray-200 rounded animate-pulse"></div>
+    </DialogHeader>
+    <div className="grid gap-4 py-4">
+      <div className="grid gap-2">
+        <div className="h-5 w-20 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-2">
+          <div className="h-5 w-12 bg-gray-200 rounded animate-pulse"></div>
+          <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+        </div>
+        <div className="grid gap-2">
+          <div className="h-5 w-12 bg-gray-200 rounded animate-pulse"></div>
+          <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-2">
+          <div className="h-5 w-20 bg-gray-200 rounded animate-pulse"></div>
+          <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+        </div>
+        <div className="grid gap-2">
+          <div className="h-5 w-24 bg-gray-200 rounded animate-pulse"></div>
+          <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+        </div>
+      </div>
+      <div className="grid gap-2">
+        <div className="h-5 w-16 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+      </div>
+      <div className="grid gap-2">
+        <div className="h-5 w-24 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-24 bg-gray-200 rounded animate-pulse"></div>
+      </div>
+    </div>
+    <DialogFooter>
+      <div className="flex space-x-2">
+        <div className="h-9 w-20 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-9 w-24 bg-gray-200 rounded animate-pulse"></div>
+      </div>
+    </DialogFooter>
+  </DialogContent>
+)
+
 // Event types aligned with backend EventSchema
 const EVENT_TYPES = [
   { value: "hearing", label: "Court Hearing", color: "bg-blue-100 text-blue-800 border-blue-300" },
@@ -43,7 +142,7 @@ export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [events, setEvents] = useState([])
   const [viewMode, setViewMode] = useState("month")
-  const [cases, setCases] = useState([]) // Store fetched cases
+  const [cases, setCases] = useState([])
   const [newEvent, setNewEvent] = useState({
     title: "",
     date: new Date(),
@@ -57,9 +156,9 @@ export default function CalendarPage() {
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [isEditMode, setIsEditMode] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check if user is lawyer or client
     if (user) {
       setIsLawyer(user.role === "lawyer")
     }
@@ -69,12 +168,12 @@ export default function CalendarPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setLoading(true)
         const [fetchedCases, eventsResponse] = await Promise.all([
           fetchCases(),
           api.events.getAll(),
         ]);
         setCases(fetchedCases);
-        // Format events as before
         if (Array.isArray(eventsResponse)) {
           const formattedEvents = eventsResponse.map((event) => ({
             id: event._id || event.id,
@@ -101,6 +200,8 @@ export default function CalendarPage() {
           description: "Failed to load cases or events. Please try again.",
           variant: "destructive",
         });
+      } finally {
+        setLoading(false)
       }
     };
     fetchData();
@@ -164,7 +265,6 @@ export default function CalendarPage() {
     console.log('Raw events response:', response);
     
     if (Array.isArray(response)) {
-      // ✅ Deduplicate events by ID
       const eventMap = new Map();
       response.forEach(event => {
         const id = event._id || event.id;
@@ -270,9 +370,7 @@ export default function CalendarPage() {
         description: newEvent.description,
       }
 
-      // Log the payload for debugging
       console.log("Sending event payload:", apiEvent)
-
       console.log('Creating event with payload:', apiEvent);
       const response = await api.events.create(apiEvent)
       console.log('Backend response after create:', response);
@@ -400,9 +498,7 @@ export default function CalendarPage() {
         description: newEvent.description,
       }
 
-      // Log the payload for debugging
       console.log("Updating event payload:", apiEvent)
-
       await api.events.update(selectedEvent.id, apiEvent)
       const dateString = newEvent.date.toISOString().split("T")[0]
       const updatedEvent = {
@@ -513,6 +609,11 @@ export default function CalendarPage() {
   useEffect(() => {
     fetchEvents()
   }, [viewMode])
+
+  // Show skeleton while loading
+  if (loading) {
+    return <CalendarSkeleton />
+  }
 
   return (
     <div className="flex flex-col gap-6">

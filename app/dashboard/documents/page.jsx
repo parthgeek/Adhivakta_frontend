@@ -2,29 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
-import {
-  FileTextIcon,
-  FileIcon,
-  ImageIcon,
-  FileArchiveIcon,
-  Search,
-  Filter,
-  Plus,
-  MoreVertical,
-  Download,
-  Trash2,
-  Share2,
-  Star,
-  Grid,
-  List,
-  Folder,
-  ChevronRight,
-  FolderOpen,
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -49,6 +30,25 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import {
+  FileTextIcon,
+  FileIcon,
+  ImageIcon,
+  FileArchiveIcon,
+  Search,
+  Filter,
+  Plus,
+  MoreVertical,
+  Download,
+  Trash2,
+  Share2,
+  Star,
+  Grid,
+  List,
+  Folder,
+  ChevronRight,
+  FolderOpen,
+} from "lucide-react";
 import api from "@/services/api";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -57,6 +57,135 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+
+// Skeleton Components for Documents Page
+const CasesSidebarSkeleton = () => (
+  <div className="lg:w-1/4">
+    <div className="bg-white rounded-lg border p-4 shadow-sm">
+      <div className="h-6 w-24 bg-gray-200 rounded animate-pulse mb-4"></div>
+      <div className="space-y-2">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="p-3 rounded-lg bg-gray-50 animate-pulse">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <div className="h-4 w-4 bg-gray-300 rounded"></div>
+                <div className="h-4 w-32 bg-gray-300 rounded"></div>
+              </div>
+              <div className="h-5 w-8 bg-gray-300 rounded"></div>
+            </div>
+            <div className="mt-2 h-3 w-48 bg-gray-300 rounded"></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+const DocumentsGridSkeleton = () => (
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+    {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+      <div key={i} className="bg-white rounded-lg border p-4 shadow-sm animate-pulse">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center space-x-2">
+            <div className="h-4 w-4 bg-gray-300 rounded"></div>
+            <div className="h-6 w-16 bg-gray-300 rounded"></div>
+          </div>
+          <div className="h-8 w-8 bg-gray-300 rounded"></div>
+        </div>
+        <div className="text-center mb-4">
+          <div className="h-12 w-12 bg-gray-300 rounded-full mx-auto mb-3"></div>
+          <div className="h-5 w-40 bg-gray-300 rounded mx-auto mb-1"></div>
+          <div className="h-4 w-24 bg-gray-300 rounded mx-auto"></div>
+        </div>
+        <div className="border-t pt-3">
+          <div className="flex justify-between">
+            <div className="h-4 w-12 bg-gray-300 rounded"></div>
+            <div className="h-4 w-20 bg-gray-300 rounded"></div>
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+const DocumentsTableSkeleton = () => (
+  <div className="rounded-md border">
+    <div className="relative w-full overflow-auto">
+      <table className="w-full">
+        <thead>
+          <tr className="border-b bg-gray-50">
+            <th className="h-10 px-2 text-left"><div className="h-4 w-4 bg-gray-300 rounded"></div></th>
+            {['Name', 'Category', 'Status', 'Size', 'Date', ''].map((header, i) => (
+              <th key={i} className="h-10 px-2 text-left">
+                <div className="h-4 w-20 bg-gray-300 rounded"></div>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <tr key={i} className="border-b hover:bg-gray-50">
+              <td className="p-2"><div className="h-4 w-4 bg-gray-300 rounded"></div></td>
+              <td className="p-2">
+                <div className="flex items-center space-x-2">
+                  <div className="h-6 w-6 bg-gray-300 rounded"></div>
+                  <div className="h-4 w-48 bg-gray-300 rounded"></div>
+                </div>
+              </td>
+              <td className="p-2"><div className="h-5 w-16 bg-gray-300 rounded"></div></td>
+              <td className="p-2"><div className="h-4 w-12 bg-gray-300 rounded"></div></td>
+              <td className="p-2"><div className="h-4 w-20 bg-gray-300 rounded"></div></td>
+              <td className="p-2"><div className="h-4 w-20 bg-gray-300 rounded"></div></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+);
+
+const SearchFiltersSkeleton = () => (
+  <div className="mb-6">
+    <div className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-2">
+      <div className="relative flex-1">
+        <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+      </div>
+      <div className="flex space-x-2">
+        <div className="h-10 w-24 bg-gray-200 rounded animate-pulse"></div>
+      </div>
+    </div>
+    <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i}>
+            <div className="h-4 w-20 bg-gray-300 rounded animate-pulse mb-2"></div>
+            <div className="h-10 bg-gray-300 rounded animate-pulse"></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+const DocumentsPageSkeleton = () => (
+  <div className="space-y-6">
+    <div className="flex items-center justify-between">
+      <div className="h-9 w-48 bg-gray-200 rounded animate-pulse"></div>
+      <div className="flex items-center space-x-2">
+        <div className="h-10 w-32 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-10 w-40 bg-gray-200 rounded animate-pulse"></div>
+      </div>
+    </div>
+
+    <div className="flex flex-col lg:flex-row gap-6">
+      <CasesSidebarSkeleton />
+      <div className="lg:w-3/4">
+        <SearchFiltersSkeleton />
+        <DocumentsGridSkeleton />
+      </div>
+    </div>
+  </div>
+);
 
 // Document categories
 const DOCUMENT_CATEGORIES = [
@@ -478,13 +607,9 @@ const fetchCases = async () => {
     return documents.filter(doc => doc.case?._id === caseId || doc.case?.id === caseId).length;
   };
 
-  // Show loading spinner only when cases are loading
+  // Show full skeleton while cases are loading
   if (casesLoading) {
-    return (
-      <div className="flex justify-center items-center h-full">
-        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
-      </div>
-    );
+    return <DocumentsPageSkeleton />;
   }
 
   return (
@@ -586,126 +711,130 @@ const fetchCases = async () => {
           {selectedCase ? (
             <>
               {/* Search and Filters */}
-              <div className="mb-6">
-                <div className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-2">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      placeholder="Search documents in this case..."
-                      className="pl-8"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+              {loading ? (
+                <SearchFiltersSkeleton />
+              ) : (
+                <div className="mb-6">
+                  <div className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        placeholder="Search documents in this case..."
+                        className="pl-8"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                      >
+                        <Filter className="mr-2 h-4 w-4" />
+                        Filters
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex space-x-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                    >
-                      <Filter className="mr-2 h-4 w-4" />
-                      Filters
-                    </Button>
-                  </div>
-                </div>
 
-                {showAdvancedFilters && (
-                  <Card className="mt-4">
-                    <CardContent className="p-4">
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                        <div>
-                          <Label htmlFor="category-filter">Category</Label>
-                          <Select
-                            value={categoryFilter}
-                            onValueChange={setCategoryFilter}
-                          >
-                            <SelectTrigger id="category-filter">
-                              <SelectValue placeholder="Filter by category" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {DOCUMENT_CATEGORIES.map((category) => (
-                                <SelectItem key={category} value={category}>
-                                  {category}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                  {showAdvancedFilters && (
+                    <Card className="mt-4">
+                      <CardContent className="p-4">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                          <div>
+                            <Label htmlFor="category-filter">Category</Label>
+                            <Select
+                              value={categoryFilter}
+                              onValueChange={setCategoryFilter}
+                            >
+                              <SelectTrigger id="category-filter">
+                                <SelectValue placeholder="Filter by category" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {DOCUMENT_CATEGORIES.map((category) => (
+                                  <SelectItem key={category} value={category}>
+                                    {category}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label htmlFor="status-filter">Status</Label>
+                            <Select
+                              value={statusFilter}
+                              onValueChange={setStatusFilter}
+                            >
+                              <SelectTrigger id="status-filter">
+                                <SelectValue placeholder="Filter by status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {DOCUMENT_STATUSES.map((status) => (
+                                  <SelectItem key={status} value={status}>
+                                    {status}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label htmlFor="date-filter">Date</Label>
+                            <Select
+                              value={dateFilter}
+                              onValueChange={setDateFilter}
+                            >
+                              <SelectTrigger id="date-filter">
+                                <SelectValue placeholder="Filter by date" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All Time</SelectItem>
+                                <SelectItem value="today">Today</SelectItem>
+                                <SelectItem value="week">This Week</SelectItem>
+                                <SelectItem value="month">This Month</SelectItem>
+                                <SelectItem value="year">This Year</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label htmlFor="tag-filter">Tag</Label>
+                            <Input
+                              id="tag-filter"
+                              placeholder="Filter by tag"
+                              value={tagFilter}
+                              onChange={(e) => setTagFilter(e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="sort-by">Sort By</Label>
+                            <Select value={sortBy} onValueChange={setSortBy}>
+                              <SelectTrigger id="sort-by">
+                                <SelectValue placeholder="Sort by" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="date">Date</SelectItem>
+                                <SelectItem value="name">Name</SelectItem>
+                                <SelectItem value="size">Size</SelectItem>
+                                <SelectItem value="category">Category</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label htmlFor="sort-order">Order</Label>
+                            <Select value={sortOrder} onValueChange={setSortOrder}>
+                              <SelectTrigger id="sort-order">
+                                <SelectValue placeholder="Sort order" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="asc">Ascending</SelectItem>
+                                <SelectItem value="desc">Descending</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
-                        <div>
-                          <Label htmlFor="status-filter">Status</Label>
-                          <Select
-                            value={statusFilter}
-                            onValueChange={setStatusFilter}
-                          >
-                            <SelectTrigger id="status-filter">
-                              <SelectValue placeholder="Filter by status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {DOCUMENT_STATUSES.map((status) => (
-                                <SelectItem key={status} value={status}>
-                                  {status}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label htmlFor="date-filter">Date</Label>
-                          <Select
-                            value={dateFilter}
-                            onValueChange={setDateFilter}
-                          >
-                            <SelectTrigger id="date-filter">
-                              <SelectValue placeholder="Filter by date" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">All Time</SelectItem>
-                              <SelectItem value="today">Today</SelectItem>
-                              <SelectItem value="week">This Week</SelectItem>
-                              <SelectItem value="month">This Month</SelectItem>
-                              <SelectItem value="year">This Year</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label htmlFor="tag-filter">Tag</Label>
-                          <Input
-                            id="tag-filter"
-                            placeholder="Filter by tag"
-                            value={tagFilter}
-                            onChange={(e) => setTagFilter(e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="sort-by">Sort By</Label>
-                          <Select value={sortBy} onValueChange={setSortBy}>
-                            <SelectTrigger id="sort-by">
-                              <SelectValue placeholder="Sort by" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="date">Date</SelectItem>
-                              <SelectItem value="name">Name</SelectItem>
-                              <SelectItem value="size">Size</SelectItem>
-                              <SelectItem value="category">Category</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label htmlFor="sort-order">Order</Label>
-                          <Select value={sortOrder} onValueChange={setSortOrder}>
-                            <SelectTrigger id="sort-order">
-                              <SelectValue placeholder="Sort order" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="asc">Ascending</SelectItem>
-                              <SelectItem value="desc">Descending</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              )}
 
               {/* Bulk Actions Bar */}
               {selectedDocuments.length > 0 && (
@@ -735,9 +864,11 @@ const fetchCases = async () => {
 
               {/* Document Display */}
               {loading ? (
-                <div className="flex justify-center items-center h-64">
-                  <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
-                </div>
+                viewMode === "grid" ? (
+                  <DocumentsGridSkeleton />
+                ) : (
+                  <DocumentsTableSkeleton />
+                )
               ) : error ? (
                 <Card>
                   <CardContent className="p-6 text-center">

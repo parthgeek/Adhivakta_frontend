@@ -15,6 +15,145 @@ import {
 import api from '@/services/api';
 import Link from 'next/link';
 
+// Skeleton Components for Dashboard
+const StatsCardSkeleton = () => (
+  <div className="bg-white rounded-lg border p-6 shadow-sm">
+    <div className="flex items-center justify-between">
+      <div>
+        <div className="h-5 w-24 bg-gray-200 rounded animate-pulse mb-2"></div>
+        <div className="h-8 w-12 bg-gray-200 rounded animate-pulse mt-2"></div>
+      </div>
+      <div className="p-3 rounded-full bg-gray-100">
+        <div className="h-6 w-6 bg-gray-300 rounded"></div>
+      </div>
+    </div>
+  </div>
+);
+
+const CasesListSkeleton = () => (
+  <div className="bg-white rounded-lg border p-6 shadow-sm">
+    <div className="flex items-center justify-between mb-4">
+      <div className="h-6 w-32 bg-gray-200 rounded animate-pulse"></div>
+      <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+    </div>
+    <div className="space-y-3">
+      {[...Array(5)].map((_, i) => (
+        <div key={i} className="p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="h-5 w-48 bg-gray-300 rounded animate-pulse mb-1"></div>
+              <div className="h-4 w-32 bg-gray-300 rounded animate-pulse"></div>
+            </div>
+            <div className="h-6 w-16 bg-gray-300 rounded animate-pulse"></div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const UpcomingHearingsSkeleton = () => (
+  <div className="bg-white rounded-lg border p-6 shadow-sm">
+    <div className="flex items-center justify-between mb-4">
+      <div className="h-6 w-40 bg-gray-200 rounded animate-pulse"></div>
+      <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+    </div>
+    <div className="space-y-3">
+      {[...Array(5)].map((_, i) => (
+        <div key={i} className="p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="h-5 w-40 bg-gray-300 rounded animate-pulse mb-1"></div>
+              <div className="h-4 w-48 bg-gray-300 rounded animate-pulse"></div>
+            </div>
+            <div className="h-6 w-20 bg-gray-300 rounded animate-pulse"></div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const QuickActionsSkeleton = () => (
+  <div className="bg-white rounded-lg border p-6 shadow-sm">
+    <div className="h-6 w-32 bg-gray-200 rounded animate-pulse mb-4"></div>
+    <div className="grid grid-cols-2 gap-3">
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="h-12 bg-gray-100 rounded-lg animate-pulse"></div>
+      ))}
+    </div>
+  </div>
+);
+
+const PriorityAlertsSkeleton = () => (
+  <div className="bg-white rounded-lg border p-6 shadow-sm">
+    <div className="h-6 w-36 bg-gray-200 rounded animate-pulse mb-4"></div>
+    <div className="space-y-3">
+      <div className="p-3 bg-gray-50 rounded-lg">
+        <div className="h-5 w-48 bg-gray-300 rounded animate-pulse mb-1"></div>
+        <div className="h-4 w-40 bg-gray-300 rounded animate-pulse"></div>
+      </div>
+      <div className="p-3 bg-gray-50 rounded-lg">
+        <div className="h-5 w-40 bg-gray-300 rounded animate-pulse mb-1"></div>
+        <div className="h-4 w-36 bg-gray-300 rounded animate-pulse"></div>
+      </div>
+    </div>
+  </div>
+);
+
+const RecentActivitySkeleton = () => (
+  <div className="bg-white rounded-lg border p-6 shadow-sm">
+    <div className="h-6 w-32 bg-gray-200 rounded animate-pulse mb-4"></div>
+    <div className="space-y-3">
+      {[...Array(3)].map((_, i) => (
+        <div key={i} className="flex justify-between items-start">
+          <div>
+            <div className="h-5 w-36 bg-gray-300 rounded animate-pulse mb-1"></div>
+            <div className="h-4 w-48 bg-gray-300 rounded animate-pulse"></div>
+          </div>
+          <div className="h-4 w-16 bg-gray-300 rounded animate-pulse"></div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+// Full Dashboard Skeleton
+const DashboardSkeleton = () => (
+  <div className="min-h-screen bg-gray-50 p-6">
+    <div className="max-w-7xl mx-auto space-y-6">
+      {/* Welcome Section Skeleton */}
+      <div className="space-y-2">
+        <div className="h-9 w-48 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-5 w-64 bg-gray-200 rounded animate-pulse"></div>
+      </div>
+
+      {/* Stats Grid Skeleton */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[...Array(4)].map((_, i) => (
+          <StatsCardSkeleton key={i} />
+        ))}
+      </div>
+
+      {/* Main Content Grid Skeleton */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column Skeleton */}
+        <div className="lg:col-span-2 space-y-6">
+          <CasesListSkeleton />
+          <UpcomingHearingsSkeleton />
+        </div>
+
+        {/* Right Column Skeleton */}
+        <div className="space-y-6">
+          <PriorityAlertsSkeleton />
+          <QuickActionsSkeleton />
+          <RecentActivitySkeleton />
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 // Stats Card Component
 const StatsCard = ({ title, value, icon: Icon, iconColor, href }) => {
   const CardContent = (
@@ -208,14 +347,7 @@ const NewDashboard = () => {
   }, []);
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (

@@ -345,7 +345,7 @@ export default function Home() {
                   </Button>
                 </Link>
                 <Link href="#features">
-                  <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/20 px-8">
+                  <Button size="lg" variant="outline" className="bg-black border-white text-white hover:bg-white/20 px-8">
                     Schedule a Demo
                   </Button>
                 </Link>

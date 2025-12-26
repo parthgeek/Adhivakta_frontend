@@ -31,6 +31,202 @@ import {
   Hash
 } from "lucide-react";
 
+// Skeleton Components
+const LawyersListSkeleton = () => (
+  <Card>
+    <CardHeader>
+      <div className="h-6 w-32 bg-gray-200 rounded animate-pulse mb-1"></div>
+      <div className="h-4 w-48 bg-gray-200 rounded animate-pulse"></div>
+    </CardHeader>
+    <CardContent className="p-0">
+      <div className="divide-y max-h-[600px] overflow-y-auto">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-12 h-12 rounded-full bg-gray-300 animate-pulse flex-shrink-0"></div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="h-5 w-40 bg-gray-300 rounded animate-pulse"></div>
+                  <div className="h-5 w-16 bg-gray-300 rounded animate-pulse"></div>
+                </div>
+                <div className="h-4 w-32 bg-gray-300 rounded animate-pulse mb-2"></div>
+                <div className="flex items-center gap-3 mt-2">
+                  <div className="h-4 w-16 bg-gray-300 rounded animate-pulse"></div>
+                  <div className="h-4 w-16 bg-gray-300 rounded animate-pulse"></div>
+                  <div className="h-5 w-12 bg-gray-300 rounded animate-pulse"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const LawyerDetailSkeleton = () => (
+  <div className="space-y-4">
+    <Card>
+      <CardContent className="pt-6">
+        <div className="flex items-start gap-6 mb-6">
+          <div className="w-24 h-24 rounded-full bg-gray-300 animate-pulse"></div>
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-8 w-48 bg-gray-300 rounded animate-pulse"></div>
+              <div className="h-6 w-20 bg-gray-300 rounded animate-pulse"></div>
+            </div>
+            <div className="h-4 w-32 bg-gray-300 rounded animate-pulse mb-2"></div>
+            <div className="h-4 w-48 bg-gray-300 rounded animate-pulse"></div>
+          </div>
+          <div className="h-10 w-32 bg-gray-300 rounded animate-pulse"></div>
+        </div>
+
+        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+          <div className="flex items-center justify-between mb-3">
+            <div className="h-5 w-28 bg-gray-300 rounded animate-pulse"></div>
+            <div className="h-6 w-16 bg-gray-300 rounded animate-pulse"></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="h-10 bg-gray-300 rounded animate-pulse"></div>
+            <div className="h-10 bg-gray-300 rounded animate-pulse"></div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-4 p-4 bg-gray-100 rounded-lg">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="text-center">
+              <div className="h-8 w-12 bg-gray-300 rounded animate-pulse mx-auto mb-1"></div>
+              <div className="h-4 w-20 bg-gray-300 rounded animate-pulse mx-auto"></div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+
+    <Card>
+      <CardHeader>
+        <div className="h-6 w-48 bg-gray-300 rounded animate-pulse"></div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="flex items-start gap-3">
+            <div className="h-5 w-5 bg-gray-300 rounded animate-pulse mt-0.5"></div>
+            <div>
+              <div className="h-4 w-32 bg-gray-300 rounded animate-pulse mb-1"></div>
+              <div className="h-4 w-48 bg-gray-300 rounded animate-pulse"></div>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  </div>
+);
+
+const CasesSkeleton = () => (
+  <Card>
+    <CardHeader>
+      <div className="h-6 w-32 bg-gray-300 rounded animate-pulse mb-1"></div>
+      <div className="h-4 w-64 bg-gray-300 rounded animate-pulse"></div>
+    </CardHeader>
+    <CardContent>
+      <div className="space-y-3">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="p-4 border rounded-lg">
+            <div className="flex items-start justify-between mb-2">
+              <div>
+                <div className="h-5 w-56 bg-gray-300 rounded animate-pulse mb-1"></div>
+                <div className="h-4 w-32 bg-gray-300 rounded animate-pulse"></div>
+              </div>
+              <div className="h-6 w-16 bg-gray-300 rounded animate-pulse"></div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="h-4 w-32 bg-gray-300 rounded animate-pulse"></div>
+              <div className="h-4 w-40 bg-gray-300 rounded animate-pulse"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const ContactSkeleton = () => (
+  <Card>
+    <CardHeader>
+      <div className="h-6 w-40 bg-gray-300 rounded animate-pulse mb-1"></div>
+      <div className="h-4 w-56 bg-gray-300 rounded animate-pulse"></div>
+    </CardHeader>
+    <CardContent className="space-y-6">
+      <div className="space-y-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="flex items-start gap-3">
+            <div className="p-2 bg-gray-200 rounded-lg">
+              <div className="h-5 w-5 bg-gray-300 rounded"></div>
+            </div>
+            <div className="flex-1">
+              <div className="h-4 w-20 bg-gray-300 rounded animate-pulse mb-1"></div>
+              <div className="h-4 w-48 bg-gray-300 rounded animate-pulse"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="pt-6 border-t">
+        <div className="h-5 w-28 bg-gray-300 rounded animate-pulse mb-3"></div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="h-10 bg-gray-300 rounded animate-pulse"></div>
+          <div className="h-10 bg-gray-300 rounded animate-pulse"></div>
+        </div>
+      </div>
+
+      <div className="p-4 bg-gray-50 rounded-lg">
+        <div className="flex items-start gap-2">
+          <div className="h-5 w-5 bg-gray-300 rounded mt-0.5"></div>
+          <div>
+            <div className="h-4 w-24 bg-gray-300 rounded animate-pulse mb-1"></div>
+            <div className="space-y-1">
+              <div className="h-3 w-48 bg-gray-300 rounded animate-pulse"></div>
+              <div className="h-3 w-52 bg-gray-300 rounded animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const MyLawyersPageSkeleton = () => (
+  <div className="min-h-screen bg-gray-50 p-6">
+    <div className="max-w-7xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="h-9 w-48 bg-gray-200 rounded animate-pulse mb-2"></div>
+          <div className="h-5 w-64 bg-gray-200 rounded animate-pulse"></div>
+        </div>
+        <div className="h-10 w-32 bg-gray-200 rounded animate-pulse"></div>
+      </div>
+
+      <div className="relative">
+        <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1">
+          <LawyersListSkeleton />
+        </div>
+        <div className="lg:col-span-2">
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+            <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+            <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+          </div>
+          <LawyerDetailSkeleton />
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 // Helper to normalize case status
 const normalizeStatus = (status) => {
   if (!status) return 'active';
@@ -188,15 +384,9 @@ export default function MyLawyersPage() {
     lawyer.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Show skeleton while loading
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your lawyers...</p>
-        </div>
-      </div>
-    );
+    return <MyLawyersPageSkeleton />;
   }
 
   if (lawyers.length === 0) {
