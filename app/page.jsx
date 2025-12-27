@@ -224,7 +224,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Pricing Section */}
+        {/* Pricing Section
         <section id="pricing" className="w-full py-24 bg-white">
           <div className="container px-4 md:px-8 max-w-7xl mx-auto">
             <div className="text-center space-y-4 mb-12">
@@ -322,7 +322,7 @@ export default function Home() {
               ))}
             </div>
           </div>
-        </section>
+        </section> */}
 
         {/* CTA Section */}
         <section className="w-full py-24 bg-gray-900 text-white">

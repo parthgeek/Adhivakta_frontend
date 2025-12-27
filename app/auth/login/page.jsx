@@ -59,20 +59,7 @@ export default function LoginPage() {
                 Join thousands of legal professionals who trust Adhivakta to manage their cases, 
                 documents, and client relationships efficiently.
               </p>
-            </div>
-            <div className="grid grid-cols-3 gap-4 pt-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary">5000+</div>
-                <div className="text-sm text-muted-foreground">Active Cases</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary">98%</div>
-                <div className="text-sm text-muted-foreground">Client Satisfaction</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary">24/7</div>
-                <div className="text-sm text-muted-foreground">Support Available</div>
-              </div>
+        
             </div>
           </div>
         </div>
