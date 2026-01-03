@@ -1,19 +1,19 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/context/auth-context';
-import { 
-  FileText, 
-  Users, 
-  Calendar, 
+import { useState, useEffect } from "react";
+import { useAuth } from "@/context/auth-context";
+import {
+  FileText,
+  Users,
+  Calendar,
   Clock,
   AlertTriangle,
   Plus,
   BarChart3,
-  CheckCircle
-} from 'lucide-react';
-import api from '@/services/api';
-import Link from 'next/link';
+  CheckCircle,
+} from "lucide-react";
+import api from "@/services/api";
+import Link from "next/link";
 
 // Skeleton Components for Dashboard
 const StatsCardSkeleton = () => (
@@ -79,7 +79,10 @@ const QuickActionsSkeleton = () => (
     <div className="h-6 w-32 bg-gray-200 rounded animate-pulse mb-4"></div>
     <div className="grid grid-cols-2 gap-3">
       {[...Array(4)].map((_, i) => (
-        <div key={i} className="h-12 bg-gray-100 rounded-lg animate-pulse"></div>
+        <div
+          key={i}
+          className="h-12 bg-gray-100 rounded-lg animate-pulse"
+        ></div>
       ))}
     </div>
   </div>
@@ -179,24 +182,38 @@ const CasesList = ({ cases = [] }) => {
     <div className="bg-white rounded-lg border p-6 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900">Recent Cases</h3>
-        <Link href="/dashboard/cases" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+        <Link
+          href="/dashboard/cases"
+          className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+        >
           View all
         </Link>
       </div>
       <div className="space-y-3">
         {cases.slice(0, 5).map((caseItem, index) => (
-          <Link key={index} href={`/dashboard/cases/${caseItem._id || caseItem.id}`}>
+          <Link
+            key={index}
+            href={`/dashboard/cases/${caseItem._id || caseItem.id}`}
+          >
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
               <div>
-                <p className="font-medium text-gray-900">{caseItem.title || caseItem.caseNumber}</p>
-                <p className="text-sm text-gray-600">{caseItem.caseNumber || caseItem.number}</p>
+                <p className="font-medium text-gray-900">
+                  {caseItem.title || caseItem.caseNumber}
+                </p>
+                <p className="text-sm text-gray-600">
+                  {caseItem.caseNumber || caseItem.number}
+                </p>
               </div>
-              <span className={`px-2 py-1 text-xs rounded-full ${
-                caseItem.status === 'active' ? 'bg-green-100 text-green-800' : 
-                caseItem.status === 'closed' ? 'bg-gray-100 text-gray-800' : 
-                'bg-blue-100 text-blue-800'
-              }`}>
-                {caseItem.status || 'Active'}
+              <span
+                className={`px-2 py-1 text-xs rounded-full ${
+                  caseItem.status === "active"
+                    ? "bg-green-100 text-green-800"
+                    : caseItem.status === "closed"
+                    ? "bg-gray-100 text-gray-800"
+                    : "bg-blue-100 text-blue-800"
+                }`}
+              >
+                {caseItem.status || "Active"}
               </span>
             </div>
           </Link>
@@ -217,22 +234,34 @@ const UpcomingHearings = ({ events = [] }) => {
   return (
     <div className="bg-white rounded-lg border p-6 shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Upcoming Hearings</h3>
-        <Link href="/dashboard/calendar" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+        <h3 className="text-lg font-semibold text-gray-900">
+          Upcoming Hearings
+        </h3>
+        <Link
+          href="/dashboard/calendar"
+          className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+        >
           View all
         </Link>
       </div>
       <div className="space-y-3">
         {events.slice(0, 5).map((event, index) => (
-          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+          <div
+            key={index}
+            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+          >
             <div>
               <p className="font-medium text-gray-900">{event.title}</p>
               <p className="text-sm text-gray-600">
-                {new Date(event.start).toLocaleDateString()} at {new Date(event.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {new Date(event.start).toLocaleDateString()} at{" "}
+                {new Date(event.start).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </p>
             </div>
             <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
-              {event.type || 'Hearing'}
+              {event.type || "Hearing"}
             </span>
           </div>
         ))}
@@ -251,7 +280,9 @@ const UpcomingHearings = ({ events = [] }) => {
 const QuickActions = () => {
   return (
     <div className="bg-white rounded-lg border p-6 shadow-sm">
-      <h3 className="text-lg font-semibold mb-4 text-gray-900">Quick Actions</h3>
+      <h3 className="text-lg font-semibold mb-4 text-gray-900">
+        Quick Actions
+      </h3>
       <div className="grid grid-cols-2 gap-3">
         <Link href="/dashboard/cases/new">
           <button className="flex items-center justify-center p-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors w-full">
@@ -296,7 +327,7 @@ const NewDashboard = () => {
       upcomingHearings: 0,
       documents: 0,
       activeClients: 0,
-    }
+    },
   });
   const [loading, setLoading] = useState(true);
 
@@ -304,18 +335,18 @@ const NewDashboard = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        
+
         const casesResponse = await api.cases.getAll();
         const cases = Array.isArray(casesResponse) ? casesResponse : [];
-        
+
         const eventsResponse = await api.events.getAll();
         const events = Array.isArray(eventsResponse) ? eventsResponse : [];
-        
+
         const summaryResponse = await api.dashboard.getSummary();
         const stats = summaryResponse || {
           totalCases: cases.length,
-          activeCases: cases.filter(c => c.status === 'active').length,
-          closedCases: cases.filter(c => c.status === 'closed').length,
+          activeCases: cases.filter((c) => c.status === "active").length,
+          closedCases: cases.filter((c) => c.status === "closed").length,
           urgentCases: 0,
           upcomingHearings: events.length,
           documents: 0,
@@ -324,7 +355,7 @@ const NewDashboard = () => {
 
         setDashboardData({ cases, events, stats });
       } catch (error) {
-        console.error('Error fetching dashboard data:', error);
+        console.error("Error fetching dashboard data:", error);
         setDashboardData({
           cases: [],
           events: [],
@@ -336,7 +367,7 @@ const NewDashboard = () => {
             upcomingHearings: 0,
             documents: 0,
             activeClients: 0,
-          }
+          },
         });
       } finally {
         setLoading(false);
@@ -357,7 +388,8 @@ const NewDashboard = () => {
         <div className="space-y-2">
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-gray-600">
-            Welcome back, {user?.name || 'User'}. Here's your legal practice overview.
+            Welcome back, {user?.name || "User"}. Here's your legal practice
+            overview.
           </p>
         </div>
 
@@ -411,18 +443,26 @@ const NewDashboard = () => {
               </h3>
               <div className="space-y-3 text-sm">
                 <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="font-medium text-red-800">Document deadline approaching</p>
-                  <p className="text-red-600">OS/123/2024 - Response due in 2 days</p>
+                  <p className="font-medium text-red-800">
+                    Document deadline approaching
+                  </p>
+                  <p className="text-red-600">
+                    OS/123/2024 - Response due in 2 days
+                  </p>
                 </div>
                 <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="font-medium text-yellow-800">Fee payment pending</p>
-                  <p className="text-yellow-600">3 clients have pending payments</p>
+                  <p className="font-medium text-yellow-800">
+                    Fee payment pending
+                  </p>
+                  <p className="text-yellow-600">
+                    3 clients have pending payments
+                  </p>
                 </div>
               </div>
             </div>
 
             <QuickActions />
-            
+
             {/* Recent Activity */}
             <div className="bg-white rounded-lg border p-6 shadow-sm">
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">

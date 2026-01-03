@@ -87,6 +87,22 @@ const EmptyChatSkeleton = () => (
   </div>
 );
 
+const getRelativeTime = (date) => {
+  const now = new Date();
+  const messageDate = new Date(date);
+  const diffInSeconds = Math.floor((now - messageDate) / 1000);
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  const diffInDays = Math.floor(diffInHours / 24);
+
+  if (diffInSeconds < 60) return "Just now";
+  if (diffInMinutes < 60) return `${diffInMinutes} min ago`;
+  if (diffInHours < 24) return `${diffInHours}h ago`;
+  if (diffInDays === 1) return "Yesterday";
+  if (diffInDays < 7) return `${diffInDays}d ago`;
+
+  return messageDate.toLocaleDateString([], { month: "short", day: "numeric" });
+};
 export default function MessagesPage() {
   const router = useRouter();
   const [socket, setSocket] = useState(null);
@@ -104,7 +120,7 @@ export default function MessagesPage() {
   const activeGroupRef = useRef(activeGroup);
   const [unreadCounts, setUnreadCounts] = useState({});
   const socketRef = useRef(null);
-  
+
   // New state for skeleton loading
   const [groupsLoading, setGroupsLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -155,10 +171,7 @@ export default function MessagesPage() {
     const loadInitialData = async () => {
       try {
         setGroupsLoading(true);
-        await Promise.all([
-          loadNotifications(),
-          loadGroups()
-        ]);
+        await Promise.all([loadNotifications(), loadGroups()]);
       } catch (error) {
         console.error("Error loading initial data:", error);
       } finally {
@@ -218,20 +231,43 @@ export default function MessagesPage() {
     socketInstance.on("message", (message) => {
       console.log("💬 New message received:", message);
 
-      if (String(message.group) === String(activeGroupRef.current)) {
-        console.log("✅ Message matches active group, adding to UI");
+      const userDataStr = localStorage.getItem("user");
+      const currentUser = userDataStr ? JSON.parse(userDataStr) : {};
+
+      // Convert all IDs to strings for comparison
+      const currentUserId = String(currentUser.id);
+      const messageSenderId = String(message.sender?._id || message.sender);
+      const messageGroupId = String(message.group);
+      const currentActiveGroupId = String(activeGroupRef.current);
+
+      const isMyMessage = messageSenderId === currentUserId;
+      const isActiveGroup = messageGroupId === currentActiveGroupId;
+
+      console.log("🔍 Current User:", currentUserId);
+      console.log("🔍 Message Sender:", messageSenderId);
+      console.log("🔍 Is My Message:", isMyMessage);
+      console.log("🔍 Is Active Group:", isActiveGroup);
+
+      // Add to UI if it's the active group
+      if (isActiveGroup) {
+        console.log("✅ Adding to active chat");
         setMessages((prev) => [...prev, message]);
-      } else {
-        console.log("⚠️ Message doesn't match active group, ignoring");
+      }
+      // Increment unread ONLY if: not active group AND not my message
+      else if (!isMyMessage) {
+        console.log("📬 Incrementing unread for group:", messageGroupId);
         setUnreadCounts((prev) => ({
           ...prev,
-          [message.group]: (prev[message.group] || 0) + 1,
+          [messageGroupId]: (prev[messageGroupId] || 0) + 1,
         }));
+      } else {
+        console.log("⏭️ Skipping - my message in different group");
       }
 
+      // Update group's last message
       setGroups((prev) =>
         prev.map((g) =>
-          g._id === message.group
+          String(g._id) === messageGroupId
             ? { ...g, lastMessage: message.text, updatedAt: message.createdAt }
             : g
         )
@@ -477,6 +513,10 @@ export default function MessagesPage() {
                   <p className="text-sm text-gray-600">
                     {groups.length} group(s)
                   </p>
+                  {/* DEBUG - Remove after testing */}
+                  <div className="text-xs text-red-600 mt-2 font-mono">
+                    Unread: {JSON.stringify(unreadCounts)}
+                  </div>
                 </div>
 
                 <div className="overflow-y-auto h-full">
@@ -498,16 +538,35 @@ export default function MessagesPage() {
                         <h3 className="font-semibold text-gray-900">
                           {group.name}
                         </h3>
-                        <p className="text-sm text-gray-600 truncate mt-1">
+                        <p
+                          className={`text-sm truncate mt-1 ${
+                            unreadCounts[group._id] > 0
+                              ? "font-black text-gray-900"
+                              : "text-gray-600"
+                          }`}
+                        >
                           {group.lastMessage || "No messages yet"}
                         </p>
                         <div className="flex justify-between items-center mt-2">
                           <span className="text-xs text-gray-500">
                             {group.members?.length || 0} members
                           </span>
-                          <span className="text-xs text-gray-400">
-                            {new Date(group.updatedAt).toLocaleDateString()}
-                          </span>
+                          <div className="flex items-center space-x-2">
+                            {unreadCounts[group._id] > 0 && (
+                              <span className="bg-red-600 text-white text-xs font-bold rounded-full min-w-[22px] h-5 flex items-center justify-center px-2">
+                                {unreadCounts[group._id]}
+                              </span>
+                            )}
+                            <span
+                              className={`text-xs ${
+                                unreadCounts[group._id]
+                                  ? "font-semibold text-blue-600"
+                                  : "text-gray-400"
+                              }`}
+                            >
+                              {getRelativeTime(group.updatedAt)}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     ))
@@ -552,43 +611,78 @@ export default function MessagesPage() {
                       No messages yet. Start the conversation!
                     </div>
                   ) : (
-                    messages.map((message) => (
-                      <div key={message._id} className="mb-4">
-                        <div className="flex items-start space-x-3">
-                          <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
-                            {message.sender?.name?.charAt(0)?.toUpperCase() ||
-                              "U"}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-baseline space-x-2">
-                              <span className="font-semibold text-gray-900">
-                                {message.sender?.name || "Unknown User"}
-                              </span>
-                              <span className="text-xs text-gray-500">
-                                {new Date(
-                                  message.createdAt
-                                ).toLocaleTimeString([], {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </span>
+                    messages.map((message) => {
+                      const currentUser = JSON.parse(
+                        localStorage.getItem("user") || "{}"
+                      );
+                      const isCurrentUser =
+                        message.sender?._id === currentUser.id ||
+                        message.sender === currentUser.id;
+
+                      return (
+                        <div
+                          key={message._id}
+                          className={`mb-4 flex ${
+                            isCurrentUser ? "justify-end" : "justify-start"
+                          }`}
+                        >
+                          <div
+                            className={`flex items-start space-x-3 max-w-[70%] ${
+                              isCurrentUser
+                                ? "flex-row-reverse space-x-reverse"
+                                : ""
+                            }`}
+                          >
+                            <div
+                              className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0 ${
+                                isCurrentUser ? "bg-blue-500" : "bg-gray-500"
+                              }`}
+                            >
+                              {message.sender?.name?.charAt(0)?.toUpperCase() ||
+                                "U"}
                             </div>
-                            <p className="text-gray-800 mt-1 whitespace-pre-wrap break-words">
-                              {message.text}
-                            </p>
+                            <div className="flex-1 min-w-0">
+                              <div
+                                className={`rounded-lg p-3 ${
+                                  isCurrentUser
+                                    ? "bg-blue-500 text-white"
+                                    : "bg-white border border-gray-200"
+                                }`}
+                              >
+                                {!isCurrentUser && (
+                                  <div className="font-semibold text-sm mb-1">
+                                    {message.sender?.name || "Unknown User"}
+                                  </div>
+                                )}
+                                <p className="whitespace-pre-wrap break-words">
+                                  {message.text}
+                                </p>
+                                <div
+                                  className={`text-xs mt-1 ${
+                                    isCurrentUser
+                                      ? "text-blue-100"
+                                      : "text-gray-500"
+                                  }`}
+                                >
+                                  {new Date(
+                                    message.createdAt
+                                  ).toLocaleTimeString([], {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                   <div ref={messagesEndRef} />
                 </div>
 
                 {/* Message Input */}
-                <form
-                  onSubmit={sendMessage}
-                  className="p-4 border-t bg-white"
-                >
+                <form onSubmit={sendMessage} className="p-4 border-t bg-white">
                   <div className="flex space-x-2">
                     <input
                       type="text"
@@ -612,12 +706,8 @@ export default function MessagesPage() {
               <div className="flex-1 flex items-center justify-center text-gray-500">
                 <div className="text-center">
                   <div className="text-6xl mb-4">💬</div>
-                  <h3 className="text-lg font-semibold mb-2">
-                    Select a group
-                  </h3>
-                  <p>
-                    Choose a case group from the sidebar to start chatting
-                  </p>
+                  <h3 className="text-lg font-semibold mb-2">Select a group</h3>
+                  <p>Choose a case group from the sidebar to start chatting</p>
                 </div>
               </div>
             )}

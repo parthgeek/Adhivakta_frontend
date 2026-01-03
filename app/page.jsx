@@ -1,8 +1,18 @@
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import Image from "next/image"
-import { ArrowRight, CheckCircle, Shield, Scale, BookOpen, Gavel, Users, ChevronDown, Star } from "lucide-react"
-import { LogoAvatar } from "@/components/ui/avatar"
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import Image from "next/image";
+import {
+  ArrowRight,
+  CheckCircle,
+  Shield,
+  Scale,
+  BookOpen,
+  Gavel,
+  Users,
+  ChevronDown,
+  Star,
+} from "lucide-react";
+import { LogoAvatar } from "@/components/ui/avatar";
 
 export default function Home() {
   return (
@@ -10,7 +20,13 @@ export default function Home() {
       {/* Header */}
       <header className="sticky top-0 z-50 flex h-24 items-center border-b bg-transparent backdrop-blur-sm px-4 md:px-8 shadow-none">
         <div className="flex items-center gap-3">
-          <Image src="/adhi_logo_main.png" alt="Adhivakta Logo" width={96} height={96} style={{objectFit: 'contain'}} />
+          <Image
+            src="/adhi_logo_main.png"
+            alt="Adhivakta Logo"
+            width={96}
+            height={96}
+            style={{ objectFit: "contain" }}
+          />
         </div>
         <nav className="ml-auto flex items-center gap-6">
           {[
@@ -19,21 +35,29 @@ export default function Home() {
             { href: "#pricing", label: "Pricing" },
           ].map((link) => (
             <div key={link.href}>
-              <Link href={link.href} className="text-sm font-medium text-gray-700 hover:text-black transition-colors bg-white/80 hover:bg-white rounded-lg px-4 py-2 shadow-sm">
+              <Link
+                href={link.href}
+                className="text-sm font-medium text-gray-700 hover:text-black transition-colors bg-white/80 hover:bg-white rounded-lg px-4 py-2 shadow-sm"
+              >
                 {link.label}
               </Link>
             </div>
           ))}
           <div>
             <Link href="/auth/login">
-              <Button variant="ghost" className="text-gray-700 hover:text-black bg-white/80 hover:bg-white rounded-lg px-4 py-2 shadow-sm">
+              <Button
+                variant="ghost"
+                className="text-gray-700 hover:text-black bg-white/80 hover:bg-white rounded-lg px-4 py-2 shadow-sm"
+              >
                 Login
               </Button>
             </Link>
           </div>
           <div>
             <Link href="/auth/register">
-              <Button className="bg-black hover:bg-gray-800 text-white px-6">Get Started</Button>
+              <Button className="bg-black hover:bg-gray-800 text-white px-6">
+                Get Started
+              </Button>
             </Link>
           </div>
         </nav>
@@ -61,12 +85,16 @@ export default function Home() {
                   with Precision
                 </h1>
                 <p className="text-lg md:text-xl text-gray-300 max-w-xl mx-auto animate-fade-in delay-100">
-                  Adhivakta offers a sophisticated platform to manage cases, streamline documents, and enhance client
-                  communication with unmatched efficiency.
+                  Adhivakta offers a sophisticated platform to manage cases,
+                  streamline documents, and enhance client communication with
+                  unmatched efficiency.
                 </p>
                 <div className="flex gap-4 justify-center animate-fade-in delay-200">
                   <Link href="/auth/register">
-                    <Button size="lg" className="bg-black hover:bg-gray-800 text-white px-8 group">
+                    <Button
+                      size="lg"
+                      className="bg-black hover:bg-gray-800 text-white px-8 group"
+                    >
                       Start Free Trial
                       <span className="ml-2">
                         <ArrowRight className="h-5 w-5" />
@@ -95,42 +123,60 @@ export default function Home() {
         </section>
 
         {/* Features Section */}
-        <section id="features" className="w-full py-24 bg-white animate-fade-in-up delay-200">
+        <section
+          id="features"
+          className="w-full py-24 bg-white animate-fade-in-up delay-200"
+        >
           <div className="container px-4 md:px-8 max-w-7xl mx-auto">
             <div className="text-center space-y-4 mb-12">
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">
                 Core Features for Modern Legal Practice
               </h2>
               <p className="text-lg text-gray-700 max-w-2xl mx-auto">
-                Adhivakta is designed for both Lawyers and Clients, providing seamless case management, document handling, and secure collaboration.
+                Adhivakta is designed for both Lawyers and Clients, providing
+                seamless case management, document handling, and secure
+                collaboration.
               </p>
             </div>
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto">
-              {[{
-                title: "User Roles: Lawyer & Client",
-                description: "Distinct dashboards and permissions for lawyers and clients, ensuring secure and relevant access for every user.",
-                icon: <Users className="h-8 w-8 text-primary" />,
-              }, {
-                title: "Comprehensive Case Management",
-                description: "Upload and manage cases with all details: court, parties, lawyers, clients, and more. Keep everything organized in one place.",
-                icon: <Gavel className="h-8 w-8 text-primary" />,
-              }, {
-                title: "Document Upload & Management",
-                description: "Attach, organize, and manage documents for each case. Secure storage and easy access for authorized users.",
-                icon: <BookOpen className="h-8 w-8 text-primary" />,
-              }, {
-                title: "Share Cases & Documents",
-                description: "Easily share case and document details with other users in the application, with full control over access.",
-                icon: <Scale className="h-8 w-8 text-primary" />,
-              }, {
-                title: "Event Alerts & Notifications",
-                description: "Get alerts for next hearings, deadlines, and custom events. Stay updated with in-app notifications, email, and (soon) WhatsApp.",
-                icon: <CheckCircle className="h-8 w-8 text-primary" />,
-              }, {
-                title: "Custom Events & Reminders",
-                description: "Set your own events and reminders for any case. Never miss an important date or deadline again.",
-                icon: <Shield className="h-8 w-8 text-primary" />,
-              }].map((feature, index) => (
+              {[
+                {
+                  title: "User Roles: Lawyer & Client",
+                  description:
+                    "Distinct dashboards and permissions for lawyers and clients, ensuring secure and relevant access for every user.",
+                  icon: <Users className="h-8 w-8 text-primary" />,
+                },
+                {
+                  title: "Comprehensive Case Management",
+                  description:
+                    "Upload and manage cases with all details: court, parties, lawyers, clients, and more. Keep everything organized in one place.",
+                  icon: <Gavel className="h-8 w-8 text-primary" />,
+                },
+                {
+                  title: "Document Upload & Management",
+                  description:
+                    "Attach, organize, and manage documents for each case. Secure storage and easy access for authorized users.",
+                  icon: <BookOpen className="h-8 w-8 text-primary" />,
+                },
+                {
+                  title: "Share Cases & Documents",
+                  description:
+                    "Easily share case and document details with other users in the application, with full control over access.",
+                  icon: <Scale className="h-8 w-8 text-primary" />,
+                },
+                {
+                  title: "Event Alerts & Notifications",
+                  description:
+                    "Get alerts for next hearings, deadlines, and custom events. Stay updated with in-app notifications, email, and (soon) WhatsApp.",
+                  icon: <CheckCircle className="h-8 w-8 text-primary" />,
+                },
+                {
+                  title: "Custom Events & Reminders",
+                  description:
+                    "Set your own events and reminders for any case. Never miss an important date or deadline again.",
+                  icon: <Shield className="h-8 w-8 text-primary" />,
+                },
+              ].map((feature, index) => (
                 <div
                   key={index}
                   className="relative bg-white rounded-2xl shadow-xl border border-gray-100 p-8 flex flex-col items-center text-center transition-transform duration-300 hover:-translate-y-2 hover:shadow-2xl group animate-fade-in-up"
@@ -139,8 +185,12 @@ export default function Home() {
                   <div className="mb-4 flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 animate-fade-in">
                     {feature.icon}
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2 animate-fade-in delay-100">{feature.title}</h3>
-                  <p className="text-gray-700 text-base animate-fade-in delay-200">{feature.description}</p>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2 animate-fade-in delay-100">
+                    {feature.title}
+                  </h3>
+                  <p className="text-gray-700 text-base animate-fade-in delay-200">
+                    {feature.description}
+                  </p>
                 </div>
               ))}
             </div>
@@ -151,9 +201,12 @@ export default function Home() {
         <section id="testimonials" className="w-full py-24 bg-gray-100">
           <div className="container px-4 md:px-8 max-w-7xl mx-auto">
             <div className="text-center space-y-4 mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">Voices of Trust</h2>
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">
+                Voices of Trust
+              </h2>
               <p className="text-lg text-gray-700 max-w-2xl mx-auto">
-                Discover how Adhivakta has transformed the practices of legal professionals across the globe.
+                Discover how Adhivakta has transformed the practices of legal
+                professionals across the globe.
               </p>
             </div>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto">
@@ -175,7 +228,8 @@ export default function Home() {
                   image: "/images/bg_2.jpg",
                 },
                 {
-                  quote: "As a growing firm, Adhivakta's scalable solutions have been a perfect fit for our needs.",
+                  quote:
+                    "As a growing firm, Adhivakta's scalable solutions have been a perfect fit for our needs.",
                   author: "Vikram Singh",
                   title: "Managing Partner, Singh & Associates",
                   rating: 4,
@@ -198,10 +252,15 @@ export default function Home() {
                   <div className="relative z-10 space-y-4">
                     <div className="flex justify-center mb-2">
                       {[...Array(testimonial.rating)].map((_, i) => (
-                        <Star key={i} className="h-5 w-5 fill-gray-900 text-gray-900" />
+                        <Star
+                          key={i}
+                          className="h-5 w-5 fill-gray-900 text-gray-900"
+                        />
                       ))}
                     </div>
-                    <p className="text-gray-700 italic text-center">"{testimonial.quote}"</p>
+                    <p className="text-gray-700 italic text-center">
+                      "{testimonial.quote}"
+                    </p>
                     <div className="flex items-center justify-center gap-3 pt-4 border-t border-gray-200">
                       <div className="relative h-12 w-12 rounded-full overflow-hidden">
                         <Image
@@ -213,8 +272,12 @@ export default function Home() {
                         />
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">{testimonial.author}</p>
-                        <p className="text-sm text-gray-500">{testimonial.title}</p>
+                        <p className="font-medium text-gray-900">
+                          {testimonial.author}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {testimonial.title}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -327,25 +390,34 @@ export default function Home() {
         {/* CTA Section */}
         <section className="w-full py-24 bg-gray-900 text-white">
           <div className="container px-4 md:px-8 max-w-7xl mx-auto">
-            <div
-              className="text-center space-y-6"
-            >
-              <h2 className="text-3xl md:text-4xl font-bold tracking-tight">Redefine Your Legal Workflow</h2>
+            <div className="text-center space-y-6">
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
+                Redefine Your Legal Workflow
+              </h2>
               <p className="text-lg max-w-2xl mx-auto">
-                Join a global community of legal professionals who rely on Adhivakta to manage cases, streamline
-                operations, and deliver exceptional client experiences.
+                Join a global community of legal professionals who rely on
+                Adhivakta to manage cases, streamline operations, and deliver
+                exceptional client experiences.
               </p>
               <p className="text-sm text-gray-300">
-                Trusted by over 5,000 firms worldwide. Start your journey today with a risk-free trial.
+                Trusted by over 5,000 firms worldwide. Start your journey today
+                with a risk-free trial.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/auth/register">
-                  <Button size="lg" className="bg-white text-gray-900 hover:bg-gray-200 px-8">
+                  <Button
+                    size="lg"
+                    className="bg-white text-gray-900 hover:bg-gray-200 px-8"
+                  >
                     Start Free Trial
                   </Button>
                 </Link>
                 <Link href="#features">
-                  <Button size="lg" variant="outline" className="bg-black border-white text-white hover:bg-white/20 px-8">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="bg-black border-white text-white hover:bg-white/20 px-8"
+                  >
                     Schedule a Demo
                   </Button>
                 </Link>
@@ -359,18 +431,30 @@ export default function Home() {
       <footer className="border-t py-8 bg-white">
         <div className="container px-4 md:px-8 max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Image src="/adhi_logo_main.png" alt="Adhivakta Logo" width={80} height={80} style={{objectFit: 'contain'}} />
+            <Image
+              src="/adhi_logo_main.png"
+              alt="Adhivakta Logo"
+              width={80}
+              height={80}
+              style={{ objectFit: "contain" }}
+            />
           </div>
           <div className="flex gap-6">
-            {['Terms', 'Privacy', 'Contact', 'Support'].map((item) => (
-              <Link key={item} href="#" className="text-sm text-gray-700 hover:text-gray-900 transition-colors">
+            {["Terms", "Privacy", "Contact", "Support"].map((item) => (
+              <Link
+                key={item}
+                href="#"
+                className="text-sm text-gray-700 hover:text-gray-900 transition-colors"
+              >
                 {item}
               </Link>
             ))}
           </div>
-          <p className="text-sm text-gray-700">© 2025 Adhivakta Legal Solutions. All rights reserved.</p>
+          <p className="text-sm text-gray-700">
+            © 2025 Adhivakta Legal Solutions. All rights reserved.
+          </p>
         </div>
       </footer>
     </div>
-  )
+  );
 }
