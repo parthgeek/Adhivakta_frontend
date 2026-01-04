@@ -392,37 +392,47 @@ export default function NewCasePage() {
         await uploadDocuments(caseId);
       }
 
-      // If this is a partial save, update the local state with the saved data
-      if (section !== "all") {
-        setCaseData((prev) => ({
-          ...prev,
-          ...(response.data || response),
-          _id: response.data?._id || response._id || prev._id,
-        }));
+     if (section !== "all") {
+  setCaseData((prev) => ({
+    ...prev,
+    ...(response.data || response),
+    _id: response.data?._id || response._id || prev._id,
+  }));
 
-        toast({
-          title: "Success",
-          description: `Case ${section} saved successfully`,
-        });
-      } else {
-        // If this is a final submission, redirect to the case details page
-        toast({
-          title: "Success",
-          description: "Case created successfully",
-        });
+  toast({
+    title: "Success",
+    description: `Case ${section} saved successfully`,
+  });
+} else {
+  // Final submission - show success message first
+  toast({
+    title: "Success",
+    description: "Case created successfully. Redirecting...",
+  });
 
-        // Redirect to the newly created case details page
-        const caseId =
-          response?.data?.data?.case?._id ||
-          response?.data?.data?._id ||
-          response?.data?.case?._id ||
-          response?.data?._id ||
-          response?._id;
-        if (caseId) router.push(`/dashboard/cases/${caseId}`);
-        else router.push("/dashboard/cases");
-      }
+  // Extract case ID with fallback
+  const createdCaseId = 
+    response?.data?.data?.case?._id ||
+    response?.data?.data?._id ||
+    response?.data?.case?._id ||
+    response?.data?._id ||
+    response?.case?._id ||
+    response?._id;
 
-      return response;
+  // Add a small delay to ensure toast is visible
+  setTimeout(() => {
+    if (createdCaseId) {
+      // Redirect to the specific case details page
+      router.push(`/dashboard/cases/${createdCaseId}`);
+    } else {
+      // Fallback: redirect to cases list and force refresh
+      router.push("/dashboard/cases");
+      router.refresh(); // Force refresh the page
+    }
+  }, 500);
+}
+
+return response;
     } catch (error) {
       console.error("Error saving case:", error);
       toast({

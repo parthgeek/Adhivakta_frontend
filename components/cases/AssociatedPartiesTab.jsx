@@ -51,7 +51,7 @@ export default function AssociatedPartiesTab({
         <Button variant="outline" onClick={() => router.push("/dashboard/cases")}>
           Cancel
         </Button>
-        <Button type="button" onClick={(e) => handleSubmit(e, "details")} disabled={isSubmitting}>
+        <Button type="button" onClick={(e) => handleSubmit(e, "all")} disabled={isSubmitting}>
           {isSubmitting ? "Saving..." : "Save Case"}
         </Button>
       </CardFooter>
