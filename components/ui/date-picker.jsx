@@ -30,6 +30,11 @@ export function DatePicker({ selected, onSelect, ...props }) {
             setOpen(false)
           }}
           className="rounded-lg border"
+          classNames={{
+            day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md",
+            day_today: "bg-accent text-accent-foreground font-semibold",
+            day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 hover:bg-accent hover:text-accent-foreground rounded-md",
+          }}
         />
       </PopoverContent>
     </Popover>
