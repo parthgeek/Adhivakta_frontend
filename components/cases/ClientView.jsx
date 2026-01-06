@@ -12,7 +12,7 @@ export default function ClientView({ caseData, setCaseData }) {
       <CardHeader>
         <CardTitle>Legal Team</CardTitle>
         <CardDescription>
-          Add your lead and associate advocates for this case (optional)
+          Add your lead and associate advocates for this case
         </CardDescription>
       </CardHeader>
       <CardContent>
