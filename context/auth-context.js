@@ -539,17 +539,62 @@ const register = useCallback(async (userData) => {
     }
   }, []);
 
-  // Password reset
-  const resetPassword = useCallback(async (email) => {
+ 
+
+// Password reset - Check backend first, then use Firebase
+const resetPassword = useCallback(async (email) => {
+  try {
+    console.log("Checking if email exists in backend:", email);
+    
+    // First, check with backend to verify email exists
     try {
-      const auth = getAuth()
-      await sendPasswordResetEmail(auth, email)
-      return true
-    } catch (error) {
-      console.error("Password reset error:", error)
-      throw error
+      const response = await api.auth.forgotPassword({ email });
+      
+      // If backend says success, email exists or we should proceed
+      if (response.success) {
+        console.log("Email verified or proceeding with reset");
+        
+        // Now send Firebase reset email
+        const auth = getAuth();
+        await sendPasswordResetEmail(auth, email);
+        
+        console.log("Password reset email sent via Firebase");
+        return true;
+      }
+    } catch (backendError) {
+      console.log("Backend check error:", backendError);
+      // If backend fails, fall back to Firebase directly
+      // But with error handling
     }
-  }, [])
+    
+    // If backend check failed or returned false, try Firebase directly
+    // (for backward compatibility during transition)
+    const auth = getAuth();
+    await sendPasswordResetEmail(auth, email);
+    return true;
+    
+  } catch (error) {
+    console.error("Password reset error:", error.code, error.message);
+    
+    // Map Firebase errors to user-friendly messages
+    let userMessage = error.message;
+    
+    if (error.code === "auth/user-not-found") {
+      userMessage = "No account found with this email address.";
+    } else if (error.code === "auth/invalid-email") {
+      userMessage = "Please enter a valid email address.";
+    } else if (error.code === "auth/too-many-requests") {
+      userMessage = "Too many attempts. Please try again later.";
+    } else if (error.code === "auth/network-request-failed") {
+      userMessage = "Network error. Please check your connection and try again.";
+    }
+    
+    throw {
+      code: error.code || "auth/unknown-error",
+      message: userMessage
+    };
+  }
+}, []);
 
   // Change password
   const changePassword = useCallback(async (currentPassword, newPassword) => {
