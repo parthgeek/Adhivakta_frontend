@@ -5,18 +5,6 @@ import { useRealTimeCounts } from "@/context/realtime-counts-context";
 /**
  * Safe helper: normalize a raw API URL so it ALWAYS ends with exactly one "/api"
  */
-const normalizeApiBase = (
-  raw = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5050"
-) => {
-  let cleaned = String(raw).replace(/\/+$/, "");
-
-  // If it already ends with /api, don't add it again
-  if (cleaned.endsWith("/api")) {
-    return cleaned;
-  }
-
-  return `${cleaned}/api`;
-};
 
 export const useNotifications = () => {
   const [notifications, setNotifications] = useState([]);
@@ -42,9 +30,8 @@ export const useNotifications = () => {
     window.addEventListener("app:notification", onNew);
     return () => window.removeEventListener("app:notification", onNew);
   }, []);
-
-  const RAW = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5050";
-  const API_BASE = normalizeApiBase(RAW);
+  const API_BASE =
+    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
   const url = (path) => {
     const cleanPath = `/${String(path || "").replace(/^\/+/, "")}`;
