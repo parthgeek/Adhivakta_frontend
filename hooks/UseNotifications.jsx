@@ -1,30 +1,40 @@
 // hooks/UseNotifications.jsx
-import { useState, useEffect, useCallback } from 'react';
-import { useRealTimeCounts } from '@/context/realtime-counts-context';
+import { useState, useEffect, useCallback } from "react";
+import { useRealTimeCounts } from "@/context/realtime-counts-context";
 
 /**
  * Safe helper: normalize a raw API URL so it ALWAYS ends with exactly one "/api"
  */
-const normalizeApiBase = (raw = process.env.NEXT_PUBLIC_API_URL ||'http://localhost:5050') => {
-  const noTrailing = String(raw).replace(/\/+$/, '');
-  const noApi = noTrailing.replace(/\/api$/i, '');
-  return `${noApi}/api`;
+const normalizeApiBase = (
+  raw = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5050"
+) => {
+  let cleaned = String(raw).replace(/\/+$/, "");
+
+  // If it already ends with /api, don't add it again
+  if (cleaned.endsWith("/api")) {
+    return cleaned;
+  }
+
+  return `${cleaned}/api`;
 };
 
 export const useNotifications = () => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { markNotificationAsRead: socketMarkAsRead, markAllNotificationsAsRead: socketMarkAllAsRead } = useRealTimeCounts();
+  const {
+    markNotificationAsRead: socketMarkAsRead,
+    markAllNotificationsAsRead: socketMarkAllAsRead,
+  } = useRealTimeCounts();
 
   // Listen for new notifications from socket
   useEffect(() => {
     const onNew = (e) => {
       const payload = e?.detail;
       if (!payload) return;
-      setNotifications(prev => {
+      setNotifications((prev) => {
         // Avoid duplicates if already present
-        if (prev.some(n => n._id === payload._id)) return prev;
+        if (prev.some((n) => n._id === payload._id)) return prev;
         return [payload, ...prev];
       });
     };
@@ -33,25 +43,26 @@ export const useNotifications = () => {
     return () => window.removeEventListener("app:notification", onNew);
   }, []);
 
-  const RAW = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050';
+  const RAW = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5050";
   const API_BASE = normalizeApiBase(RAW);
 
   const url = (path) => {
-    const cleanPath = `/${String(path || '').replace(/^\/+/, '')}`;
+    const cleanPath = `/${String(path || "").replace(/^\/+/, "")}`;
     return `${API_BASE}${cleanPath}`;
   };
 
   const getAuthHeaders = () => {
-    const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
-    const headers = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const token =
+      localStorage.getItem("token") || localStorage.getItem("auth_token");
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
     return headers;
   };
 
   const fetchNotifications = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(url('notifications'), {
+      const res = await fetch(url("notifications"), {
         headers: getAuthHeaders(),
       });
 
@@ -61,91 +72,102 @@ export const useNotifications = () => {
         setError(null);
       } else {
         const text = await res.text();
-        throw new Error(text || 'Failed to fetch notifications');
+        throw new Error(text || "Failed to fetch notifications");
       }
     } catch (err) {
-      setError(err.message || 'Failed to fetch notifications');
-      console.error('Error fetching notifications:', err);
+      setError(err.message || "Failed to fetch notifications");
+      console.error("Error fetching notifications:", err);
     } finally {
       setLoading(false);
     }
   }, [API_BASE]);
 
-  const markAsRead = useCallback(async (notificationId) => {
-    try {
-      const res = await fetch(url(`notifications/${notificationId}/read`), {
-        method: 'PATCH',
-        headers: getAuthHeaders(),
-      });
+  const markAsRead = useCallback(
+    async (notificationId) => {
+      try {
+        const res = await fetch(url(`notifications/${notificationId}/read`), {
+          method: "PATCH",
+          headers: getAuthHeaders(),
+        });
 
-      if (res.ok) {
-        setNotifications(prev =>
-          prev.map(notif =>
-            notif._id === notificationId ? { ...notif, read: true } : notif
-          )
-        );
-        
-        // Update real-time count via socket
-        socketMarkAsRead(notificationId);
-        
-        return { success: true };
+        if (res.ok) {
+          setNotifications((prev) =>
+            prev.map((notif) =>
+              notif._id === notificationId ? { ...notif, read: true } : notif
+            )
+          );
+
+          // Update real-time count via socket
+          socketMarkAsRead(notificationId);
+
+          return { success: true };
+        }
+        throw new Error("Failed to mark as read");
+      } catch (err) {
+        console.error("Error marking notification as read:", err);
+        return { success: false, error: err.message };
       }
-      throw new Error('Failed to mark as read');
-    } catch (err) {
-      console.error('Error marking notification as read:', err);
-      return { success: false, error: err.message };
-    }
-  }, [API_BASE, socketMarkAsRead]);
+    },
+    [API_BASE, socketMarkAsRead]
+  );
 
   const markAllAsRead = useCallback(async () => {
-    const unreadNotifications = notifications.filter(n => !n.read);
+    const unreadNotifications = notifications.filter((n) => !n.read);
     const results = await Promise.all(
-      unreadNotifications.map(n => markAsRead(n._id))
+      unreadNotifications.map((n) => markAsRead(n._id))
     );
-    
+
     // Update all via socket
     socketMarkAllAsRead();
-    
-    return results.every(r => r.success);
+
+    return results.every((r) => r.success);
   }, [notifications, markAsRead, socketMarkAllAsRead]);
 
-  const deleteNotification = useCallback(async (notificationId) => {
-    try {
-      const res = await fetch(url(`notifications/${notificationId}`), {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      });
+  const deleteNotification = useCallback(
+    async (notificationId) => {
+      try {
+        const res = await fetch(url(`notifications/${notificationId}`), {
+          method: "DELETE",
+          headers: getAuthHeaders(),
+        });
 
-      if (res.ok) {
-        setNotifications(prev => prev.filter(notif => notif._id !== notificationId));
-        
-        // The socket will automatically update counts when notification is deleted
-        // Request count update to sync
-        window.dispatchEvent(new CustomEvent('request:count_update'));
-        
-        return { success: true };
+        if (res.ok) {
+          setNotifications((prev) =>
+            prev.filter((notif) => notif._id !== notificationId)
+          );
+
+          // The socket will automatically update counts when notification is deleted
+          // Request count update to sync
+          window.dispatchEvent(new CustomEvent("request:count_update"));
+
+          return { success: true };
+        }
+        throw new Error("Failed to delete notification");
+      } catch (err) {
+        console.error("Error deleting notification:", err);
+        return { success: false, error: err.message };
       }
-      throw new Error('Failed to delete notification');
-    } catch (err) {
-      console.error('Error deleting notification:', err);
-      return { success: false, error: err.message };
-    }
-  }, [API_BASE]);
+    },
+    [API_BASE]
+  );
 
   const clearAll = useCallback(async () => {
     const results = await Promise.all(
-      notifications.map(n => deleteNotification(n._id))
+      notifications.map((n) => deleteNotification(n._id))
     );
-    return results.every(r => r.success);
+    return results.every((r) => r.success);
   }, [notifications, deleteNotification]);
 
   const getUnreadCount = useCallback(() => {
-    return notifications.filter(n => !n.read).length;
+    return notifications.filter((n) => !n.read).length;
   }, [notifications]);
 
-  const getNotificationsByType = useCallback((type) => {
-    return notifications.filter(n => n.type === type);
-  }, [notifications]);
+  const getNotificationsByType = useCallback(
+    (type) => {
+      return notifications.filter((n) => n.type === type);
+    },
+    [notifications]
+  );
 
   useEffect(() => {
     fetchNotifications();
