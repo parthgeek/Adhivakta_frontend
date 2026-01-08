@@ -176,12 +176,18 @@ export default function Sidebar() {
       >
         <div className="flex h-14 items-center justify-between border-b px-4">
           {!collapsed && (
-            <Link href="/dashboard" className="flex items-center gap-2">
+            <Link href="/dashboard" className="flex items-center gap-6">
               <img
                 src="/adhi_logo_main.png"
                 alt="Adhivakta Logo"
                 className="h-12 w-12 object-contain"
               />
+              <span
+                className="text-xl font-light"
+                style={{ fontFamily: "Georgia, serif" }}
+              >
+                Adhivakta
+              </span>{" "}
             </Link>
           )}
           {collapsed && (
