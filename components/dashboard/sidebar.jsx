@@ -182,7 +182,6 @@ export default function Sidebar() {
                 alt="Adhivakta Logo"
                 className="h-12 w-12 object-contain"
               />
-              <span className="text-lg font-semibold">Adhivakta</span>
             </Link>
           )}
           {collapsed && (
