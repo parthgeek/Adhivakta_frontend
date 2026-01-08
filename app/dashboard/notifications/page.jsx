@@ -1,8 +1,23 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Bell, AlertCircle, CheckCircle, Clock, Info, Trash2, Check, X } from "lucide-react";
+import {
+  Bell,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  Info,
+  Trash2,
+  Check,
+  X,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { useNotifications } from "@/hooks/UseNotifications";
@@ -31,19 +46,19 @@ export default function NotificationsPageEnhanced() {
   const handleMarkAllAsRead = async () => {
     const result = await markAllAsRead();
     if (result) {
-      toast.success('All notifications marked as read');
+      toast.success("All notifications marked as read");
     } else {
-      toast.error('Failed to mark all as read');
+      toast.error("Failed to mark all as read");
     }
   };
 
   const handleClearAll = async () => {
-    if (window.confirm('Are you sure you want to delete all notifications?')) {
+    if (window.confirm("Are you sure you want to delete all notifications?")) {
       const result = await clearAll();
       if (result) {
-        toast.success('All notifications cleared');
+        toast.success("All notifications cleared");
       } else {
-        toast.error('Failed to clear notifications');
+        toast.error("Failed to clear notifications");
       }
     }
   };
@@ -52,23 +67,23 @@ export default function NotificationsPageEnhanced() {
     e.stopPropagation();
     const result = await deleteNotification(notificationId);
     if (result.success) {
-      toast.success('Notification deleted');
+      toast.success("Notification deleted");
     } else {
-      toast.error('Failed to delete notification');
+      toast.error("Failed to delete notification");
     }
   };
 
   const getIcon = (type) => {
     switch (type) {
-      case 'case_invitation':
+      case "case_invitation":
         return <Bell className="h-5 w-5 text-indigo-500" />;
-      case 'case':
+      case "case":
         return <Info className="h-5 w-5 text-indigo-500" />;
-      case 'event':
+      case "event":
         return <Clock className="h-5 w-5 text-amber-500" />;
-      case 'document':
+      case "document":
         return <AlertCircle className="h-5 w-5 text-violet-500" />;
-      case 'reminder':
+      case "reminder":
         return <Clock className="h-5 w-5 text-rose-500" />;
       default:
         return <Info className="h-5 w-5 text-slate-500" />;
@@ -83,7 +98,7 @@ export default function NotificationsPageEnhanced() {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return 'Just now';
+    if (diffMins < 1) return "Just now";
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
@@ -96,7 +111,9 @@ export default function NotificationsPageEnhanced() {
         <div className="max-w-4xl mx-auto">
           <div className="text-center py-20">
             <div className="animate-spin rounded-full h-10 w-10 border-2 border-indigo-500 border-t-transparent mx-auto"></div>
-            <p className="mt-4 text-slate-600 text-sm">Loading notifications...</p>
+            <p className="mt-4 text-slate-600 text-sm">
+              Loading notifications...
+            </p>
           </div>
         </div>
       </div>
@@ -109,11 +126,11 @@ export default function NotificationsPageEnhanced() {
         {/* Header */}
         <div className="flex items-start justify-between">
           <div className="space-y-1">
-            <h1 className="text-3xl font-semibold text-slate-900">Notifications</h1>
+            <h1 className="text-3xl font-semibold text-slate-900">
+              Notifications
+            </h1>
             <p className="text-slate-600 text-sm">
-              {unreadCount > 0
-                ? `${unreadCount} unread`
-                : "All caught up"}
+              {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
             </p>
           </div>
 
@@ -147,7 +164,9 @@ export default function NotificationsPageEnhanced() {
             <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Bell className="h-8 w-8 text-slate-400" />
             </div>
-            <h3 className="text-lg font-medium text-slate-900 mb-1">No notifications</h3>
+            <h3 className="text-lg font-medium text-slate-900 mb-1">
+              No notifications
+            </h3>
             <p className="text-slate-600 text-sm">You're all caught up!</p>
           </div>
         ) : (
@@ -157,21 +176,27 @@ export default function NotificationsPageEnhanced() {
                 key={notification._id}
                 className={`group flex items-start gap-4 p-4 rounded-xl border transition-all cursor-pointer ${
                   notification.read
-                    ? 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm'
-                    : 'bg-indigo-50/50 border-indigo-200/50 hover:border-indigo-300 hover:shadow-sm'
+                    ? "bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm"
+                    : "bg-indigo-50/50 border-indigo-200/50 hover:border-indigo-300 hover:shadow-sm"
                 }`}
                 onClick={() => handleNotificationClick(notification)}
               >
-                <div className={`mt-0.5 p-2 rounded-lg ${
-                  notification.read ? 'bg-slate-100' : 'bg-white'
-                }`}>
+                <div
+                  className={`mt-0.5 p-2 rounded-lg ${
+                    notification.read ? "bg-slate-100" : "bg-white"
+                  }`}
+                >
                   {getIcon(notification.type)}
                 </div>
-                
+
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm leading-relaxed ${
-                    notification.read ? 'text-slate-700' : 'text-slate-900 font-medium'
-                  }`}>
+                  <p
+                    className={`text-sm leading-relaxed ${
+                      notification.read
+                        ? "text-slate-700"
+                        : "text-slate-900 font-medium"
+                    }`}
+                  >
                     {notification.message}
                   </p>
                   <div className="flex items-center gap-2 mt-2">
@@ -185,7 +210,7 @@ export default function NotificationsPageEnhanced() {
                     )}
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   {!notification.read && (
                     <button
