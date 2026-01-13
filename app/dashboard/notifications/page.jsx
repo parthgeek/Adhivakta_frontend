@@ -105,19 +105,46 @@ export default function NotificationsPageEnhanced() {
     return date.toLocaleDateString();
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center py-20">
-            <div className="animate-spin rounded-full h-10 w-10 border-2 border-indigo-500 border-t-transparent mx-auto"></div>
-            <p className="mt-4 text-slate-600 text-sm">
-              Loading notifications...
-            </p>
+  // Skeleton Component for Notifications
+  const NotificationsSkeleton = () => (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
+      <div className="max-w-4xl mx-auto space-y-8">
+        {/* Header Skeleton */}
+        <div className="flex items-start justify-between">
+          <div className="space-y-2">
+            <div className="h-9 w-48 bg-gray-200 rounded animate-pulse"></div>
+            <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
+          </div>
+          <div className="flex gap-2">
+            <div className="h-9 w-32 bg-gray-200 rounded animate-pulse"></div>
+            <div className="h-9 w-32 bg-gray-200 rounded animate-pulse"></div>
           </div>
         </div>
+
+        {/* Notifications List Skeleton */}
+        <div className="space-y-3">
+          {[...Array(6)].map((_, i) => (
+            <div
+              key={i}
+              className="flex items-start gap-4 p-4 rounded-xl border bg-white border-slate-200"
+            >
+              <div className="h-9 w-9 bg-gray-200 rounded animate-pulse flex-shrink-0"></div>
+              <div className="flex-1 min-w-0">
+                <div className="h-5 w-3/4 bg-gray-200 rounded animate-pulse mb-2"></div>
+                <div className="flex items-center gap-2 mt-2">
+                  <div className="h-3 w-16 bg-gray-200 rounded animate-pulse"></div>
+                  {i < 3 && <div className="h-5 w-12 bg-gray-200 rounded animate-pulse"></div>}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
-    );
+    </div>
+  );
+
+  if (loading) {
+    return <NotificationsSkeleton />;
   }
 
   return (
@@ -174,28 +201,25 @@ export default function NotificationsPageEnhanced() {
             {notifications.map((notification) => (
               <div
                 key={notification._id}
-                className={`group flex items-start gap-4 p-4 rounded-xl border transition-all cursor-pointer ${
-                  notification.read
+                className={`group flex items-start gap-4 p-4 rounded-xl border transition-all cursor-pointer ${notification.read
                     ? "bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm"
                     : "bg-indigo-50/50 border-indigo-200/50 hover:border-indigo-300 hover:shadow-sm"
-                }`}
+                  }`}
                 onClick={() => handleNotificationClick(notification)}
               >
                 <div
-                  className={`mt-0.5 p-2 rounded-lg ${
-                    notification.read ? "bg-slate-100" : "bg-white"
-                  }`}
+                  className={`mt-0.5 p-2 rounded-lg ${notification.read ? "bg-slate-100" : "bg-white"
+                    }`}
                 >
                   {getIcon(notification.type)}
                 </div>
 
                 <div className="flex-1 min-w-0">
                   <p
-                    className={`text-sm leading-relaxed ${
-                      notification.read
+                    className={`text-sm leading-relaxed ${notification.read
                         ? "text-slate-700"
                         : "text-slate-900 font-medium"
-                    }`}
+                      }`}
                   >
                     {notification.message}
                   </p>

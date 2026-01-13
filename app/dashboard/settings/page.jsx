@@ -21,6 +21,7 @@ export default function SettingsPage() {
   const { theme, setTheme } = useTheme()
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [isFetching, setIsFetching] = useState(true) // New state for initial fetch
   const [profileData, setProfileData] = useState({
     name: "",
     email: "",
@@ -60,9 +61,58 @@ export default function SettingsPage() {
   const [currentFontSize, setCurrentFontSize] = useState("medium")
   const [currentLanguage, setCurrentLanguage] = useState("english")
 
+  // Skeleton Component for Settings
+  const SettingsSkeleton = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="h-9 w-32 bg-gray-200 rounded animate-pulse"></div>
+      </div>
+      <div className="w-full">
+        <div className="grid w-full grid-cols-5 gap-2 mb-6">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-10 bg-gray-200 rounded animate-pulse"></div>
+          ))}
+        </div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div className="space-y-2">
+              <div className="h-6 w-48 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-4 w-64 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+            <div className="h-10 w-10 bg-gray-200 rounded animate-pulse"></div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-10 w-full bg-gray-200 rounded animate-pulse"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-10 w-full bg-gray-200 rounded animate-pulse"></div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-10 w-full bg-gray-200 rounded animate-pulse"></div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-24 w-full bg-gray-200 rounded animate-pulse"></div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+
   // Refetch profile data (for save and tab switch)
   const fetchUserProfile = async () => {
-    setIsLoading(true)
+    setIsFetching(true)
     try {
       const profile = await api.users.getProfile()
       setProfileData({
@@ -117,7 +167,7 @@ export default function SettingsPage() {
         }))
       }
     } finally {
-      setIsLoading(false)
+      setIsFetching(false)
     }
   }
 
@@ -381,6 +431,10 @@ export default function SettingsPage() {
 
   // Get current translations based on selected language
   const t = translations[currentLanguage] || translations.english
+
+  if (isFetching) {
+    return <SettingsSkeleton />
+  }
 
   return (
     <div className="space-y-6">
@@ -673,8 +727,8 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
               <form id="security-form" onSubmit={updateSecurity} className="space-y-6">
-                
-                 
+
+
                 <div className="flex items-center justify-between border-t pt-4">
                   <div className="flex items-center space-x-2">
                     <Bell className="h-5 w-5 text-muted-foreground" />

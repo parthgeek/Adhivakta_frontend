@@ -161,12 +161,57 @@ export default function CasesPage() {
     ...new Set(uniqueCases.map((c) => c.caseType || c.type).filter(Boolean)),
   ];
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-full">
-        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
+// Skeleton Component for Cases Table
+const CasesTableSkeleton = () => (
+  <Card>
+    <CardHeader>
+      <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
+        <div>
+          <div className="h-6 w-32 bg-gray-200 rounded animate-pulse mb-2"></div>
+          <div className="h-4 w-64 bg-gray-200 rounded animate-pulse"></div>
+        </div>
+        <div className="flex flex-col space-y-2 md:flex-row md:space-x-2 md:space-y-0">
+          <div className="h-10 w-full md:w-[200px] bg-gray-200 rounded animate-pulse"></div>
+          <div className="h-10 w-full md:w-[150px] bg-gray-200 rounded animate-pulse"></div>
+          <div className="h-10 w-full md:w-[150px] bg-gray-200 rounded animate-pulse"></div>
+        </div>
       </div>
-    );
+    </CardHeader>
+    <CardContent>
+      <div className="space-y-4">
+        <div className="grid grid-cols-7 gap-4 border-b pb-4">
+          {[...Array(7)].map((_, i) => (
+            <div key={i} className="h-4 bg-gray-200 rounded animate-pulse"></div>
+          ))}
+        </div>
+        {[...Array(8)].map((_, i) => (
+          <div key={i} className="grid grid-cols-7 gap-4 py-3 border-b border-gray-100">
+            <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
+            <div className="h-4 bg-gray-200 rounded animate-pulse w-1/2"></div>
+            <div className="h-4 bg-gray-200 rounded animate-pulse w-2/3"></div>
+            <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
+            <div className="h-4 bg-gray-200 rounded animate-pulse w-1/2"></div>
+            <div className="h-6 w-16 bg-gray-200 rounded-full animate-pulse"></div>
+            <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
+          </div>
+        ))}
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const CasesPageSkeleton = () => (
+  <div className="space-y-6">
+    <div className="flex items-center justify-between">
+      <div className="h-9 w-32 bg-gray-200 rounded animate-pulse"></div>
+      <div className="h-10 w-28 bg-gray-200 rounded animate-pulse"></div>
+    </div>
+    <CasesTableSkeleton />
+  </div>
+);
+
+  if (loading) {
+    return <CasesPageSkeleton />;
   }
 
   if (error) {

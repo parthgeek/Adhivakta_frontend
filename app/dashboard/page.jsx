@@ -15,6 +15,21 @@ import {
 import api from "@/services/api";
 import Link from "next/link";
 
+// Helper function to format relative time
+const formatRelativeTime = (date) => {
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString();
+};
+
 // Skeleton Components for Dashboard
 const StatsCardSkeleton = () => (
   <div className="bg-white rounded-lg border p-6 shadow-sm">
@@ -205,13 +220,12 @@ const CasesList = ({ cases = [] }) => {
                 </p>
               </div>
               <span
-                className={`px-2 py-1 text-xs rounded-full ${
-                  caseItem.status === "active"
-                    ? "bg-green-100 text-green-800"
-                    : caseItem.status === "closed"
+                className={`px-2 py-1 text-xs rounded-full ${caseItem.status === "active"
+                  ? "bg-green-100 text-green-800"
+                  : caseItem.status === "closed"
                     ? "bg-gray-100 text-gray-800"
                     : "bg-blue-100 text-blue-800"
-                }`}
+                  }`}
               >
                 {caseItem.status || "Active"}
               </span>
@@ -319,6 +333,8 @@ const NewDashboard = () => {
   const [dashboardData, setDashboardData] = useState({
     cases: [],
     events: [],
+    notifications: [],
+    documents: [],
     stats: {
       totalCases: 0,
       activeCases: 0,
@@ -342,6 +358,24 @@ const NewDashboard = () => {
         const eventsResponse = await api.events.getAll();
         const events = Array.isArray(eventsResponse) ? eventsResponse : [];
 
+        // Fetch notifications for Priority Alerts
+        let notifications = [];
+        try {
+          const notificationsResponse = await api.notifications.getAll();
+          notifications = Array.isArray(notificationsResponse) ? notificationsResponse : [];
+        } catch (error) {
+          console.error("Error fetching notifications:", error);
+        }
+
+        // Fetch documents for Recent Uploads
+        let documents = [];
+        try {
+          const documentsResponse = await api.documents.getAll();
+          documents = Array.isArray(documentsResponse) ? documentsResponse : [];
+        } catch (error) {
+          console.error("Error fetching documents:", error);
+        }
+
         const summaryResponse = await api.dashboard.getSummary();
         const stats = summaryResponse || {
           totalCases: cases.length,
@@ -349,16 +383,18 @@ const NewDashboard = () => {
           closedCases: cases.filter((c) => c.status === "closed").length,
           urgentCases: 0,
           upcomingHearings: events.length,
-          documents: 0,
+          documents: documents.length,
           activeClients: 0,
         };
 
-        setDashboardData({ cases, events, stats });
+        setDashboardData({ cases, events, notifications, documents, stats });
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
         setDashboardData({
           cases: [],
           events: [],
+          notifications: [],
+          documents: [],
           stats: {
             totalCases: 0,
             activeCases: 0,
@@ -437,60 +473,82 @@ const NewDashboard = () => {
           <div className="space-y-6">
             {/* Priority Alerts */}
             <div className="bg-white rounded-lg border p-6 shadow-sm">
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
-                <AlertTriangle className="h-5 w-5 text-red-600" />
-                Priority Alerts
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2 text-gray-900">
+                  <AlertTriangle className="h-5 w-5 text-red-600" />
+                  Priority Alerts
+                </h3>
+                <Link
+                  href="/dashboard/notifications"
+                  className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                >
+                  View all
+                </Link>
+              </div>
               <div className="space-y-3 text-sm">
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="font-medium text-red-800">
-                    Document deadline approaching
-                  </p>
-                  <p className="text-red-600">
-                    OS/123/2024 - Response due in 2 days
-                  </p>
-                </div>
-                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="font-medium text-yellow-800">
-                    Fee payment pending
-                  </p>
-                  <p className="text-yellow-600">
-                    3 clients have pending payments
-                  </p>
-                </div>
+                {dashboardData.notifications.slice(0, 3).map((notification, index) => (
+                  <div
+                    key={notification._id || index}
+                    className={`p-3 rounded-lg ${!notification.read
+                      ? "bg-red-50 border border-red-200"
+                      : "bg-yellow-50 border border-yellow-200"
+                      }`}
+                  >
+                    <p className={`font-medium ${!notification.read ? "text-red-800" : "text-yellow-800"}`}>
+                      {notification.title || notification.type || "Notification"}
+                    </p>
+                    <p className={!notification.read ? "text-red-600" : "text-yellow-600"}>
+                      {notification.message || "No details available"}
+                    </p>
+                  </div>
+                ))}
+                {dashboardData.notifications.length === 0 && (
+                  <div className="text-center py-4 text-gray-500">
+                    <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                    <p>No priority alerts</p>
+                  </div>
+                )}
               </div>
             </div>
 
             <QuickActions />
 
-            {/* Recent Activity */}
+            {/* Recent Uploads */}
             <div className="bg-white rounded-lg border p-6 shadow-sm">
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
-                <Clock className="h-5 w-5" />
-                Recent Activity
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2 text-gray-900">
+                  <Clock className="h-5 w-5" />
+                  Recent Uploads
+                </h3>
+                <Link
+                  href="/dashboard/documents"
+                  className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                >
+                  View all
+                </Link>
+              </div>
               <div className="space-y-3 text-sm">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-medium">Document uploaded</p>
-                    <p className="text-gray-600">OS/123/2024 - Evidence file</p>
+                {dashboardData.documents.slice(0, 5).map((doc, index) => (
+                  <div key={doc._id || index} className="flex justify-between items-start">
+                    <div>
+                      <p className="font-medium">{doc.name || doc.title || "Untitled Document"}</p>
+                      <p className="text-gray-600">
+                        {doc.caseNumber || doc.case?.caseNumber || "No case linked"}
+                      </p>
+                    </div>
+                    <span className="text-xs text-gray-500">
+                      {doc.createdAt
+                        ? formatRelativeTime(new Date(doc.createdAt))
+                        : "Unknown"}
+                    </span>
                   </div>
-                  <span className="text-xs text-gray-500">2h ago</span>
-                </div>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-medium">Hearing scheduled</p>
-                    <p className="text-gray-600">WP/456/2024 - Jan 18, 2024</p>
+                ))}
+                {dashboardData.documents.length === 0 && (
+                  <div className="text-center py-4 text-gray-500">
+                    <FileText className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                    <p>No recent uploads</p>
                   </div>
-                  <span className="text-xs text-gray-500">4h ago</span>
-                </div>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-medium">Client meeting</p>
-                    <p className="text-gray-600">Kumar Family consultation</p>
-                  </div>
-                  <span className="text-xs text-gray-500">1d ago</span>
-                </div>
+                )}
               </div>
             </div>
           </div>

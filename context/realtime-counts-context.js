@@ -10,7 +10,7 @@ export const RealTimeCountsProvider = ({ children }) => {
   const { user } = useAuth();
   const [socket, setSocket] = useState(null);
   const [connected, setConnected] = useState(false);
-  
+
   const [counts, setCounts] = useState({
     messages: 0,
     notifications: 0,
@@ -32,16 +32,16 @@ export const RealTimeCountsProvider = ({ children }) => {
     socketInstance.on("connect", () => {
       console.log("✅ Real-time counts socket connected");
       setConnected(true);
-      
+
       // Identify user for personal room
       socketInstance.emit("identify", { userId: user.id || user._id });
-      
+
       // Join notification room
       socketInstance.emit("notification:join", { userId: user.id || user._id });
-      
+
       // Join events room
       socketInstance.emit("event:join", { userId: user.id || user._id });
-      
+
       // Request initial counts
       socketInstance.emit("counts:request_update");
     });
@@ -82,20 +82,47 @@ export const RealTimeCountsProvider = ({ children }) => {
         total: prev.total + 1,
       }));
     });
+    // Track processed notification IDs to prevent double-counting
+    const processedNotificationIds = new Set();
 
-    // Listen for new notifications
-    socketInstance.on("notification:new", (data) => {
-      console.log("🔔 New notification received:", data);
+    // Common handler for processing notifications
+    const handleNewNotification = (data, eventName) => {
+      const notification = data?.notification || data;
+      const notificationId = notification?._id;
+
+      // Prevent double-counting if we already processed this notification
+      if (notificationId && processedNotificationIds.has(notificationId)) {
+        console.log(`🔔 Skipping duplicate notification (${eventName}):`, notificationId);
+        return;
+      }
+
+      if (notificationId) {
+        processedNotificationIds.add(notificationId);
+        // Clean up after 10 seconds to prevent memory leak
+        setTimeout(() => processedNotificationIds.delete(notificationId), 10000);
+      }
+
+      console.log(`🔔 New notification received (${eventName}):`, data);
       setCounts((prev) => ({
         ...prev,
         notifications: prev.notifications + 1,
         total: prev.total + 1,
       }));
-      
+
       // Dispatch custom event for notification page
       window.dispatchEvent(
-        new CustomEvent("app:notification", { detail: data.notification })
+        new CustomEvent("app:notification", { detail: notification })
       );
+    };
+
+    // Listen for new notifications (notification:new event from socket helper)
+    socketInstance.on("notification:new", (data) => {
+      handleNewNotification(data, "notification:new");
+    });
+
+    // Also listen for "notification" event (from controllers)
+    socketInstance.on("notification", (data) => {
+      handleNewNotification(data, "notification");
     });
 
     // Listen for notification count updates

@@ -19,7 +19,7 @@ export default function NotificationListener({ user }) {
     }
 
     // Build SOCKET_URL
-    const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 
+    const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL ||
       (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/api\/?$/, "");
 
     console.log("🔌 Connecting to socket:", SOCKET_URL);
@@ -31,7 +31,7 @@ export default function NotificationListener({ user }) {
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,
       auth: {
-        token: typeof window !== "undefined" ? 
+        token: typeof window !== "undefined" ?
           localStorage.getItem("token") || localStorage.getItem("auth_token") : null,
       },
     });
@@ -43,11 +43,28 @@ export default function NotificationListener({ user }) {
       socket.emit("identify", { userId: String(userId) });
     });
 
-    socket.on("notification", (data) => {
-      console.log("🔔 Notification received:", data);
-      
+    // Track processed notification IDs to prevent duplicate toasts
+    const processedNotificationIds = new Set();
+
+    // Common handler for showing notification toast
+    const showNotificationToast = (data, eventName) => {
       const payload = data || {};
-      
+      const notificationId = payload._id;
+
+      // Prevent duplicate toasts if we already processed this notification
+      if (notificationId && processedNotificationIds.has(notificationId)) {
+        console.log(`🔔 Skipping duplicate toast (${eventName}):`, notificationId);
+        return;
+      }
+
+      if (notificationId) {
+        processedNotificationIds.add(notificationId);
+        // Clean up after 10 seconds to prevent memory leak
+        setTimeout(() => processedNotificationIds.delete(notificationId), 10000);
+      }
+
+      console.log(`🔔 Notification received (${eventName}):`, data);
+
       // Show toast notification with enhanced styling
       toast({
         title: (
@@ -75,12 +92,21 @@ export default function NotificationListener({ user }) {
         console.log('Audio not available');
       }
 
-      // Also dispatch event for useNotifications hook
-      try {
-        window.dispatchEvent(new CustomEvent("app:notification", { detail: payload }));
-      } catch (err) {
-        console.warn("Could not dispatch app:notification event", err);
-      }
+      // Also dispatch event for useNotifications hook (skip to avoid duplicates since realtime-counts-context handles this)
+      // Note: We don't dispatch app:notification here because realtime-counts-context already does it
+    };
+
+    // Listen for "notification" event (from case.controller, notification.controller)
+    socket.on("notification", (data) => {
+      showNotificationToast(data, "notification");
+    });
+
+    // Also listen for "notification:new" event (from notification.socket.js helper)
+    socket.on("notification:new", (data) => {
+      console.log("🔔 notification:new received:", data);
+      // Extract the nested notification object if present
+      const payload = data?.notification || data;
+      showNotificationToast(payload, "notification:new");
     });
 
     socket.on("connect_error", (err) => {
@@ -120,11 +146,11 @@ export default function NotificationListener({ user }) {
 function getDefaultTitle(type) {
   const titles = {
     case_invitation: "📋 Case Invitation",
-    case_update: "📄 Case Updated", 
+    case_update: "📄 Case Updated",
     event_reminder: "📅 Event Reminder",
     document_upload: "📄 New Document",
     system: "🔔 System Notification"
   };
-  
+
   return titles[type] || "🔔 New Notification";
 }
