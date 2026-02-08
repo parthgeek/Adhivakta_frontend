@@ -34,18 +34,20 @@ export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [showRoleDialog, setShowRoleDialog] = useState(false)
+  const [showForceLoginDialog, setShowForceLoginDialog] = useState(false)
+  const [pendingCredentials, setPendingCredentials] = useState(null)
   const [selectedRole, setSelectedRole] = useState("")
   const [pendingGoogleAuth, setPendingGoogleAuth] = useState(null)
   const { login, loginWithGoogle } = useAuth()
   const router = useRouter()
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const handleSubmit = async (e, forceLogin = false) => {
+    e?.preventDefault()
     setError("")
     setIsLoading(true)
 
     try {
-      await login(email, password)
+      await login(email, password, forceLogin)
       toast({
         title: "Welcome back!",
         description: "Successfully logged in.",
@@ -53,7 +55,15 @@ export function LoginForm() {
       router.push("/dashboard")
     } catch (error) {
       console.error("Login error:", error)
-      
+
+      // Check for single-device login error
+      if (error.code === 'ALREADY_LOGGED_IN') {
+        setPendingCredentials({ email, password })
+        setShowForceLoginDialog(true)
+        setIsLoading(false)
+        return
+      }
+
       // User-friendly error messages
       if (error.code === "auth/invalid-credential" || error.code === "auth/wrong-password") {
         setError("Invalid email or password. Please try again.")
@@ -68,7 +78,7 @@ export function LoginForm() {
       } else {
         setError(error.message || "Failed to sign in. Please try again.")
       }
-      
+
       toast({
         variant: "destructive",
         title: "Login Failed",
@@ -79,44 +89,69 @@ export function LoginForm() {
     }
   }
 
-  const handleGoogleLogin = async () => {
-  setError("")
-  setIsLoading(true)
-
-  try {
-    await loginWithGoogle()
-    toast({
-      title: "Welcome!",
-      description: "Successfully logged in with Google.",
-    })
-    router.push("/dashboard")
-  } catch (error) {
-    console.error("Google login error:", error)
-    
-    // Handle specific error for new users
-    if (error.message && error.message.includes("Please register first")) {
-      setError("Account not found. Please register first from the sign-up page.")
-      toast({
-        variant: "destructive",
-        title: "Account Not Found",
-        description: "Please register first from the sign-up page.",
-      })
-      // Optionally redirect to register page after showing error
-      setTimeout(() => {
-        router.push("/auth/register")
-      }, 2000)
-    } else {
-      setError(error.message || "Google login failed. Please try again.")
-      toast({
-        variant: "destructive",
-        title: "Google Login Failed",
-        description: error.message || "Could not sign in with Google",
-      })
+  const handleForceLogin = async () => {
+    setShowForceLoginDialog(false)
+    if (pendingCredentials) {
+      setIsLoading(true)
+      try {
+        await login(pendingCredentials.email, pendingCredentials.password, true)
+        toast({
+          title: "Welcome back!",
+          description: "Successfully logged in. Other device has been logged out.",
+        })
+        router.push("/dashboard")
+      } catch (error) {
+        setError(error.message || "Failed to sign in. Please try again.")
+        toast({
+          variant: "destructive",
+          title: "Login Failed",
+          description: error.message || "Failed to sign in",
+        })
+      } finally {
+        setIsLoading(false)
+        setPendingCredentials(null)
+      }
     }
-  } finally {
-    setIsLoading(false)
   }
-}
+
+  const handleGoogleLogin = async () => {
+    setError("")
+    setIsLoading(true)
+
+    try {
+      await loginWithGoogle()
+      toast({
+        title: "Welcome!",
+        description: "Successfully logged in with Google.",
+      })
+      router.push("/dashboard")
+    } catch (error) {
+      console.error("Google login error:", error)
+
+      // Handle specific error for new users
+      if (error.message && error.message.includes("Please register first")) {
+        setError("Account not found. Please register first from the sign-up page.")
+        toast({
+          variant: "destructive",
+          title: "Account Not Found",
+          description: "Please register first from the sign-up page.",
+        })
+        // Optionally redirect to register page after showing error
+        setTimeout(() => {
+          router.push("/auth/register")
+        }, 2000)
+      } else {
+        setError(error.message || "Google login failed. Please try again.")
+        toast({
+          variant: "destructive",
+          title: "Google Login Failed",
+          description: error.message || "Could not sign in with Google",
+        })
+      }
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleRoleSelection = async () => {
     if (!selectedRole) {
@@ -169,9 +204,9 @@ export function LoginForm() {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="password">Password</Label>
-            <Button 
-              variant="link" 
-              className="h-auto p-0 text-sm" 
+            <Button
+              variant="link"
+              className="h-auto p-0 text-sm"
               asChild
               type="button"
             >
@@ -219,11 +254,11 @@ export function LoginForm() {
         </div>
       </div>
 
-      <Button 
-        type="button" 
-        variant="outline" 
-        className="w-full" 
-        onClick={handleGoogleLogin} 
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full"
+        onClick={handleGoogleLogin}
         disabled={isLoading}
       >
         <FcGoogle className="mr-2 h-4 w-4" />
@@ -252,9 +287,9 @@ export function LoginForm() {
                 </SelectContent>
               </Select>
             </div>
-            <Button 
-              onClick={handleRoleSelection} 
-              className="w-full" 
+            <Button
+              onClick={handleRoleSelection}
+              className="w-full"
               disabled={isLoading || !selectedRole}
             >
               {isLoading ? (
@@ -264,6 +299,42 @@ export function LoginForm() {
                 </>
               ) : (
                 "Continue"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Force Login Confirmation Dialog */}
+      <Dialog open={showForceLoginDialog} onOpenChange={setShowForceLoginDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Already Logged In</DialogTitle>
+            <DialogDescription>
+              You are already logged in on another device. Would you like to logout from that device and login here?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-3 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowForceLoginDialog(false)
+                setPendingCredentials(null)
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleForceLogin}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Logging in...
+                </>
+              ) : (
+                "Login Here"
               )}
             </Button>
           </div>

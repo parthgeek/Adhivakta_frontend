@@ -188,30 +188,8 @@ export const AuthProvider = ({ children }) => {
       }
     }
 
+
     initAuth()
-  }, [])
-
-  // ✅ AUTO-LOGOUT ON TAB CLOSE: Clear session when user closes browser/tab
-  useEffect(() => {
-    if (typeof window === "undefined") return
-
-    const handleTabClose = () => {
-      const token = localStorage.getItem("auth_token")
-      if (token && !isTokenExpired(token)) {
-        // Use sendBeacon for reliable request during page unload
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
-        navigator.sendBeacon(
-          `${apiUrl}/auth/logout-beacon`,
-          JSON.stringify({ token })
-        )
-      }
-    }
-
-    window.addEventListener("beforeunload", handleTabClose)
-
-    return () => {
-      window.removeEventListener("beforeunload", handleTabClose)
-    }
   }, [])
 
   // Handle successful authentication
@@ -227,13 +205,24 @@ export const AuthProvider = ({ children }) => {
   }, [])
 
   // Login with email/password
-  const login = useCallback(async (email, password) => {
+  // Pass forceLogin: true to override single-device restriction
+  const login = useCallback(async (email, password, forceLogin = false) => {
     try {
       // First try backend email/password login
-      const response = await api.auth.login({ email, password })
+      const response = await api.auth.login({ email, password, forceLogin })
       handleAuthSuccess(response)
       return response.user
     } catch (backendErr) {
+      // Check if this is an "already logged in" error from single-device restriction
+      if (backendErr.code === 'ALREADY_LOGGED_IN') {
+        // Re-throw with the error info so UI can show confirmation dialog
+        const alreadyLoggedInError = new Error(backendErr.message)
+        alreadyLoggedInError.code = 'ALREADY_LOGGED_IN'
+        alreadyLoggedInError.email = email
+        alreadyLoggedInError.password = password
+        throw alreadyLoggedInError
+      }
+
       console.log("Backend login failed, trying Firebase:", backendErr.message)
       try {
         const auth = getAuth()
@@ -249,10 +238,18 @@ export const AuthProvider = ({ children }) => {
         }
 
         const idToken = await fbUser.getIdToken()
-        const response = await api.auth.googleLogin({ idToken })
+        const response = await api.auth.googleLogin({ idToken, forceLogin })
         handleAuthSuccess(response)
         return response.user
       } catch (firebaseErr) {
+        // Check if Firebase login also hit the "already logged in" error
+        if (firebaseErr.code === 'ALREADY_LOGGED_IN') {
+          const alreadyLoggedInError = new Error(firebaseErr.message)
+          alreadyLoggedInError.code = 'ALREADY_LOGGED_IN'
+          alreadyLoggedInError.email = email
+          alreadyLoggedInError.password = password
+          throw alreadyLoggedInError
+        }
         console.error("Firebase login failed:", firebaseErr)
         throw firebaseErr
       }

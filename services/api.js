@@ -18,8 +18,11 @@ const handleResponse = async (response) => {
       window.__authLogout();
     }
 
-    const error = data.message || data.errors?.[0]?.msg || response.statusText;
-    throw new Error(error);
+    const errorMessage = data.message || data.errors?.[0]?.msg || response.statusText;
+    const error = new Error(errorMessage);
+    error.code = data.code; // Preserve error code (e.g., ALREADY_LOGGED_IN)
+    error.response = { data, status: response.status };
+    throw error;
   }
 
   return data;
@@ -670,6 +673,14 @@ const api = {
       const data = await handleResponse(response);
       return data.data || [];
     },
+    getUnreadCount: async () => {
+      const response = await fetch(`${API_URL}/notifications/count`, {
+        method: "GET",
+        headers: createHeaders(),
+      });
+      const data = await handleResponse(response);
+      return data.data?.count || 0;
+    },
     markAsRead: async (id) => {
       const response = await fetch(`${API_URL}/notifications/${id}/read`, {
         method: "PATCH",
@@ -719,6 +730,27 @@ const api = {
       );
       const data = await handleResponse(response);
       return data.data;
+    },
+
+    markAsRead: async (groupId) => {
+      const response = await fetch(
+        `${API_URL}/chat/groups/${groupId}/read`,
+        {
+          method: "POST",
+          headers: createHeaders(),
+        }
+      );
+      const data = await handleResponse(response);
+      return data.data;
+    },
+
+    getUnreadCounts: async () => {
+      const response = await fetch(`${API_URL}/chat/unread-counts`, {
+        method: "GET",
+        headers: createHeaders(),
+      });
+      const data = await handleResponse(response);
+      return data.data || { groups: {}, total: 0 };
     },
   },
 
