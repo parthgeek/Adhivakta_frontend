@@ -115,7 +115,7 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const token = localStorage.getItem("auth_token")
-      
+
       if (!token) {
         clearAuthData()
         return false
@@ -129,7 +129,7 @@ export const AuthProvider = ({ children }) => {
 
       try {
         const response = await api.auth.verifyToken()
-        
+
         if (response && response.user) {
           setUser(response.user)
           setIsAuthenticated(true)
@@ -144,7 +144,7 @@ export const AuthProvider = ({ children }) => {
           await logout()
           return false
         }
-        
+
         console.error("Session validation failed:", error)
         return isAuthenticated
       }
@@ -191,6 +191,29 @@ export const AuthProvider = ({ children }) => {
     initAuth()
   }, [])
 
+  // ✅ AUTO-LOGOUT ON TAB CLOSE: Clear session when user closes browser/tab
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const handleTabClose = () => {
+      const token = localStorage.getItem("auth_token")
+      if (token && !isTokenExpired(token)) {
+        // Use sendBeacon for reliable request during page unload
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+        navigator.sendBeacon(
+          `${apiUrl}/auth/logout-beacon`,
+          JSON.stringify({ token })
+        )
+      }
+    }
+
+    window.addEventListener("beforeunload", handleTabClose)
+
+    return () => {
+      window.removeEventListener("beforeunload", handleTabClose)
+    }
+  }, [])
+
   // Handle successful authentication
   const handleAuthSuccess = useCallback((response) => {
     if (response && response.token && response.user) {
@@ -216,7 +239,7 @@ export const AuthProvider = ({ children }) => {
         const auth = getAuth()
         const userCredential = await signInWithEmailAndPassword(auth, email, password)
         const fbUser = userCredential.user
-        
+
         // Check if email is verified
         if (!fbUser.emailVerified) {
           throw {
@@ -224,7 +247,7 @@ export const AuthProvider = ({ children }) => {
             message: 'Please verify your email before logging in'
           }
         }
-        
+
         const idToken = await fbUser.getIdToken()
         const response = await api.auth.googleLogin({ idToken })
         handleAuthSuccess(response)
@@ -236,205 +259,205 @@ export const AuthProvider = ({ children }) => {
     }
   }, [handleAuthSuccess])
 
- 
-// Register with email/password - UPDATED with proper Firebase handling
-const register = useCallback(async (userData) => {
-  if (!['lawyer', 'client'].includes(userData.role)) {
-    userData.role = 'client';
-  }
 
-  try {
-    const { email, password, name } = userData;
-    
-    // Basic validation
-    if (!email || !password || !name) {
-      throw {
-        code: 'auth/missing-fields',
-        message: 'Please fill in all required fields'
-      };
+  // Register with email/password - UPDATED with proper Firebase handling
+  const register = useCallback(async (userData) => {
+    if (!['lawyer', 'client'].includes(userData.role)) {
+      userData.role = 'client';
     }
-
-    // Email format validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      throw {
-        code: 'auth/invalid-email',
-        message: 'Please enter a valid email address'
-      };
-    }
-
-    // Password length validation
-    if (password.length < 6) {
-      throw {
-        code: 'auth/weak-password',
-        message: 'Password must be at least 6 characters long'
-      };
-    }
-
-    let firebaseUser = null;
-    let firebaseAuth = null;
 
     try {
-      firebaseAuth = getAuth();
-      
-      // First, try to create a new Firebase user
-      console.log("Attempting to create Firebase user for:", email);
-      const userCredential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
-      firebaseUser = userCredential.user;
-      console.log("Firebase user created:", firebaseUser.uid);
+      const { email, password, name } = userData;
 
-      // Update profile with name
-      if (name) {
-        await updateProfile(firebaseUser, {
-          displayName: name
-        });
-        console.log("Profile updated with name:", name);
-      }
-
-      // Send verification email
-      await sendEmailVerification(firebaseUser);
-      console.log("Verification email sent to:", email);
-
-      // Get ID token for backend registration
-      const idToken = await firebaseUser.getIdToken();
-      userData.firebaseUID = firebaseUser.uid;
-      userData.firebaseIdToken = idToken;
-
-    } catch (firebaseError) {
-      console.error("Firebase registration error:", firebaseError.code, firebaseError.message);
-      
-      // Handle specific Firebase errors
-      switch (firebaseError.code) {
-        case 'auth/email-already-in-use':
-          // Check if this is an unverified account
-          try {
-            // Try to sign in to check if email is verified
-            const auth = getAuth();
-            const existingUserCredential = await signInWithEmailAndPassword(auth, email, password);
-            const existingUser = existingUserCredential.user;
-            
-            if (!existingUser.emailVerified) {
-              // Resend verification email
-              await sendEmailVerification(existingUser);
-              firebaseUser = existingUser;
-              userData.firebaseUID = existingUser.uid;
-              const idToken = await existingUser.getIdToken();
-              userData.firebaseIdToken = idToken;
-              console.log("Resent verification email to existing unverified user");
-            } else {
-              // Email is already verified - user should log in
-              throw {
-                code: 'auth/email-already-in-use-verified',
-                message: 'An account already exists with this email. Please sign in.'
-              };
-            }
-          } catch (signInError) {
-            // Can't sign in - password might be different
-            if (signInError.code === 'auth/wrong-password') {
-              throw {
-                code: 'auth/account-exists-different-password',
-                message: 'An account already exists with this email. Please sign in or use a different email.'
-              };
-            } else {
-              throw firebaseError;
-            }
-          }
-          break;
-          
-        case 'auth/invalid-email':
-          throw {
-            code: 'auth/invalid-email',
-            message: 'Please enter a valid email address'
-          };
-          
-        case 'auth/weak-password':
-          throw {
-            code: 'auth/weak-password',
-            message: 'Password must be at least 6 characters long'
-          };
-          
-        default:
-          throw {
-            code: firebaseError.code,
-            message: firebaseError.message || 'Registration failed. Please try again.'
-          };
-      }
-    }
-
-    // Register with backend
-    try {
-      console.log("Registering with backend:", { 
-        email, 
-        name, 
-        role: userData.role,
-        hasFirebaseUID: !!userData.firebaseUID 
-      });
-      
-      const response = await api.auth.register({
-        name: userData.name,
-        email: userData.email,
-        password: userData.password, // Still needed for backend
-        role: userData.role,
-        firebaseUID: userData.firebaseUID,
-        // Don't send the token to backend register endpoint
-      });
-      
-      console.log("Backend registration successful:", response);
-
-      // Sign out from Firebase to prevent auto-login
-      if (firebaseUser && firebaseAuth) {
-        await firebaseSignOut(firebaseAuth);
-        console.log("Signed out from Firebase");
-      }
-
-      // Return success
-      return {
-        success: true,
-        needsVerification: true,
-        message: "Registration successful! Please check your email for the verification link.",
-        user: response.user || { email, name, role: userData.role },
-        email: email,
-      };
-
-    } catch (backendError) {
-      console.error("Backend registration error:", backendError);
-      
-      // Rollback: Delete Firebase user if backend registration failed
-      if (firebaseUser) {
-        try {
-          await firebaseUser.delete();
-          console.log("Rolled back Firebase user due to backend error");
-        } catch (deleteError) {
-          console.error("Failed to delete Firebase user:", deleteError);
-        }
-      }
-      
-      // Handle backend errors
-      if (backendError.message?.includes("already exists")) {
+      // Basic validation
+      if (!email || !password || !name) {
         throw {
-          code: 'auth/email-already-in-use',
-          message: 'An account already exists with this email. Please sign in.'
+          code: 'auth/missing-fields',
+          message: 'Please fill in all required fields'
         };
-      } else if (backendError.message?.includes("Invalid email")) {
+      }
+
+      // Email format validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
         throw {
           code: 'auth/invalid-email',
           message: 'Please enter a valid email address'
         };
-      } else if (backendError.message?.includes("Password must be")) {
+      }
+
+      // Password length validation
+      if (password.length < 6) {
         throw {
           code: 'auth/weak-password',
           message: 'Password must be at least 6 characters long'
         };
-      } else {
-        throw backendError;
       }
-    }
 
-  } catch (error) {
-    console.error("Registration error:", error);
-    throw error;
-  }
-}, []);
+      let firebaseUser = null;
+      let firebaseAuth = null;
+
+      try {
+        firebaseAuth = getAuth();
+
+        // First, try to create a new Firebase user
+        console.log("Attempting to create Firebase user for:", email);
+        const userCredential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
+        firebaseUser = userCredential.user;
+        console.log("Firebase user created:", firebaseUser.uid);
+
+        // Update profile with name
+        if (name) {
+          await updateProfile(firebaseUser, {
+            displayName: name
+          });
+          console.log("Profile updated with name:", name);
+        }
+
+        // Send verification email
+        await sendEmailVerification(firebaseUser);
+        console.log("Verification email sent to:", email);
+
+        // Get ID token for backend registration
+        const idToken = await firebaseUser.getIdToken();
+        userData.firebaseUID = firebaseUser.uid;
+        userData.firebaseIdToken = idToken;
+
+      } catch (firebaseError) {
+        console.error("Firebase registration error:", firebaseError.code, firebaseError.message);
+
+        // Handle specific Firebase errors
+        switch (firebaseError.code) {
+          case 'auth/email-already-in-use':
+            // Check if this is an unverified account
+            try {
+              // Try to sign in to check if email is verified
+              const auth = getAuth();
+              const existingUserCredential = await signInWithEmailAndPassword(auth, email, password);
+              const existingUser = existingUserCredential.user;
+
+              if (!existingUser.emailVerified) {
+                // Resend verification email
+                await sendEmailVerification(existingUser);
+                firebaseUser = existingUser;
+                userData.firebaseUID = existingUser.uid;
+                const idToken = await existingUser.getIdToken();
+                userData.firebaseIdToken = idToken;
+                console.log("Resent verification email to existing unverified user");
+              } else {
+                // Email is already verified - user should log in
+                throw {
+                  code: 'auth/email-already-in-use-verified',
+                  message: 'An account already exists with this email. Please sign in.'
+                };
+              }
+            } catch (signInError) {
+              // Can't sign in - password might be different
+              if (signInError.code === 'auth/wrong-password') {
+                throw {
+                  code: 'auth/account-exists-different-password',
+                  message: 'An account already exists with this email. Please sign in or use a different email.'
+                };
+              } else {
+                throw firebaseError;
+              }
+            }
+            break;
+
+          case 'auth/invalid-email':
+            throw {
+              code: 'auth/invalid-email',
+              message: 'Please enter a valid email address'
+            };
+
+          case 'auth/weak-password':
+            throw {
+              code: 'auth/weak-password',
+              message: 'Password must be at least 6 characters long'
+            };
+
+          default:
+            throw {
+              code: firebaseError.code,
+              message: firebaseError.message || 'Registration failed. Please try again.'
+            };
+        }
+      }
+
+      // Register with backend
+      try {
+        console.log("Registering with backend:", {
+          email,
+          name,
+          role: userData.role,
+          hasFirebaseUID: !!userData.firebaseUID
+        });
+
+        const response = await api.auth.register({
+          name: userData.name,
+          email: userData.email,
+          password: userData.password, // Still needed for backend
+          role: userData.role,
+          firebaseUID: userData.firebaseUID,
+          // Don't send the token to backend register endpoint
+        });
+
+        console.log("Backend registration successful:", response);
+
+        // Sign out from Firebase to prevent auto-login
+        if (firebaseUser && firebaseAuth) {
+          await firebaseSignOut(firebaseAuth);
+          console.log("Signed out from Firebase");
+        }
+
+        // Return success
+        return {
+          success: true,
+          needsVerification: true,
+          message: "Registration successful! Please check your email for the verification link.",
+          user: response.user || { email, name, role: userData.role },
+          email: email,
+        };
+
+      } catch (backendError) {
+        console.error("Backend registration error:", backendError);
+
+        // Rollback: Delete Firebase user if backend registration failed
+        if (firebaseUser) {
+          try {
+            await firebaseUser.delete();
+            console.log("Rolled back Firebase user due to backend error");
+          } catch (deleteError) {
+            console.error("Failed to delete Firebase user:", deleteError);
+          }
+        }
+
+        // Handle backend errors
+        if (backendError.message?.includes("already exists")) {
+          throw {
+            code: 'auth/email-already-in-use',
+            message: 'An account already exists with this email. Please sign in.'
+          };
+        } else if (backendError.message?.includes("Invalid email")) {
+          throw {
+            code: 'auth/invalid-email',
+            message: 'Please enter a valid email address'
+          };
+        } else if (backendError.message?.includes("Password must be")) {
+          throw {
+            code: 'auth/weak-password',
+            message: 'Password must be at least 6 characters long'
+          };
+        } else {
+          throw backendError;
+        }
+      }
+
+    } catch (error) {
+      console.error("Registration error:", error);
+      throw error;
+    }
+  }, []);
 
   // Google login - UPDATED FUNCTION
   const loginWithGoogle = useCallback(async (options = {}) => {
@@ -449,7 +472,7 @@ const register = useCallback(async (userData) => {
       const idToken = await fbUser.getIdToken()
 
       // Build payload with optional parameters
-      const payload = { 
+      const payload = {
         idToken,
         role: options.role || null,
         isRegisterFlow: options.isRegisterFlow || false
@@ -459,7 +482,7 @@ const register = useCallback(async (userData) => {
 
       const response = await api.auth.googleLogin(payload)
       console.log("Backend google-login response:", response)
-      
+
       if (response && response.success) {
         handleAuthSuccess(response)
         return response.user
@@ -468,22 +491,22 @@ const register = useCallback(async (userData) => {
       }
     } catch (err) {
       console.error("loginWithGoogle error:", err)
-      
+
       // Check if role is required (for new users)
-      if (err.message?.includes("Role required") || 
-          err.response?.data?.message?.includes("role required")) {
+      if (err.message?.includes("Role required") ||
+        err.response?.data?.message?.includes("role required")) {
         const roleError = new Error("Role selection required for new user")
         roleError.requiresRole = true
         throw roleError
       }
-      
+
       // Handle specific backend errors
       if (err.response?.data?.message?.includes("Account not found")) {
         const notFoundError = new Error("Account not found. Please register first from the sign-up page.")
         notFoundError.code = "auth/user-not-found"
         throw notFoundError
       }
-      
+
       throw err
     }
   }, [handleAuthSuccess])
@@ -493,7 +516,7 @@ const register = useCallback(async (userData) => {
     try {
       const auth = getAuth()
       const currentUser = auth.currentUser
-      
+
       if (!currentUser) {
         throw new Error("No user logged in")
       }
@@ -517,14 +540,14 @@ const register = useCallback(async (userData) => {
   const checkEmailVerified = useCallback(async () => {
     try {
       const response = await api.auth.getMe();
-      
+
       if (response?.user?.emailVerified) {
         return true;
       }
 
       const auth = getAuth();
       const currentUser = auth.currentUser;
-      
+
       if (currentUser) {
         await currentUser.reload();
         if (currentUser.emailVerified) {
@@ -539,62 +562,62 @@ const register = useCallback(async (userData) => {
     }
   }, []);
 
- 
 
-// Password reset - Check backend first, then use Firebase
-const resetPassword = useCallback(async (email) => {
-  try {
-    console.log("Checking if email exists in backend:", email);
-    
-    // First, check with backend to verify email exists
+
+  // Password reset - Check backend first, then use Firebase
+  const resetPassword = useCallback(async (email) => {
     try {
-      const response = await api.auth.forgotPassword({ email });
-      
-      // If backend says success, email exists or we should proceed
-      if (response.success) {
-        console.log("Email verified or proceeding with reset");
-        
-        // Now send Firebase reset email
-        const auth = getAuth();
-        await sendPasswordResetEmail(auth, email);
-        
-        console.log("Password reset email sent via Firebase");
-        return true;
+      console.log("Checking if email exists in backend:", email);
+
+      // First, check with backend to verify email exists
+      try {
+        const response = await api.auth.forgotPassword({ email });
+
+        // If backend says success, email exists or we should proceed
+        if (response.success) {
+          console.log("Email verified or proceeding with reset");
+
+          // Now send Firebase reset email
+          const auth = getAuth();
+          await sendPasswordResetEmail(auth, email);
+
+          console.log("Password reset email sent via Firebase");
+          return true;
+        }
+      } catch (backendError) {
+        console.log("Backend check error:", backendError);
+        // If backend fails, fall back to Firebase directly
+        // But with error handling
       }
-    } catch (backendError) {
-      console.log("Backend check error:", backendError);
-      // If backend fails, fall back to Firebase directly
-      // But with error handling
+
+      // If backend check failed or returned false, try Firebase directly
+      // (for backward compatibility during transition)
+      const auth = getAuth();
+      await sendPasswordResetEmail(auth, email);
+      return true;
+
+    } catch (error) {
+      console.error("Password reset error:", error.code, error.message);
+
+      // Map Firebase errors to user-friendly messages
+      let userMessage = error.message;
+
+      if (error.code === "auth/user-not-found") {
+        userMessage = "No account found with this email address.";
+      } else if (error.code === "auth/invalid-email") {
+        userMessage = "Please enter a valid email address.";
+      } else if (error.code === "auth/too-many-requests") {
+        userMessage = "Too many attempts. Please try again later.";
+      } else if (error.code === "auth/network-request-failed") {
+        userMessage = "Network error. Please check your connection and try again.";
+      }
+
+      throw {
+        code: error.code || "auth/unknown-error",
+        message: userMessage
+      };
     }
-    
-    // If backend check failed or returned false, try Firebase directly
-    // (for backward compatibility during transition)
-    const auth = getAuth();
-    await sendPasswordResetEmail(auth, email);
-    return true;
-    
-  } catch (error) {
-    console.error("Password reset error:", error.code, error.message);
-    
-    // Map Firebase errors to user-friendly messages
-    let userMessage = error.message;
-    
-    if (error.code === "auth/user-not-found") {
-      userMessage = "No account found with this email address.";
-    } else if (error.code === "auth/invalid-email") {
-      userMessage = "Please enter a valid email address.";
-    } else if (error.code === "auth/too-many-requests") {
-      userMessage = "Too many attempts. Please try again later.";
-    } else if (error.code === "auth/network-request-failed") {
-      userMessage = "Network error. Please check your connection and try again.";
-    }
-    
-    throw {
-      code: error.code || "auth/unknown-error",
-      message: userMessage
-    };
-  }
-}, []);
+  }, []);
 
   // Change password
   const changePassword = useCallback(async (currentPassword, newPassword) => {
