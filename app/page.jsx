@@ -287,105 +287,33 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Pricing Section
+        {/* Pricing Section */}
         <section id="pricing" className="w-full py-24 bg-white">
           <div className="container px-4 md:px-8 max-w-7xl mx-auto">
-            <div className="text-center space-y-4 mb-12">
+            <div className="text-center space-y-6 max-w-3xl mx-auto">
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight">
-                Tailored Pricing for Every Practice
+                Flexible Pricing for Every Practice
               </h2>
-              <p className="text-lg text-gray-700 max-w-2xl mx-auto">
-                Select a plan that aligns with your firm's size and ambitions, with flexible options to scale as you
-                grow.
+              <p className="text-lg text-gray-700">
+                Whether you're a solo practitioner or a large firm, we have plans designed to
+                scale with your needs. All plans include unlimited cases.
               </p>
-            </div>
-            <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto">
-              {[
-                {
-                  name: "Solo Practitioner",
-                  price: "₹2,999",
-                  description: "Designed for independent lawyers seeking efficiency and organization.",
-                  features: [
-                    "Manage up to 50 active cases",
-                    "5GB secure document storage",
-                    "Calendar integration with reminders",
-                    "Basic reporting and insights",
-                    "Email support with 48-hour response",
-                  ],
-                  popular: false,
-                },
-                {
-                  name: "Small Firm",
-                  price: "₹7,999",
-                  description: "Perfect for small teams aiming to streamline operations and client engagement.",
-                  features: [
-                    "Up to 200 active cases",
-                    "25GB secure document storage",
-                    "Advanced calendar and email integration",
-                    "Comprehensive reporting tools",
-                    "Priority support with 24-hour response",
-                    "Secure client portal access",
-                  ],
-                  popular: true,
-                },
-                {
-                  name: "Enterprise",
-                  price: "Custom",
-                  description: "Tailored solutions for large firms with complex needs and high case volumes.",
-                  features: [
-                    "Unlimited case management",
-                    "Unlimited document storage",
-                    "Full API access for integrations",
-                    "Custom workflows and integrations",
-                    "Dedicated account manager",
-                    "On-premise or cloud deployment options",
-                  ],
-                  popular: false,
-                },
-              ].map((plan, index) => (
-                <div
-                  key={index}
-                  className={`relative bg-white rounded-xl shadow-lg p-8 flex flex-col ${
-                    plan.popular ? "border-2 border-gray-900" : "border border-gray-200"
-                  }`}
-                >
-                  {plan.popular && (
-                    <div
-                      className="absolute -top-4 left-0 right-0 mx-auto w-fit px-4 py-1 text-sm font-medium bg-gray-900 text-white rounded-full"
-                    >
-                      Most Popular
-                    </div>
-                  )}
-                  <div className="mb-6">
-                    <h3 className="text-xl font-semibold text-gray-900">{plan.name}</h3>
-                    <p className="text-sm text-gray-700">{plan.description}</p>
-                  </div>
-                  <div className="mb-6">
-                    <span className="text-3xl font-bold text-gray-900">{plan.price}</span>
-                    {plan.price !== "Custom" && <span className="text-gray-700"> / month</span>}
-                  </div>
-                  <ul className="mb-8 flex-1 space-y-3">
-                    {plan.features.map((feature, i) => (
-                      <li
-                        key={i}
-                        className="flex items-center text-gray-700"
-                      >
-                        <CheckCircle className="mr-2 h-5 w-5 text-gray-900" />
-                        <span className="text-sm">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    className={`mt-auto ${plan.popular ? "bg-gray-900 hover:bg-black text-white" : "border-gray-300 text-gray-900 hover:bg-gray-100"}`}
-                    variant={plan.popular ? "default" : "outline"}
-                  >
-                    Get Started
+              <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+                <Link href="/pricing">
+                  <Button size="lg" className="bg-black hover:bg-gray-800 text-white px-8">
+                    View Pricing Plans
+                    <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
-                </div>
-              ))}
+                </Link>
+                <Link href="/auth/register">
+                  <Button size="lg" variant="outline" className="px-8">
+                    Start Free Trial
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
-        </section> */}
+        </section>
 
         {/* CTA Section */}
         <section className="w-full py-24 bg-gray-900 text-white">

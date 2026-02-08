@@ -51,7 +51,7 @@ const createHeaders = (contentType = "application/json") => {
 };
 
 const api = {
-   auth: {
+  auth: {
     register: async (userData) => {
       console.log("API Register - Sending:", userData);
       const response = await fetch(`${API_URL}/auth/register`, {  // Changed from /auth/signup
@@ -153,7 +153,7 @@ const api = {
 
       return handleResponse(response);
     },
-    
+
     verifyEmail: async (token) => {
       const response = await fetch(`${API_URL}/auth/verify-email/${token}`, {
         method: "GET",
@@ -162,7 +162,7 @@ const api = {
 
       return handleResponse(response);
     },
-  
+
 
     // NEW: Get current user
     getMe: async () => {
@@ -719,6 +719,79 @@ const api = {
       );
       const data = await handleResponse(response);
       return data.data;
+    },
+  },
+
+  // Subscription APIs
+  subscriptions: {
+    getPlans: async (role) => {
+      const url = role
+        ? `${API_URL}/subscriptions/plans?role=${role}`
+        : `${API_URL}/subscriptions/plans`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: createHeaders(),
+      });
+      return handleResponse(response);
+    },
+
+    getPlanBySlug: async (slug) => {
+      const response = await fetch(`${API_URL}/subscriptions/plans/${slug}`, {
+        method: "GET",
+        headers: createHeaders(),
+      });
+      return handleResponse(response);
+    },
+
+    getCurrent: async () => {
+      const response = await fetch(`${API_URL}/subscriptions/current`, {
+        method: "GET",
+        headers: createHeaders(),
+      });
+      return handleResponse(response);
+    },
+
+    createOrder: async (planId) => {
+      const response = await fetch(`${API_URL}/subscriptions/create-order`, {
+        method: "POST",
+        headers: createHeaders(),
+        body: JSON.stringify({ planId }),
+      });
+      return handleResponse(response);
+    },
+
+    verifyPayment: async (paymentData) => {
+      const response = await fetch(`${API_URL}/subscriptions/verify-payment`, {
+        method: "POST",
+        headers: createHeaders(),
+        body: JSON.stringify(paymentData),
+      });
+      return handleResponse(response);
+    },
+
+    cancel: async (reason) => {
+      const response = await fetch(`${API_URL}/subscriptions/cancel`, {
+        method: "POST",
+        headers: createHeaders(),
+        body: JSON.stringify({ reason }),
+      });
+      return handleResponse(response);
+    },
+
+    getPaymentHistory: async () => {
+      const response = await fetch(`${API_URL}/subscriptions/payments`, {
+        method: "GET",
+        headers: createHeaders(),
+      });
+      return handleResponse(response);
+    },
+
+    canCreateAccount: async () => {
+      const response = await fetch(`${API_URL}/subscriptions/can-create-account`, {
+        method: "GET",
+        headers: createHeaders(),
+      });
+      return handleResponse(response);
     },
   },
 };

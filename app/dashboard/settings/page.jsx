@@ -11,10 +11,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Loader2, Bell, Shield, Mail, Pencil } from "lucide-react"
+import { Loader2, Bell, Shield, Mail, Pencil, Crown } from "lucide-react"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import api from "@/services/api"
 import { useTheme } from "next-themes"
+import SubscriptionSettings from "@/components/subscription/subscription-settings"
 
 export default function SettingsPage() {
   const { user, refreshUser } = useAuth()
@@ -447,12 +448,16 @@ export default function SettingsPage() {
       {errorMessage && <div className="bg-red-50 text-red-800 p-4 rounded-md mb-4">{errorMessage}</div>}
 
       <Tabs defaultValue="profile" value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="profile">{t.profile}</TabsTrigger>
           <TabsTrigger value="password">{t.password}</TabsTrigger>
           <TabsTrigger value="notifications">{t.notifications}</TabsTrigger>
           <TabsTrigger value="security">{t.security}</TabsTrigger>
           <TabsTrigger value="appearance">{t.appearance}</TabsTrigger>
+          <TabsTrigger value="subscription" className="flex items-center gap-1">
+            <Crown className="h-3 w-3" />
+            Subscription
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile">
@@ -929,6 +934,10 @@ export default function SettingsPage() {
               </Button>
             </CardFooter>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="subscription">
+          <SubscriptionSettings />
         </TabsContent>
       </Tabs>
     </div>
