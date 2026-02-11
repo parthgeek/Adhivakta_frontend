@@ -16,10 +16,12 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import api from "@/services/api"
 import { useTheme } from "next-themes"
 import SubscriptionSettings from "@/components/subscription/subscription-settings"
+import { useLanguage } from "@/context/language-context"
 
 export default function SettingsPage() {
   const { user, refreshUser } = useAuth()
   const { theme, setTheme } = useTheme()
+  const { language, changeLanguage, t } = useLanguage()
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [isFetching, setIsFetching] = useState(true) // New state for initial fetch
@@ -60,7 +62,6 @@ export default function SettingsPage() {
   const [errorMessage, setErrorMessage] = useState("")
   const [phoneError, setPhoneError] = useState("")
   const [currentFontSize, setCurrentFontSize] = useState("medium")
-  const [currentLanguage, setCurrentLanguage] = useState("english")
 
   // Skeleton Component for Settings
   const SettingsSkeleton = () => (
@@ -148,8 +149,9 @@ export default function SettingsPage() {
         }
 
         // Apply language from settings
+        // Apply language from settings
         if (profile.data.appearanceSettings.language) {
-          setCurrentLanguage(profile.data.appearanceSettings.language)
+          changeLanguage(profile.data.appearanceSettings.language)
         }
 
         // Apply theme from settings
@@ -181,8 +183,8 @@ export default function SettingsPage() {
     applyFontSize(savedFontSize)
 
     // Initialize language from localStorage or default
-    const savedLanguage = localStorage.getItem("language") || "english"
-    setCurrentLanguage(savedLanguage)
+    // const savedLanguage = localStorage.getItem("language") || "english"
+    // setCurrentLanguage(savedLanguage)
   }, [user, setTheme])
 
   // Handle tab change
@@ -233,8 +235,7 @@ export default function SettingsPage() {
       applyFontSize(value)
       localStorage.setItem("fontSize", value)
     } else if (name === "language") {
-      setCurrentLanguage(value)
-      localStorage.setItem("language", value)
+      changeLanguage(value)
     }
   }
 
@@ -378,60 +379,7 @@ export default function SettingsPage() {
     }
   }
 
-  // Translations for multilingual support
-  const translations = {
-    english: {
-      settings: "Settings",
-      profile: "Profile",
-      password: "Password",
-      notifications: "Notifications",
-      security: "Security",
-      appearance: "Appearance",
-      successMessage: successMessage,
-      errorMessage: errorMessage,
-      saveChanges: "Save Changes",
-      saving: "Saving...",
-      updatePassword: "Update Password",
-      updating: "Updating...",
-      savePreferences: "Save Preferences",
-      saveSettings: "Save Settings",
-    },
-    hindi: {
-      settings: "सेटिंग्स",
-      profile: "प्रोफाइल",
-      password: "पासवर्ड",
-      notifications: "सूचनाएं",
-      security: "सुरक्षा",
-      appearance: "दिखावट",
-      successMessage: successMessage,
-      errorMessage: errorMessage,
-      saveChanges: "परिवर्तन सहेजें",
-      saving: "सहेज रहा है...",
-      updatePassword: "पासवर्ड अपडेट करें",
-      updating: "अपडेट हो रहा है...",
-      savePreferences: "प्राथमिकताएँ सहेजें",
-      saveSettings: "सेटिंग्स सहेजें",
-    },
-    kannada: {
-      settings: "ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
-      profile: "ಪ್ರೊಫೈಲ್",
-      password: "ಪಾಸ್‌ವರ್ಡ್",
-      notifications: "ಅಧಿಸೂಚನೆಗಳು",
-      security: "ಭದ್ರತೆ",
-      appearance: "ರೂಪ",
-      successMessage: successMessage,
-      errorMessage: errorMessage,
-      saveChanges: "ಬದಲಾವಣೆಗಳನ್ನು ಉಳಿಸಿ",
-      saving: "ಉಳಿಸಲಾಗುತ್ತಿದೆ...",
-      updatePassword: "ಪಾಸ್‌ವರ್ಡ್ ಅಪ್‌ಡೇಟ್ ಮಾಡಿ",
-      updating: "ಅಪ್‌ಡೇಟ್ ಆಗುತ್ತಿದೆ...",
-      savePreferences: "ಆದ್ಯತೆಗಳನ್ನು ಉಳಿಸಿ",
-      saveSettings: "ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಉಳಿಸಿ",
-    },
-  }
 
-  // Get current translations based on selected language
-  const t = translations[currentLanguage] || translations.english
 
   if (isFetching) {
     return <SettingsSkeleton />
@@ -443,7 +391,7 @@ export default function SettingsPage() {
         <h1 className="text-3xl font-bold">{t.settings}</h1>
       </div>
 
-      {successMessage && <div className="bg-green-50 text-green-800 p-4 rounded-md mb-4">{t.successMessage}</div>}
+      {successMessage && <div className="bg-green-50 text-green-800 p-4 rounded-md mb-4">{successMessage}</div>}
 
       {errorMessage && <div className="bg-red-50 text-red-800 p-4 rounded-md mb-4">{errorMessage}</div>}
 

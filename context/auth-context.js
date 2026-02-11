@@ -15,6 +15,7 @@ import {
 } from "firebase/auth"
 import { initializeApp } from "firebase/app"
 import api from "@/services/api"
+import { toast } from "@/components/ui/use-toast"
 
 export const AuthContext = createContext()
 
@@ -38,6 +39,7 @@ export const AuthProvider = ({ children }) => {
   const pathname = usePathname()
   const isValidatingRef = useRef(false)
   const lastValidationRef = useRef(0)
+  const hasSentBeaconRef = useRef(false)
 
   // Initialize Firebase
   useEffect(() => {
@@ -53,6 +55,46 @@ export const AuthProvider = ({ children }) => {
       initializeApp(firebaseConfig)
     } catch (error) {
       console.log("Firebase initialization skipped:", error.message)
+    }
+  }, [])
+
+  // Best-effort logout when the tab/window is actually being closed
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const logoutBeacon = () => {
+      if (hasSentBeaconRef.current) return
+      const token = localStorage.getItem("auth_token")
+      if (!token) return
+
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/logout-beacon`
+      const payload = JSON.stringify({ token })
+      const blob = new Blob([payload], { type: "application/json" })
+
+      try {
+        const sent = navigator.sendBeacon(url, blob)
+        if (sent) {
+          hasSentBeaconRef.current = true
+          return
+        }
+      } catch (err) {
+        console.warn("sendBeacon failed, falling back to fetch", err)
+      }
+
+      fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+        keepalive: true,
+      }).catch(() => {})
+    }
+
+    window.addEventListener("beforeunload", logoutBeacon)
+    window.addEventListener("pagehide", logoutBeacon)
+
+    return () => {
+      window.removeEventListener("beforeunload", logoutBeacon)
+      window.removeEventListener("pagehide", logoutBeacon)
     }
   }, [])
 
@@ -94,6 +136,31 @@ export const AuthProvider = ({ children }) => {
       }
     }
   }, [clearAuthData])
+
+  // Logout all other sessions but keep current one (requires valid auth token)
+  const logoutOtherSessions = useCallback(async () => {
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null
+      if (!token) {
+        throw new Error("No active session token")
+      }
+
+      await api.auth.logoutOtherSessions()
+      toast({
+        title: "Other sessions closed",
+        description: "You have been kept signed in here.",
+      })
+      return true
+    } catch (err) {
+      console.error("logoutOtherSessions error:", err)
+      toast({
+        variant: "destructive",
+        title: "Could not close other sessions",
+        description: err.message || "Please try again",
+      })
+      throw err
+    }
+  }, [])
 
   // Validate session
   const validateSession = useCallback(async (force = false) => {
@@ -204,25 +271,20 @@ export const AuthProvider = ({ children }) => {
     }
   }, [])
 
-  // Login with email/password
-  // Pass forceLogin: true to override single-device restriction
-  const login = useCallback(async (email, password, forceLogin = false) => {
+  // Login with email/password (auto-clears previous session server-side)
+  const login = useCallback(async (email, password) => {
     try {
       // First try backend email/password login
-      const response = await api.auth.login({ email, password, forceLogin })
+      const response = await api.auth.login({ email, password })
       handleAuthSuccess(response)
+      if (response.previousSessionTerminated) {
+        toast({
+          title: "Previous session closed",
+          description: "We signed you out from other devices and kept you here.",
+        })
+      }
       return response.user
     } catch (backendErr) {
-      // Check if this is an "already logged in" error from single-device restriction
-      if (backendErr.code === 'ALREADY_LOGGED_IN') {
-        // Re-throw with the error info so UI can show confirmation dialog
-        const alreadyLoggedInError = new Error(backendErr.message)
-        alreadyLoggedInError.code = 'ALREADY_LOGGED_IN'
-        alreadyLoggedInError.email = email
-        alreadyLoggedInError.password = password
-        throw alreadyLoggedInError
-      }
-
       console.log("Backend login failed, trying Firebase:", backendErr.message)
       try {
         const auth = getAuth()
@@ -238,18 +300,16 @@ export const AuthProvider = ({ children }) => {
         }
 
         const idToken = await fbUser.getIdToken()
-        const response = await api.auth.googleLogin({ idToken, forceLogin })
+        const response = await api.auth.googleLogin({ idToken })
         handleAuthSuccess(response)
+        if (response.previousSessionTerminated) {
+          toast({
+            title: "Previous session closed",
+            description: "We signed you out from other devices and kept you here.",
+          })
+        }
         return response.user
       } catch (firebaseErr) {
-        // Check if Firebase login also hit the "already logged in" error
-        if (firebaseErr.code === 'ALREADY_LOGGED_IN') {
-          const alreadyLoggedInError = new Error(firebaseErr.message)
-          alreadyLoggedInError.code = 'ALREADY_LOGGED_IN'
-          alreadyLoggedInError.email = email
-          alreadyLoggedInError.password = password
-          throw alreadyLoggedInError
-        }
         console.error("Firebase login failed:", firebaseErr)
         throw firebaseErr
       }
@@ -460,19 +520,23 @@ export const AuthProvider = ({ children }) => {
   const loginWithGoogle = useCallback(async (options = {}) => {
     const auth = getAuth()
     const provider = new GoogleAuthProvider()
+    let idToken = options.idToken || null
 
     try {
-      const result = await signInWithPopup(auth, provider)
-      if (!result || !result.user) throw new Error("No user returned")
+      if (!options.skipPopup) {
+        const result = await signInWithPopup(auth, provider)
+        if (!result || !result.user) throw new Error("No user returned")
+        const fbUser = result.user
+        idToken = await fbUser.getIdToken()
+      }
 
-      const fbUser = result.user
-      const idToken = await fbUser.getIdToken()
+      if (!idToken) throw new Error("Google ID token missing")
 
       // Build payload with optional parameters
       const payload = {
         idToken,
         role: options.role || null,
-        isRegisterFlow: options.isRegisterFlow || false
+        isRegisterFlow: options.isRegisterFlow || false,
       }
 
       console.log("Sending Google login request with payload:", payload)
@@ -482,10 +546,16 @@ export const AuthProvider = ({ children }) => {
 
       if (response && response.success) {
         handleAuthSuccess(response)
+        if (response.previousSessionTerminated) {
+          toast({
+            title: "Previous session closed",
+            description: "We signed you out from other devices and kept you here.",
+          })
+        }
         return response.user
-      } else {
-        throw new Error(response?.message || "Google login failed")
       }
+
+      throw new Error(response?.message || "Google login failed")
     } catch (err) {
       console.error("loginWithGoogle error:", err)
 

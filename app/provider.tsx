@@ -3,6 +3,7 @@
 import { AuthProvider } from "@/context/auth-context";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
+import { LanguageProvider } from "@/context/language-context";
 import { GoogleReCaptchaProvider } from "react-google-recaptcha-v3";
 
 export default function Providers({ children }) {
@@ -15,17 +16,19 @@ export default function Providers({ children }) {
         appendTo: "head",
       }}
     >
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="light"
-        enableSystem={false}
-        forcedTheme="light"
-      >
-        <AuthProvider>
-          {children}
-          <Toaster />
-        </AuthProvider>
-      </ThemeProvider>
+      <LanguageProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem={false}
+          forcedTheme="light"
+        >
+          <AuthProvider>
+            {children}
+            <Toaster />
+          </AuthProvider>
+        </ThemeProvider>
+      </LanguageProvider>
     </GoogleReCaptchaProvider>
   );
 }

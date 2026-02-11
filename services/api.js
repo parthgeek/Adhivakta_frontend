@@ -100,6 +100,15 @@ const api = {
       return handleResponse(response);
     },
 
+    logoutOtherSessions: async () => {
+      const response = await fetch(`${API_URL}/auth/logout-other-sessions`, {
+        method: "POST",
+        headers: createHeaders(),
+      });
+
+      return handleResponse(response);
+    },
+
     verifyToken: async () => {
       const response = await fetch(`${API_URL}/auth/verify`, {
         method: "GET",

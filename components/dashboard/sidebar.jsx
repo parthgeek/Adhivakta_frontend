@@ -24,6 +24,7 @@ import {
 import { useAuth } from "@/context/auth-context";
 import { useSidebar } from "@/context/sidebar-context";
 import { useRealTimeCounts } from "@/context/realtime-counts-context";
+import { useLanguage } from "@/context/language-context";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -32,126 +33,126 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-const getLawyerNavItems = (counts) => [
+const getLawyerNavItems = (counts, t) => [
   {
-    name: "Dashboard",
+    name: t.dashboard,
     href: "/dashboard",
     icon: LayoutDashboard,
-    tooltip: "Dashboard",
+    tooltip: t.dashboard,
   },
   {
-    name: "Cases",
+    name: t.cases,
     href: "/dashboard/cases",
     icon: FileText,
-    tooltip: "Cases",
+    tooltip: t.cases,
   },
   {
-    name: "Documents",
+    name: t.documents,
     href: "/dashboard/documents",
     icon: FolderOpen,
-    tooltip: "Documents",
+    tooltip: t.documents,
   },
   {
-    name: "Calendar",
+    name: t.calendar,
     href: "/dashboard/calendar",
     icon: Calendar,
-    tooltip: "Calendar",
+    tooltip: t.calendar,
     badge: counts.events,
   },
   {
-    name: "Clients & Parties",
+    name: t.clientsParties,
     href: "/dashboard/clients-parties",
     icon: Users,
-    tooltip: "Clients & Parties",
+    tooltip: t.clientsParties,
   },
   {
-    name: "Reports",
+    name: t.reports,
     href: "/dashboard/reports",
     icon: BarChart3,
-    tooltip: "Reports & Analytics",
+    tooltip: t.reports,
   },
   {
-    name: "Notifications",
+    name: t.notifications,
     href: "/dashboard/notifications",
     icon: Bell,
-    tooltip: "Notifications",
+    tooltip: t.notifications,
     badge: counts.notifications,
   },
   {
-    name: "Messages",
+    name: t.messages,
     href: "/dashboard/messages",
     icon: MessageSquare,
-    tooltip: "Messages",
+    tooltip: t.messages,
     badge: counts.messages,
   },
 ];
 
-const getClientNavItems = (counts) => [
+const getClientNavItems = (counts, t) => [
   {
-    name: "Dashboard",
+    name: t.dashboard,
     href: "/dashboard",
     icon: LayoutDashboard,
-    tooltip: "Dashboard",
+    tooltip: t.dashboard,
   },
   {
-    name: "My Cases",
+    name: t.myCases,
     href: "/dashboard/cases",
     icon: FileText,
-    tooltip: "My Cases",
+    tooltip: t.myCases,
   },
   {
-    name: "Documents",
+    name: t.documents,
     href: "/dashboard/documents",
     icon: FolderOpen,
-    tooltip: "Documents",
+    tooltip: t.documents,
   },
   {
-    name: "Calendar",
+    name: t.calendar,
     href: "/dashboard/calendar",
     icon: Calendar,
-    tooltip: "Calendar",
+    tooltip: t.calendar,
     badge: counts.events,
   },
   {
-    name: "My Lawyers",
+    name: t.myLawyers,
     href: "/dashboard/lawyers",
     icon: Briefcase,
-    tooltip: "My Lawyers",
+    tooltip: t.myLawyers,
   },
   {
-    name: "Notifications",
+    name: t.notifications,
     href: "/dashboard/notifications",
     icon: Bell,
-    tooltip: "Notifications",
+    tooltip: t.notifications,
     badge: counts.notifications,
   },
   {
-    name: "Messages",
+    name: t.messages,
     href: "/dashboard/messages",
     icon: MessageSquare,
-    tooltip: "Messages",
+    tooltip: t.messages,
     badge: counts.messages,
   },
 ];
 
-const bottomNavItems = [
+const getBottomNavItems = (t) => [
   {
-    name: "Profile",
+    name: t.profile,
     href: "/dashboard/profile",
     icon: User,
-    tooltip: "Profile",
+    tooltip: t.profile,
   },
   {
-    name: "Settings",
+    name: t.settings,
     href: "/dashboard/settings",
     icon: Settings,
-    tooltip: "Settings",
+    tooltip: t.settings,
   },
   {
-    name: "Help",
+    name: t.help,
     href: "/dashboard/help",
     icon: HelpCircle,
-    tooltip: "Help",
+    tooltip: t.help,
   },
 ];
 
@@ -160,11 +161,14 @@ export default function Sidebar() {
   const { logout, user } = useAuth();
   const { collapsed, toggleSidebar } = useSidebar();
   const { counts } = useRealTimeCounts();
+  const { t } = useLanguage();
 
   const isLawyer = user?.role === "lawyer";
   const navItems = isLawyer
-    ? getLawyerNavItems(counts)
-    : getClientNavItems(counts);
+    ? getLawyerNavItems(counts, t)
+    : getClientNavItems(counts, t);
+
+  const bottomNavItems = getBottomNavItems(t);
 
   return (
     <TooltipProvider>
@@ -293,12 +297,12 @@ export default function Sidebar() {
                     onClick={logout}
                   >
                     <LogOut className="h-5 w-5 flex-shrink-0" />
-                    {!collapsed && <span>Sign out</span>}
+                    {!collapsed && <span>{t.logout}</span>}
                   </Button>
                 </TooltipTrigger>
                 {collapsed && (
                   <TooltipContent side="right" className="ml-2">
-                    Sign out
+                    {t.logout}
                   </TooltipContent>
                 )}
               </Tooltip>
@@ -318,7 +322,7 @@ export default function Sidebar() {
                   {user?.name || "User"}
                 </p>
                 <p className="text-xs text-muted-foreground truncate">
-                  {user?.role === "lawyer" ? "Lawyer" : "Client"}
+                  {user?.role === "lawyer" ? t.lawyers : t.clients}
                 </p>
               </div>
             </div>
