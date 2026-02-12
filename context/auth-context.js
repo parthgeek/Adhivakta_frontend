@@ -271,11 +271,11 @@ export const AuthProvider = ({ children }) => {
     }
   }, [])
 
-  // Login with email/password (auto-clears previous session server-side)
-  const login = useCallback(async (email, password) => {
+  // Login with email/password
+  const login = useCallback(async (email, password, forceLogin = false) => {
     try {
       // First try backend email/password login
-      const response = await api.auth.login({ email, password })
+      const response = await api.auth.login({ email, password, forceLogin })
       handleAuthSuccess(response)
       if (response.previousSessionTerminated) {
         toast({
@@ -286,6 +286,9 @@ export const AuthProvider = ({ children }) => {
       return response.user
     } catch (backendErr) {
       console.log("Backend login failed, trying Firebase:", backendErr.message)
+      if (backendErr?.code === "ACTIVE_SESSION_EXISTS" || backendErr?.response?.status === 409) {
+        throw backendErr
+      }
       try {
         const auth = getAuth()
         const userCredential = await signInWithEmailAndPassword(auth, email, password)
@@ -300,7 +303,7 @@ export const AuthProvider = ({ children }) => {
         }
 
         const idToken = await fbUser.getIdToken()
-        const response = await api.auth.googleLogin({ idToken })
+        const response = await api.auth.googleLogin({ idToken, forceLogin })
         handleAuthSuccess(response)
         if (response.previousSessionTerminated) {
           toast({
@@ -537,6 +540,7 @@ export const AuthProvider = ({ children }) => {
         idToken,
         role: options.role || null,
         isRegisterFlow: options.isRegisterFlow || false,
+        forceLogin: options.forceLogin || false,
       }
 
       console.log("Sending Google login request with payload:", payload)
@@ -558,6 +562,11 @@ export const AuthProvider = ({ children }) => {
       throw new Error(response?.message || "Google login failed")
     } catch (err) {
       console.error("loginWithGoogle error:", err)
+
+      if (err?.code === "ACTIVE_SESSION_EXISTS") {
+        err.idToken = idToken
+        throw err
+      }
 
       // Check if role is required (for new users)
       if (err.message?.includes("Role required") ||

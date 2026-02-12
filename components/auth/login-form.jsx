@@ -35,6 +35,8 @@ export function LoginForm() {
   const [error, setError] = useState("")
   const [showRoleDialog, setShowRoleDialog] = useState(false)
   const [selectedRole, setSelectedRole] = useState("")
+  const [showSessionConflictDialog, setShowSessionConflictDialog] = useState(false)
+  const [sessionConflict, setSessionConflict] = useState(null)
   const { login, loginWithGoogle } = useAuth()
   const router = useRouter()
 
@@ -52,6 +54,13 @@ export function LoginForm() {
       router.push("/dashboard")
     } catch (error) {
       console.error("Login error:", error)
+
+      if (error.code === "ACTIVE_SESSION_EXISTS") {
+        setSessionConflict({ provider: "email" })
+        setShowSessionConflictDialog(true)
+        setError(error.message || "This account is already active on another device.")
+        return
+      }
 
       // User-friendly error messages
       if (error.code === "auth/invalid-credential" || error.code === "auth/wrong-password") {
@@ -91,6 +100,14 @@ export function LoginForm() {
       router.push("/dashboard")
     } catch (error) {
       console.error("Google login error:", error)
+
+      if (error.code === "ACTIVE_SESSION_EXISTS") {
+        setSessionConflict({ provider: "google", idToken: error.idToken || null })
+        setShowSessionConflictDialog(true)
+        setError(error.message || "This account is already active on another device.")
+        return
+      }
+
       // Handle specific error for new users
       if (error.message && error.message.includes("Please register first")) {
         setError("Account not found. Please register first from the sign-up page.")
@@ -111,6 +128,44 @@ export function LoginForm() {
           description: error.message || "Could not sign in with Google",
         })
       }
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleSessionConflictConfirm = async () => {
+    if (!sessionConflict) return
+
+    setError("")
+    setIsLoading(true)
+
+    try {
+      if (sessionConflict.provider === "google") {
+        await loginWithGoogle({
+          forceLogin: true,
+          idToken: sessionConflict.idToken || undefined,
+          skipPopup: Boolean(sessionConflict.idToken),
+        })
+      } else {
+        await login(email, password, true)
+      }
+
+      setShowSessionConflictDialog(false)
+      setSessionConflict(null)
+
+      toast({
+        title: "Previous session closed",
+        description: "Successfully logged in on this device.",
+      })
+      router.push("/dashboard")
+    } catch (error) {
+      console.error("Force login error:", error)
+      setError(error.message || "Could not close previous session. Please try again.")
+      toast({
+        variant: "destructive",
+        title: "Could not complete login",
+        description: error.message || "Please try again.",
+      })
     } finally {
       setIsLoading(false)
     }
@@ -227,6 +282,46 @@ export function LoginForm() {
         <FcGoogle className="mr-2 h-4 w-4" />
         Continue with Google
       </Button>
+
+      <Dialog
+        open={showSessionConflictDialog}
+        onOpenChange={(open) => {
+          setShowSessionConflictDialog(open)
+          if (!open) setSessionConflict(null)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Account already active</DialogTitle>
+            <DialogDescription>
+              This account is logged in on another device. Click Logout to end that session and continue here.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowSessionConflictDialog(false)
+                setSessionConflict(null)
+              }}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleSessionConflictConfirm} disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Logging out...
+                </>
+              ) : (
+                "Logout previous device"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Role Selection Dialog for New Google Users */}
       <Dialog open={showRoleDialog} onOpenChange={setShowRoleDialog}>
