@@ -1,12 +1,43 @@
 import { CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { User, Trash2, PlusCircle } from "lucide-react";
 
-export default function ClientView({ caseData, setCaseData }) {
+const normalizeEmail = (value) =>
+  typeof value === "string" ? value.trim().toLowerCase() : "";
+
+const getParticipantUserId = (participant) => {
+  if (!participant) return null;
+  if (participant.user && typeof participant.user === "object") {
+    return participant.user._id || participant.user.id || null;
+  }
+  return participant.user || participant._id || participant.id || null;
+};
+
+const isCurrentClient = (client, user) => {
+  const userId = user?.id || user?._id || null;
+  const userEmail = normalizeEmail(user?.email);
+  const clientId = getParticipantUserId(client);
+  const clientEmail = normalizeEmail(client?.email);
+
+  return (
+    (userId && clientId && clientId.toString() === userId.toString()) ||
+    (userEmail && clientEmail && clientEmail === userEmail)
+  );
+};
+
+export default function ClientView({
+  caseData,
+  setCaseData,
+  updateClientField,
+  removeClient,
+  addClient,
+  user,
+}) {
   return (
     <>
       <CardHeader>
@@ -151,8 +182,6 @@ export default function ClientView({ caseData, setCaseData }) {
                   </Select>
                 </div>
 
-
-
                 <div className="space-y-1">
                   <Label htmlFor={`adv-poc-${idx}`} className="text-sm font-medium">
                     Point of Contact
@@ -210,7 +239,6 @@ export default function ClientView({ caseData, setCaseData }) {
                     gst: "",
                     poc: "",
                     level: "Senior",
-
                     isLead: (prev.advocates || []).length === 0,
                   },
                 ],
@@ -220,6 +248,109 @@ export default function ClientView({ caseData, setCaseData }) {
             className="mt-2 w-full border-dashed border-gray-300 hover:border-primary hover:bg-primary/5"
           >
             <PlusCircle className="mr-2 h-4 w-4" /> Add Advocate to Case
+          </Button>
+        </div>
+      </CardContent>
+
+      <CardHeader className="border-t">
+        <CardTitle>Associated Clients</CardTitle>
+        <CardDescription>
+          You are auto-set as primary client. Add other clients to this case if needed.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-6">
+          {(caseData.clients || []).map((client, idx) => {
+            const isPrimaryClient = isCurrentClient(client, user);
+
+            return (
+              <div key={`client-${idx}`} className="space-y-3 border p-4 rounded-lg shadow">
+                <div className="flex justify-between items-center">
+                  <h4 className="font-medium">Client {idx + 1}</h4>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeClient(idx)}
+                    disabled={isPrimaryClient}
+                    className="disabled:opacity-60"
+                  >
+                    Remove
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor={`client-name-${idx}`}>
+                      Name <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id={`client-name-${idx}`}
+                      value={client.name || ""}
+                      onChange={(e) => updateClientField(idx, "name", e.target.value)}
+                      placeholder="Full Name"
+                      disabled={isPrimaryClient}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor={`client-email-${idx}`}>
+                      Email <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id={`client-email-${idx}`}
+                      type="email"
+                      value={client.email || ""}
+                      onChange={(e) => updateClientField(idx, "email", e.target.value)}
+                      placeholder="email@example.com"
+                      disabled={isPrimaryClient}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor={`client-contact-${idx}`}>Contact Number</Label>
+                    <Input
+                      id={`client-contact-${idx}`}
+                      type="tel"
+                      value={client.contact || ""}
+                      onChange={(e) => updateClientField(idx, "contact", e.target.value)}
+                      placeholder="+91 XXXXXXXXXX"
+                      disabled={isPrimaryClient}
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <Label htmlFor={`client-address-${idx}`}>Address</Label>
+                    <Textarea
+                      id={`client-address-${idx}`}
+                      value={client.address || ""}
+                      onChange={(e) => updateClientField(idx, "address", e.target.value)}
+                      placeholder="Full Address"
+                      disabled={isPrimaryClient}
+                      rows={2}
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`client-primary-${idx}`}
+                        checked={isPrimaryClient}
+                        disabled
+                      />
+                      <Label htmlFor={`client-primary-${idx}`} className="text-sm font-medium">
+                        {isPrimaryClient ? "Primary Client (You)" : "Additional Client"}
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          <Button type="button" onClick={addClient} variant="outline" className="mt-4">
+            <PlusCircle className="mr-2 h-4 w-4" /> Add Client
           </Button>
         </div>
       </CardContent>

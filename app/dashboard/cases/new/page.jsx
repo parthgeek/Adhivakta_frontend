@@ -5,18 +5,136 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import CaseTabs from "@/components/cases/CaseTabs";
 import SidebarGuide from "@/components/cases/SidebarGuide";
-import { CASE_TYPES, STATES, OTHER_COURT_TYPES, BENCHES, DISTRICTS } from "@/lib/constants/caseConstants";
+import { DISTRICTS } from "@/lib/constants/caseConstants";
 import { toast } from "@/components/ui/use-toast";
 import api from "@/services/api";
+
+const normalizeValue = (value) =>
+  typeof value === "string" ? value.trim() : "";
+
+const normalizeEmail = (value) => normalizeValue(value).toLowerCase();
+
+const getCurrentUserId = (currentUser) => currentUser?.id || currentUser?._id || null;
+
+const getParticipantUserId = (participant) => {
+  if (!participant) return null;
+
+  if (participant.user && typeof participant.user === "object") {
+    return participant.user._id || participant.user.id || null;
+  }
+
+  return participant.user || participant._id || participant.id || null;
+};
+
+const isSameUser = (participant, currentUser) => {
+  const currentUserId = getCurrentUserId(currentUser);
+  const currentUserEmail = normalizeEmail(currentUser?.email);
+  const participantUserId = getParticipantUserId(participant);
+  const participantEmail = normalizeEmail(participant?.email);
+
+  return (
+    (currentUserId &&
+      participantUserId &&
+      participantUserId.toString() === currentUserId.toString()) ||
+    (currentUserEmail &&
+      participantEmail &&
+      participantEmail === currentUserEmail)
+  );
+};
+
+const ensureCurrentUserPrimaryParticipant = (
+  participants = [],
+  currentUser,
+  type
+) => {
+  const currentUserId = getCurrentUserId(currentUser);
+  const currentUserEmail = normalizeEmail(currentUser?.email);
+
+  if (!currentUserId && !currentUserEmail) {
+    return Array.isArray(participants) ? participants : [];
+  }
+
+  let foundCurrentUser = false;
+  const normalizedParticipants = [];
+
+  (participants || []).forEach((participant) => {
+    const isCurrentUser = isSameUser(participant, currentUser);
+
+    if (isCurrentUser) {
+      if (foundCurrentUser) {
+        return;
+      }
+
+      foundCurrentUser = true;
+      normalizedParticipants.push({
+        ...participant,
+        user: currentUserId || participant.user || null,
+        name: normalizeValue(currentUser?.name) || normalizeValue(participant?.name),
+        email:
+          normalizeValue(currentUser?.email) || normalizeValue(participant?.email),
+        contact:
+          normalizeValue(participant?.contact) ||
+          normalizeValue(currentUser?.phone) ||
+          normalizeValue(currentUser?.contact),
+        ...(type === "lawyer"
+          ? {
+              company:
+                normalizeValue(participant?.company) ||
+                normalizeValue(currentUser?.company),
+              gst:
+                normalizeValue(participant?.gst) || normalizeValue(currentUser?.gst),
+              level: participant?.level || "Senior",
+            }
+          : {
+              address:
+                normalizeValue(participant?.address) ||
+                normalizeValue(currentUser?.address),
+            }),
+        isPrimary: true,
+      });
+      return;
+    }
+
+    normalizedParticipants.push({
+      ...participant,
+      isPrimary: false,
+    });
+  });
+
+  if (!foundCurrentUser) {
+    normalizedParticipants.unshift({
+      user: currentUserId || null,
+      name: normalizeValue(currentUser?.name),
+      email: normalizeValue(currentUser?.email),
+      contact:
+        normalizeValue(currentUser?.phone) || normalizeValue(currentUser?.contact),
+      ...(type === "lawyer"
+        ? {
+            company: normalizeValue(currentUser?.company),
+            gst: normalizeValue(currentUser?.gst),
+            level: "Senior",
+          }
+        : {
+            address: normalizeValue(currentUser?.address),
+          }),
+      isPrimary: true,
+    });
+  }
+
+  return normalizedParticipants;
+};
+
+const removeCurrentUserFromParticipants = (participants = [], currentUser) =>
+  (participants || []).filter((participant) => !isSameUser(participant, currentUser));
 
 export default function NewCasePage() {
   const router = useRouter();
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLawyer, setIsLawyer] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploadProgress, setUploadProgress] = useState({});
   const [activeTab, setActiveTab] = useState("details");
+  const isLawyer = user?.role === "lawyer" || user?.role === "admin";
 
   const [caseData, setCaseData] = useState({
     title: "",
@@ -52,11 +170,33 @@ export default function NewCasePage() {
   });
 
   useEffect(() => {
-    if (user) {
-      const isLawyer = user?.role === "lawyer" || user?.role === "admin";
-      setIsLawyer(isLawyer);
-    }
-  }, [user]);
+    if (!user) return;
+
+    setCaseData((prev) => {
+      const nextLawyers = isLawyer
+        ? ensureCurrentUserPrimaryParticipant(prev.lawyers || [], user, "lawyer")
+        : removeCurrentUserFromParticipants(prev.lawyers || [], user);
+
+      const nextClients = isLawyer
+        ? removeCurrentUserFromParticipants(prev.clients || [], user)
+        : ensureCurrentUserPrimaryParticipant(prev.clients || [], user, "client");
+
+      const lawyersChanged =
+        JSON.stringify(nextLawyers) !== JSON.stringify(prev.lawyers || []);
+      const clientsChanged =
+        JSON.stringify(nextClients) !== JSON.stringify(prev.clients || []);
+
+      if (!lawyersChanged && !clientsChanged) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        lawyers: nextLawyers,
+        clients: nextClients,
+      };
+    });
+  }, [user, isLawyer]);
 
   // Validate all fields
   const validateAllFields = () => {
@@ -130,6 +270,16 @@ export default function NewCasePage() {
 
     // Lawyer-specific validation
     if (isLawyer) {
+      if (!caseData.lawyers || caseData.lawyers.length === 0) {
+        errors.push({ tab: 'associatedParties', message: 'Primary lawyer details are required' });
+      } else {
+        caseData.lawyers.forEach((lawyer, index) => {
+          if (!lawyer.name || lawyer.name.trim() === '') {
+            errors.push({ tab: 'associatedParties', message: `Lawyer ${index + 1} name is required` });
+          }
+        });
+      }
+
       if (!caseData.clients || caseData.clients.length === 0) {
         errors.push({ tab: 'associatedParties', message: 'At least one client is required when a lawyer creates a case' });
       } else {
@@ -139,16 +289,18 @@ export default function NewCasePage() {
           }
         });
       }
-
-      if (caseData.lawyers && caseData.lawyers.length > 0) {
-        caseData.lawyers.forEach((lawyer, index) => {
-          if (!lawyer.name || lawyer.name.trim() === '') {
-            errors.push({ tab: 'associatedParties', message: `Lawyer ${index + 1} name is required` });
+    } else {
+      // Client-specific validation
+      if (!caseData.clients || caseData.clients.length === 0) {
+        errors.push({ tab: 'associatedParties', message: 'Primary client details are required' });
+      } else {
+        caseData.clients.forEach((client, index) => {
+          if (!client.name || client.name.trim() === '') {
+            errors.push({ tab: 'associatedParties', message: `Client ${index + 1} name is required` });
           }
         });
       }
-    } else {
-      // Client-specific validation
+
       if (caseData.advocates && caseData.advocates.length > 0) {
         caseData.advocates.forEach((advocate, index) => {
           if (!advocate.name || advocate.name.trim() === '') {
@@ -292,11 +444,32 @@ export default function NewCasePage() {
 
       setIsSubmitting(true);
 
+      const normalizedLawyers = isLawyer
+        ? ensureCurrentUserPrimaryParticipant(caseData.lawyers || [], user, "lawyer")
+        : removeCurrentUserFromParticipants(
+            (caseData.advocates || []).map((adv) => ({
+              name: normalizeValue(adv?.name),
+              email: normalizeValue(adv?.email),
+              contact: normalizeValue(adv?.contact),
+              company: normalizeValue(adv?.company),
+              gst: normalizeValue(adv?.gst),
+              isLead: !!adv?.isLead,
+              level: adv?.level || "",
+              poc: normalizeValue(adv?.poc),
+              spock: normalizeValue(adv?.spock),
+            })),
+            user
+          );
+
+      const normalizedClients = isLawyer
+        ? removeCurrentUserFromParticipants(caseData.clients || [], user)
+        : ensureCurrentUserPrimaryParticipant(caseData.clients || [], user, "client");
+
       // Format the data according to the API schema
       const formattedData = {
         // Basic case info
-        title: caseData.title.trim(),
-        caseNumber: caseData.caseNumber.trim(),
+        title: normalizeValue(caseData.title),
+        caseNumber: normalizeValue(caseData.caseNumber),
         caseType: caseData.caseType,
         status: caseData.status || "active",
 
@@ -305,9 +478,9 @@ export default function NewCasePage() {
         district: caseData.district,
         bench: caseData.bench,
         courtType: caseData.courtType,
-        court: caseData.court.trim(),
-        courtHall: caseData.courtHall?.trim() || "",
-        courtComplex: caseData.courtComplex?.trim() || "",
+        court: normalizeValue(caseData.court),
+        courtHall: normalizeValue(caseData.courtHall),
+        courtComplex: normalizeValue(caseData.courtComplex),
 
         // Dates
         filingDate: caseData.filingDate
@@ -320,20 +493,20 @@ export default function NewCasePage() {
         // Parties Section
         parties: {
           petitioner: (caseData.petitioners || []).map((p) => ({
-            name: p.name.trim(),
+            name: normalizeValue(p.name),
             type: p.type || "Individual",
             role: p.label || caseData.petitionerLabel || "Petitioner",
-            email: p.email?.trim() || "",
-            contact: p.contact?.trim() || "",
-            address: p.address?.trim() || "",
+            email: normalizeValue(p.email),
+            contact: normalizeValue(p.contact),
+            address: normalizeValue(p.address),
           })),
           respondent: (caseData.respondents || []).map((r) => ({
-            name: r.name.trim(),
+            name: normalizeValue(r.name),
             type: r.type || "Individual",
             role: r.label || caseData.respondentLabel || "Defendant",
-            email: r.email?.trim() || "",
-            contact: r.contact?.trim() || "",
-            address: r.address?.trim() || "",
+            email: normalizeValue(r.email),
+            contact: normalizeValue(r.contact),
+            address: normalizeValue(r.address),
           })),
         },
 
@@ -341,77 +514,76 @@ export default function NewCasePage() {
         priority: caseData.priority || "normal",
         isUrgent: caseData.isUrgent || false,
         caseStage: caseData.caseStage || "filing",
-        actSections: caseData.actSections?.trim() || "",
-        reliefSought: caseData.reliefSought?.trim() || "",
-        description: caseData.description?.trim() || "",
-        notes: caseData.notes?.trim() || "",
+        actSections: normalizeValue(caseData.actSections),
+        reliefSought: normalizeValue(caseData.reliefSought),
+        description: normalizeValue(caseData.description),
+        notes: normalizeValue(caseData.notes),
 
         // Role-specific data
         ...(isLawyer
           ? {
             // For lawyers
-            clients: (caseData.clients || []).map((client) => ({
-              name: client.name.trim(),
-              email: client.email?.trim() || "",
-              contact: client.contact?.trim() || "",
-              address: client.address?.trim() || "",
-              isPrimary: client.isPrimary || false,
+            clients: normalizedClients.map((client) => ({
+              name: normalizeValue(client.name),
+              email: normalizeValue(client.email),
+              contact: normalizeValue(client.contact),
+              address: normalizeValue(client.address),
+              isPrimary: !!client.isPrimary,
             })),
 
-            lawyers: (caseData.lawyers || []).map((lawyer) => ({
-              name: lawyer.name.trim(),
-              email: lawyer.email?.trim() || "",
-              contact: lawyer.contact?.trim() || "",
-              company: lawyer.company?.trim() || "",
-              gst: lawyer.gst?.trim() || "",
-              isLead: lawyer.isLead || false,
+            lawyers: normalizedLawyers.map((lawyer) => ({
+              name: normalizeValue(lawyer.name),
+              email: normalizeValue(lawyer.email),
+              contact: normalizeValue(lawyer.contact),
+              company: normalizeValue(lawyer.company),
+              gst: normalizeValue(lawyer.gst),
+              isLead: !!lawyer.isLead,
               level: lawyer.level || "",
 
-              isPrimary: lawyer.isPrimary || false,
-              poc: lawyer.poc?.trim() || "",
-              spock: lawyer.spock?.trim() || "",
+              isPrimary: !!lawyer.isPrimary,
+              poc: normalizeValue(lawyer.poc),
+              spock: normalizeValue(lawyer.spock),
             })),
 
             stakeholders: (caseData.stakeholders || []).map(
               (stakeholder) => ({
-                name: stakeholder.name.trim(),
-                email: stakeholder.email?.trim() || "",
-                contact: stakeholder.contact?.trim() || "",
-                address: stakeholder.address?.trim() || "",
-                roleInCase: stakeholder.roleInCase?.trim() || "",
+                name: normalizeValue(stakeholder.name),
+                email: normalizeValue(stakeholder.email),
+                contact: normalizeValue(stakeholder.contact),
+                address: normalizeValue(stakeholder.address),
+                roleInCase: normalizeValue(stakeholder.roleInCase),
               })
             ),
           }
           : {
             // For clients
-            clients: [
-              {
-                name: user?.name || "",
-                email: user?.email || "",
-                contact: user?.phone || "",
-                address: user?.address || "",
-              },
-            ],
+            clients: normalizedClients.map((client) => ({
+              name: normalizeValue(client.name),
+              email: normalizeValue(client.email),
+              contact: normalizeValue(client.contact),
+              address: normalizeValue(client.address),
+              isPrimary: !!client.isPrimary,
+            })),
 
-            lawyers: (caseData.advocates || []).map((adv) => ({
-              name: adv.name.trim(),
-              email: adv.email?.trim() || "",
-              contact: adv.contact?.trim() || "",
-              company: adv.company?.trim() || "",
-              gst: adv.gst?.trim() || "",
-              isLead: adv.isLead || false,
-              level: adv.level || "",
-              poc: adv.poc?.trim() || "",
-              spock: adv.spock?.trim() || "",
+            lawyers: normalizedLawyers.map((lawyer) => ({
+              name: normalizeValue(lawyer.name),
+              email: normalizeValue(lawyer.email),
+              contact: normalizeValue(lawyer.contact),
+              company: normalizeValue(lawyer.company),
+              gst: normalizeValue(lawyer.gst),
+              isLead: !!lawyer.isLead,
+              level: lawyer.level || "",
+              poc: normalizeValue(lawyer.poc),
+              spock: normalizeValue(lawyer.spock),
             })),
 
             stakeholders: (caseData.stakeholders || []).map(
               (stakeholder) => ({
-                name: stakeholder.name.trim(),
-                email: stakeholder.email?.trim() || "",
-                contact: stakeholder.contact?.trim() || "",
-                address: stakeholder.address?.trim() || "",
-                roleInCase: stakeholder.roleInCase?.trim() || "",
+                name: normalizeValue(stakeholder.name),
+                email: normalizeValue(stakeholder.email),
+                contact: normalizeValue(stakeholder.contact),
+                address: normalizeValue(stakeholder.address),
+                roleInCase: normalizeValue(stakeholder.roleInCase),
               })
             ),
           }),
