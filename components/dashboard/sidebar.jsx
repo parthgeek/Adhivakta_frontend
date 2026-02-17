@@ -20,6 +20,8 @@ import {
   User,
   Bell,
   MessageSquare,
+  Gavel,
+  AlertTriangle,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { useSidebar } from "@/context/sidebar-context";
@@ -47,42 +49,48 @@ const getLawyerNavItems = (counts, t) => [
     tooltip: t.cases,
   },
   {
+    name: t.clientsParties || "Clients & Parties",
+    href: "/dashboard/clients-parties",
+    icon: Users,
+    tooltip: t.clientsParties || "Clients & Parties",
+  },
+  {
+    name: "Hearings",
+    href: "/dashboard/calendar",
+    icon: Gavel,
+    tooltip: "Hearings",
+    badge: counts.events,
+  },
+  {
+    name: t.calendar || "Calendar",
+    href: "/dashboard/calendar",
+    icon: Calendar,
+    tooltip: t.calendar || "Calendar",
+  },
+  {
+    name: "Alerts",
+    href: "/dashboard/notifications",
+    icon: AlertTriangle,
+    tooltip: "Alerts",
+    badge: counts.notifications,
+  },
+  {
     name: t.documents,
     href: "/dashboard/documents",
     icon: FolderOpen,
     tooltip: t.documents,
   },
   {
-    name: t.calendar,
-    href: "/dashboard/calendar",
-    icon: Calendar,
-    tooltip: t.calendar,
-    badge: counts.events,
-  },
-  {
-    name: t.clientsParties,
-    href: "/dashboard/clients-parties",
-    icon: Users,
-    tooltip: t.clientsParties,
-  },
-  {
-    name: t.reports,
+    name: t.reports || "Reports",
     href: "/dashboard/reports",
     icon: BarChart3,
-    tooltip: t.reports,
+    tooltip: t.reports || "Reports",
   },
   {
-    name: t.notifications,
-    href: "/dashboard/notifications",
-    icon: Bell,
-    tooltip: t.notifications,
-    badge: counts.notifications,
-  },
-  {
-    name: t.messages,
+    name: t.messages || "Messages",
     href: "/dashboard/messages",
     icon: MessageSquare,
-    tooltip: t.messages,
+    tooltip: t.messages || "Messages",
     badge: counts.messages,
   },
 ];
@@ -95,10 +103,10 @@ const getClientNavItems = (counts, t) => [
     tooltip: t.dashboard,
   },
   {
-    name: t.myCases,
+    name: t.myCases || "My Cases",
     href: "/dashboard/cases",
     icon: FileText,
-    tooltip: t.myCases,
+    tooltip: t.myCases || "My Cases",
   },
   {
     name: t.documents,
@@ -107,52 +115,52 @@ const getClientNavItems = (counts, t) => [
     tooltip: t.documents,
   },
   {
-    name: t.calendar,
+    name: t.calendar || "Calendar",
     href: "/dashboard/calendar",
     icon: Calendar,
-    tooltip: t.calendar,
+    tooltip: t.calendar || "Calendar",
     badge: counts.events,
   },
   {
-    name: t.myLawyers,
+    name: t.myLawyers || "My Lawyers",
     href: "/dashboard/lawyers",
     icon: Briefcase,
-    tooltip: t.myLawyers,
+    tooltip: t.myLawyers || "My Lawyers",
   },
   {
-    name: t.notifications,
+    name: t.notifications || "Notifications",
     href: "/dashboard/notifications",
     icon: Bell,
-    tooltip: t.notifications,
+    tooltip: t.notifications || "Notifications",
     badge: counts.notifications,
   },
   {
-    name: t.messages,
+    name: t.messages || "Messages",
     href: "/dashboard/messages",
     icon: MessageSquare,
-    tooltip: t.messages,
+    tooltip: t.messages || "Messages",
     badge: counts.messages,
   },
 ];
 
 const getBottomNavItems = (t) => [
   {
-    name: t.profile,
+    name: t.profile || "Profile",
     href: "/dashboard/profile",
     icon: User,
-    tooltip: t.profile,
+    tooltip: t.profile || "Profile",
   },
   {
-    name: t.settings,
+    name: t.settings || "Settings",
     href: "/dashboard/settings",
     icon: Settings,
-    tooltip: t.settings,
+    tooltip: t.settings || "Settings",
   },
   {
-    name: t.help,
+    name: t.help || "Help",
     href: "/dashboard/help",
     icon: HelpCircle,
-    tooltip: t.help,
+    tooltip: t.help || "Help",
   },
 ];
 
@@ -174,24 +182,26 @@ export default function Sidebar() {
     <TooltipProvider>
       <div
         className={cn(
-          "flex h-full flex-col border-r bg-background transition-all duration-300 ease-in-out",
-          collapsed ? "w-16" : "w-64"
+          "flex h-full flex-col transition-all duration-300 ease-in-out",
+          collapsed ? "w-16" : "w-64",
+          "bg-white text-gray-700 border-r border-gray-200"
         )}
       >
-        <div className="flex h-14 items-center justify-between border-b px-4">
+        {/* Logo Header */}
+        <div className="flex h-16 items-center justify-between px-4 border-b border-gray-200">
           {!collapsed && (
-            <Link href="/dashboard" className="flex items-center gap-6">
+            <Link href="/dashboard" className="flex items-center gap-3">
               <img
                 src="/adhi_logo_main.png"
                 alt="Adhivakta Logo"
-                className="h-12 w-12 object-contain"
+                className="h-10 w-10 object-contain"
               />
               <span
-                className="text-xl font-light"
+                className="text-lg font-semibold text-gray-900 tracking-wide uppercase"
                 style={{ fontFamily: "Georgia, serif" }}
               >
                 Adhivakta
-              </span>{" "}
+              </span>
             </Link>
           )}
           {collapsed && (
@@ -199,7 +209,7 @@ export default function Sidebar() {
               <img
                 src="/adhi_logo_main.png"
                 alt="Adhivakta"
-                className="h-10 w-10 object-contain"
+                className="h-9 w-9 object-contain"
               />
             </div>
           )}
@@ -207,7 +217,7 @@ export default function Sidebar() {
             variant="ghost"
             size="icon"
             onClick={toggleSidebar}
-            className="h-8 w-8 ml-auto"
+            className="h-8 w-8 ml-auto text-gray-400 hover:text-gray-900 hover:bg-gray-100"
           >
             {collapsed ? (
               <ChevronRight className="h-4 w-4" />
@@ -218,129 +228,105 @@ export default function Sidebar() {
           </Button>
         </div>
 
-        <div className="flex-1 overflow-auto py-2">
+        {/* Main Navigation */}
+        <div className="flex-1 overflow-auto py-3">
           <TooltipProvider>
-            <nav className="grid gap-1 px-2">
-              {navItems.map((item) => (
-                <Tooltip key={item.href}>
-                  <TooltipTrigger asChild>
-                    <Link
-                      href={item.href}
-                      className={cn(
-                        "flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors relative",
-                        pathname === item.href
-                          ? "bg-primary text-primary-foreground"
-                          : "hover:bg-muted",
-                        collapsed ? "justify-center" : "gap-3"
-                      )}
-                    >
-                      <item.icon className="h-5 w-5 flex-shrink-0" />
-                      {!collapsed && <span>{item.name}</span>}
-                      {!collapsed && item.badge > 0 && (
-                        <span className="ml-auto bg-red-500 text-white text-xs rounded-full px-2 py-0.5 min-w-[20px] text-center">
-                          {item.badge}
-                        </span>
-                      )}
-                      {collapsed && item.badge > 0 && (
-                        <span className="absolute top-1 right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                          {item.badge > 9 ? "9+" : item.badge}
-                        </span>
-                      )}
-                    </Link>
-                  </TooltipTrigger>
-                  {collapsed && (
-                    <TooltipContent side="right" className="ml-2">
-                      {item.tooltip || item.name}
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-              ))}
+            <nav className="grid gap-0.5 px-2">
+              {navItems.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <Tooltip key={item.name + item.href}>
+                    <TooltipTrigger asChild>
+                      <Link
+                        href={item.href}
+                        className={cn(
+                          "flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 relative",
+                          isActive
+                            ? "bg-[#1a2332] text-white font-semibold shadow-lg"
+                            : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+                          collapsed ? "justify-center" : "gap-3"
+                        )}
+                      >
+                        <item.icon className="h-5 w-5 flex-shrink-0" />
+                        {!collapsed && <span>{item.name}</span>}
+                        {!collapsed && item.badge > 0 && (
+                          <span className="ml-auto bg-red-500 text-white text-xs rounded-full px-2 py-0.5 min-w-[20px] text-center font-semibold">
+                            {item.badge}
+                          </span>
+                        )}
+                        {collapsed && item.badge > 0 && (
+                          <span className="absolute top-0.5 right-0.5 bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                            {item.badge > 9 ? "9+" : item.badge}
+                          </span>
+                        )}
+                      </Link>
+                    </TooltipTrigger>
+                    {collapsed && (
+                      <TooltipContent side="right" className="ml-2">
+                        {item.tooltip || item.name}
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                );
+              })}
             </nav>
           </TooltipProvider>
         </div>
 
-        <div className="border-t">
+        {/* Bottom Navigation */}
+        <div className="border-t border-gray-200">
           <TooltipProvider>
-            <nav className="grid gap-1 px-2 py-2">
-              {bottomNavItems.map((item) => (
-                <Tooltip key={item.href}>
-                  <TooltipTrigger asChild>
-                    <Link
-                      href={item.href}
-                      className={cn(
-                        "flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                        pathname === item.href
-                          ? "bg-primary text-primary-foreground"
-                          : "hover:bg-muted",
-                        collapsed ? "justify-center" : "gap-3"
-                      )}
-                    >
-                      <item.icon className="h-5 w-5 flex-shrink-0" />
-                      {!collapsed && <span>{item.name}</span>}
-                    </Link>
-                  </TooltipTrigger>
-                  {collapsed && (
-                    <TooltipContent side="right" className="ml-2">
-                      {item.tooltip || item.name}
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-              ))}
+            <nav className="grid gap-0.5 px-2 py-2">
+              {bottomNavItems.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <Tooltip key={item.href}>
+                    <TooltipTrigger asChild>
+                      <Link
+                        href={item.href}
+                        className={cn(
+                          "flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                          isActive
+                            ? "bg-[#1a2332] text-white font-semibold shadow-lg"
+                            : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+                          collapsed ? "justify-center" : "gap-3"
+                        )}
+                      >
+                        <item.icon className="h-5 w-5 flex-shrink-0" />
+                        {!collapsed && <span>{item.name}</span>}
+                      </Link>
+                    </TooltipTrigger>
+                    {collapsed && (
+                      <TooltipContent side="right" className="ml-2">
+                        {item.tooltip || item.name}
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                );
+              })}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
                     className={cn(
-                      "flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-muted",
+                      "flex w-full items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 text-gray-600 hover:bg-gray-100 hover:text-gray-900",
                       collapsed ? "justify-center" : "gap-3"
                     )}
                     onClick={logout}
                   >
                     <LogOut className="h-5 w-5 flex-shrink-0" />
-                    {!collapsed && <span>{t.logout}</span>}
+                    {!collapsed && <span>{t.logout || "Logout"}</span>}
                   </Button>
                 </TooltipTrigger>
                 {collapsed && (
                   <TooltipContent side="right" className="ml-2">
-                    {t.logout}
+                    {t.logout || "Logout"}
                   </TooltipContent>
                 )}
               </Tooltip>
             </nav>
           </TooltipProvider>
         </div>
-
-        {/* User Profile Section with Total Count Badge */}
-        {!collapsed && (
-          <div className="border-t p-4">
-            <div className="flex items-center gap-3 relative">
-              <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium relative">
-                {user?.name?.charAt(0) || "U"}
-              </div>
-              <div className="overflow-hidden flex-1">
-                <p className="text-sm font-medium truncate">
-                  {user?.name || "User"}
-                </p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {user?.role === "lawyer" ? t.lawyers : t.clients}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-        {collapsed && (
-          <div className="border-t p-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex justify-center cursor-pointer">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium text-sm relative">
-                    {user?.name?.charAt(0) || "U"}
-                  </div>
-                </div>
-              </TooltipTrigger>
-            </Tooltip>
-          </div>
-        )}
       </div>
     </TooltipProvider>
   );
