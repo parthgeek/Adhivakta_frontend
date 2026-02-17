@@ -18,6 +18,9 @@ import {
   Eye,
   RefreshCw,
   AlertCircle,
+  Briefcase,
+  FolderOpen,
+  MoreVertical,
 } from "lucide-react";
 import api from "@/services/api";
 import Link from "next/link";
@@ -192,6 +195,7 @@ const CasesList = ({ cases = [] }) => {
           const courtName = safeText(caseItem.court);
           const caseType = safeText(caseItem.caseType) || safeText(caseItem.type);
           const title = safeText(caseItem.title) || safeText(caseItem.description) || "No description available";
+          const nextHearing = caseItem.nextHearingDate || caseItem.nextHearing || caseItem.hearingDate;
 
           return (
             <div
@@ -207,9 +211,9 @@ const CasesList = ({ cases = [] }) => {
                   <PriorityBadge priority={caseItem.priority} />
                   <StatusBadge status={caseItem.status} />
                 </div>
-                {caseItem.priority === "high" || caseItem.priority === "urgent" ? (
+                {(caseItem.priority === "high" || caseItem.priority === "urgent") && (
                   <AlertCircle className="h-5 w-5 text-red-400" />
-                ) : null}
+                )}
               </div>
 
               {/* Case Title */}
@@ -224,12 +228,19 @@ const CasesList = ({ cases = [] }) => {
                     <span className="font-medium text-gray-700">{clientName}</span>
                   </div>
                 )}
-                {caseItem.nextHearing && (
+                {lawyerName && (
+                  <div className="flex items-center gap-1.5">
+                    <Briefcase className="h-3.5 w-3.5" />
+                    <span className="text-gray-400">Lawyer:</span>
+                    <span className="font-medium text-gray-700">{lawyerName}</span>
+                  </div>
+                )}
+                {nextHearing && (
                   <div className="flex items-center gap-1.5">
                     <Calendar className="h-3.5 w-3.5" />
                     <span className="text-gray-400">Next Hearing:</span>
                     <span className="font-medium text-gray-700">
-                      {new Date(caseItem.nextHearing).toLocaleDateString()}
+                      {new Date(nextHearing).toLocaleDateString()}
                     </span>
                   </div>
                 )}
@@ -251,12 +262,6 @@ const CasesList = ({ cases = [] }) => {
 
               {/* Case Footer */}
               <div className="flex items-center justify-between pt-3 border-t border-gray-50">
-                {lawyerName && (
-                  <p className="text-xs text-gray-400 flex items-center gap-1.5">
-                    <Clock className="h-3.5 w-3.5" />
-                    Handled by {lawyerName}
-                  </p>
-                )}
                 <div className="flex items-center gap-2 ml-auto">
                   <Link
                     href={`/dashboard/cases/${caseItem._id || caseItem.id}`}
@@ -267,7 +272,7 @@ const CasesList = ({ cases = [] }) => {
                   </Link>
                   <Link
                     href={`/dashboard/cases/${caseItem._id || caseItem.id}`}
-                    className="px-3.5 py-1.5 text-xs font-medium text-white bg-black rounded-lg hover:bg-gray-800 transition-colors inline-flex items-center gap-1.5"
+                    className="px-3.5 py-1.5 text-xs font-medium text-white bg-[#1a2332] rounded-lg hover:bg-[#253345] transition-colors inline-flex items-center gap-1.5"
                   >
                     <RefreshCw className="h-3.5 w-3.5" />
                     Update Status
@@ -282,6 +287,70 @@ const CasesList = ({ cases = [] }) => {
             <FileText className="h-14 w-14 mx-auto mb-3 text-gray-200" />
             <p className="font-medium text-gray-500">No cases found</p>
             <p className="text-sm mt-1">Create your first case to get started</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Priority Alerts Component
+const PriorityAlerts = ({ cases = [] }) => {
+  const priorityCases = cases.filter(
+    (c) => (c.priority === "high" || c.priority === "urgent") && c.status === "active"
+  );
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+      <div className="flex items-center justify-between mb-5">
+        <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+          <AlertTriangle className="h-5 w-5 text-red-500" />
+          Priority Alerts
+        </h3>
+        {priorityCases.length > 0 && (
+          <span className="bg-red-100 text-red-700 text-xs font-bold px-2.5 py-0.5 rounded-full">
+            {priorityCases.length}
+          </span>
+        )}
+      </div>
+      <div className="space-y-3">
+        {priorityCases.slice(0, 5).map((caseItem, index) => {
+          const nextHearing = caseItem.nextHearingDate || caseItem.nextHearing || caseItem.hearingDate;
+          return (
+            <Link
+              key={caseItem._id || index}
+              href={`/dashboard/cases/${caseItem._id || caseItem.id}`}
+            >
+              <div className="flex items-start gap-3 p-3.5 bg-red-50/60 rounded-xl hover:bg-red-50 transition-colors border border-red-100/60 cursor-pointer">
+                <div className={`mt-0.5 p-1.5 rounded-lg ${caseItem.priority === "urgent" ? "bg-red-100" : "bg-orange-100"}`}>
+                  <AlertCircle className={`h-4 w-4 ${caseItem.priority === "urgent" ? "text-red-600" : "text-orange-500"}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">
+                    {caseItem.caseNumber || "N/A"}
+                  </p>
+                  <p className="text-xs text-gray-600 truncate">{caseItem.title}</p>
+                  {nextHearing && (
+                    <p className="text-[11px] text-gray-400 mt-1 flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {new Date(nextHearing).toLocaleDateString("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </p>
+                  )}
+                </div>
+                <PriorityBadge priority={caseItem.priority} />
+              </div>
+            </Link>
+          );
+        })}
+        {priorityCases.length === 0 && (
+          <div className="text-center py-6 text-gray-400">
+            <CheckCircle className="h-10 w-10 mx-auto mb-2 text-green-300" />
+            <p className="text-sm font-medium text-gray-500">All clear!</p>
+            <p className="text-xs text-gray-400 mt-0.5">No urgent cases right now</p>
           </div>
         )}
       </div>
@@ -571,8 +640,9 @@ const NewDashboard = () => {
             <UpcomingHearings events={dashboardData.events} />
           </div>
 
-          {/* Right Column - Quick Actions */}
+          {/* Right Column - Priority Alerts + Quick Actions */}
           <div className="space-y-6">
+            <PriorityAlerts cases={dashboardData.cases} />
             <QuickActions />
 
             {/* Recent Uploads */}

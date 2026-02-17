@@ -174,25 +174,49 @@ export default function CalendarPage() {
           api.events.getAll(),
         ]);
         setCases(fetchedCases);
+        const formattedEvents = [];
+        const eventCaseIds = new Set();
         if (Array.isArray(eventsResponse)) {
-          const formattedEvents = eventsResponse.map((event) => ({
-            id: event._id || event.id,
-            title: event.title,
-            date: event.start ? new Date(event.start).toISOString().split("T")[0] : null,
-            time: event.start
-              ? new Date(event.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-              : null,
-            type: event.type || "hearing",
-            location: event.location || "",
-            description: event.description || "",
-            case: event.case?.title || "",
-            caseId: event.case?._id || "",
-          }));
-          setEvents(formattedEvents);
-        } else {
-          setEvents([]);
-          console.error('Events fetch did not return an array:', eventsResponse);
+          eventsResponse.forEach((event) => {
+            formattedEvents.push({
+              id: event._id || event.id,
+              title: event.title,
+              date: event.start ? new Date(event.start).toISOString().split("T")[0] : null,
+              time: event.start
+                ? new Date(event.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                : null,
+              type: event.type || "hearing",
+              location: event.location || "",
+              description: event.description || "",
+              case: event.case?.title || "",
+              caseId: event.case?._id || "",
+            });
+            if (event.case?._id) eventCaseIds.add(event.case._id);
+          });
         }
+        // Merge hearing dates from cases that have nextHearingDate but no matching event
+        if (Array.isArray(fetchedCases)) {
+          fetchedCases.forEach((c) => {
+            const hearingDate = c.nextHearingDate || c.hearingDate;
+            if (!hearingDate) return;
+            const caseId = c._id || c.id;
+            if (eventCaseIds.has(caseId)) return;
+            const dt = new Date(hearingDate);
+            formattedEvents.push({
+              id: `case-hearing-${caseId}`,
+              title: `Hearing: ${c.title || 'Untitled Case'}`,
+              date: dt.toISOString().split("T")[0],
+              time: dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+              type: "hearing",
+              location: c.court || "",
+              description: `Next hearing for case ${c.caseNumber || c.number || ''}`.trim(),
+              case: c.title || "",
+              caseId: caseId,
+              isCaseHearing: true,
+            });
+          });
+        }
+        setEvents(formattedEvents);
       } catch (error) {
         console.error("Error fetching cases or events:", error);
         toast({
@@ -260,44 +284,70 @@ export default function CalendarPage() {
   }
 
   const fetchEvents = async () => {
-  try {
-    const response = await api.events.getAll();
-    console.log('Raw events response:', response);
-    
-    if (Array.isArray(response)) {
-      const eventMap = new Map();
-      response.forEach(event => {
-        const id = event._id || event.id;
-        if (id && !eventMap.has(id)) {
-          eventMap.set(id, event);
-        }
-      });
-      
-      const uniqueEvents = Array.from(eventMap.values());
-      const formattedEvents = uniqueEvents.map((event) => ({
-        id: event._id || event.id,
-        title: event.title,
-        date: event.start ? new Date(event.start).toISOString().split("T")[0] : null,
-        time: event.start
-          ? new Date(event.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-          : null,
-        type: event.type || "hearing",
-        location: event.location || "",
-        description: event.description || "",
-        case: event.case?.title || "",
-        caseId: event.case?._id || "",
-      }));
-      
+    try {
+      const response = await api.events.getAll();
+      console.log('Raw events response:', response);
+
+      const formattedEvents = [];
+      const eventCaseIds = new Set();
+
+      if (Array.isArray(response)) {
+        const eventMap = new Map();
+        response.forEach(event => {
+          const id = event._id || event.id;
+          if (id && !eventMap.has(id)) {
+            eventMap.set(id, event);
+          }
+        });
+
+        const uniqueEvents = Array.from(eventMap.values());
+        uniqueEvents.forEach((event) => {
+          formattedEvents.push({
+            id: event._id || event.id,
+            title: event.title,
+            date: event.start ? new Date(event.start).toISOString().split("T")[0] : null,
+            time: event.start
+              ? new Date(event.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+              : null,
+            type: event.type || "hearing",
+            location: event.location || "",
+            description: event.description || "",
+            case: event.case?.title || "",
+            caseId: event.case?._id || "",
+          });
+          if (event.case?._id) eventCaseIds.add(event.case._id);
+        });
+      }
+
+      // Merge hearing dates from cases
+      if (Array.isArray(cases) && cases.length > 0) {
+        cases.forEach((c) => {
+          const hearingDate = c.nextHearingDate || c.hearingDate;
+          if (!hearingDate) return;
+          const caseId = c._id || c.id;
+          if (eventCaseIds.has(caseId)) return;
+          const dt = new Date(hearingDate);
+          formattedEvents.push({
+            id: `case-hearing-${caseId}`,
+            title: `Hearing: ${c.title || 'Untitled Case'}`,
+            date: dt.toISOString().split("T")[0],
+            time: dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            type: "hearing",
+            location: c.court || "",
+            description: `Next hearing for case ${c.caseNumber || c.number || ''}`.trim(),
+            case: c.title || "",
+            caseId: caseId,
+            isCaseHearing: true,
+          });
+        });
+      }
+
       setEvents(formattedEvents);
-      console.log('Deduplicated events:', formattedEvents.length);
-    } else {
-      setEvents([]);
-      console.error('Events fetch did not return an array:', response);
+      console.log('Total events (incl. case hearings):', formattedEvents.length);
+    } catch (error) {
+      console.error("Error fetching events:", error);
     }
-  } catch (error) {
-    console.error("Error fetching events:", error);
-  }
-};
+  };
 
   useEffect(() => {
     fetchEvents()
@@ -785,13 +835,12 @@ export default function CalendarPage() {
               {calendarDays.map((day, index) => (
                 <div
                   key={index}
-                  className={`min-h-[100px] border rounded-md p-1 ${
-                    day.day === null
-                      ? "bg-muted/20"
-                      : day.dateString === new Date().toISOString().split("T")[0]
-                        ? "bg-primary/10 border-primary"
-                        : ""
-                  }`}
+                  className={`min-h-[100px] border rounded-md p-1 ${day.day === null
+                    ? "bg-muted/20"
+                    : day.dateString === new Date().toISOString().split("T")[0]
+                      ? "bg-primary/10 border-primary"
+                      : ""
+                    }`}
                 >
                   {day.day !== null && (
                     <>
@@ -817,16 +866,16 @@ export default function CalendarPage() {
                       <div className="space-y-1">
                         {day.events && day.events.length > 0
                           ? day.events.map((event) => (
-                              <div
-                                key={event.id}
-                                className={`text-xs p-1 rounded border truncate cursor-pointer ${getEventColor(event.type)}`}
-                                title={event.title}
-                                onClick={() => (isLawyer ? editEvent(event) : null)}
-                              >
-                                {event.time && `${event.time} - `}
-                                {event.title}
-                              </div>
-                            ))
+                            <div
+                              key={event.id}
+                              className={`text-xs p-1 rounded border truncate cursor-pointer ${getEventColor(event.type)}`}
+                              title={event.title}
+                              onClick={() => (isLawyer ? editEvent(event) : null)}
+                            >
+                              {event.time && `${event.time} - `}
+                              {event.title}
+                            </div>
+                          ))
                           : null}
                       </div>
                     </>
@@ -863,11 +912,10 @@ export default function CalendarPage() {
                 return weekDays.map((day, index) => (
                   <div
                     key={index}
-                    className={`min-h-[100px] border rounded-md p-1 ${
-                      day.dateString === new Date().toISOString().split("T")[0]
-                        ? "bg-primary/10 border-primary"
-                        : ""
-                    }`}
+                    className={`min-h-[100px] border rounded-md p-1 ${day.dateString === new Date().toISOString().split("T")[0]
+                      ? "bg-primary/10 border-primary"
+                      : ""
+                      }`}
                   >
                     <div className="flex justify-between items-center p-1">
                       <div className="text-sm font-medium">{day.day}</div>
@@ -891,16 +939,16 @@ export default function CalendarPage() {
                     <div className="space-y-1">
                       {day.events && day.events.length > 0
                         ? day.events.map((event) => (
-                            <div
-                              key={event.id}
-                              className={`text-xs p-1 rounded border truncate cursor-pointer ${getEventColor(event.type)}`}
-                              title={event.title}
-                              onClick={() => (isLawyer ? editEvent(event) : null)}
-                            >
-                              {event.time && `${event.time} - `}
-                              {event.title}
-                            </div>
-                          ))
+                          <div
+                            key={event.id}
+                            className={`text-xs p-1 rounded border truncate cursor-pointer ${getEventColor(event.type)}`}
+                            title={event.title}
+                            onClick={() => (isLawyer ? editEvent(event) : null)}
+                          >
+                            {event.time && `${event.time} - `}
+                            {event.title}
+                          </div>
+                        ))
                         : null}
                     </div>
                   </div>

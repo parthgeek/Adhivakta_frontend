@@ -161,54 +161,54 @@ export default function CasesPage() {
     ...new Set(uniqueCases.map((c) => c.caseType || c.type).filter(Boolean)),
   ];
 
-// Skeleton Component for Cases Table
-const CasesTableSkeleton = () => (
-  <Card>
-    <CardHeader>
-      <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
-        <div>
-          <div className="h-6 w-32 bg-gray-200 rounded animate-pulse mb-2"></div>
-          <div className="h-4 w-64 bg-gray-200 rounded animate-pulse"></div>
+  // Skeleton Component for Cases Table
+  const CasesTableSkeleton = () => (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
+          <div>
+            <div className="h-6 w-32 bg-gray-200 rounded animate-pulse mb-2"></div>
+            <div className="h-4 w-64 bg-gray-200 rounded animate-pulse"></div>
+          </div>
+          <div className="flex flex-col space-y-2 md:flex-row md:space-x-2 md:space-y-0">
+            <div className="h-10 w-full md:w-[200px] bg-gray-200 rounded animate-pulse"></div>
+            <div className="h-10 w-full md:w-[150px] bg-gray-200 rounded animate-pulse"></div>
+            <div className="h-10 w-full md:w-[150px] bg-gray-200 rounded animate-pulse"></div>
+          </div>
         </div>
-        <div className="flex flex-col space-y-2 md:flex-row md:space-x-2 md:space-y-0">
-          <div className="h-10 w-full md:w-[200px] bg-gray-200 rounded animate-pulse"></div>
-          <div className="h-10 w-full md:w-[150px] bg-gray-200 rounded animate-pulse"></div>
-          <div className="h-10 w-full md:w-[150px] bg-gray-200 rounded animate-pulse"></div>
-        </div>
-      </div>
-    </CardHeader>
-    <CardContent>
-      <div className="space-y-4">
-        <div className="grid grid-cols-7 gap-4 border-b pb-4">
-          {[...Array(7)].map((_, i) => (
-            <div key={i} className="h-4 bg-gray-200 rounded animate-pulse"></div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div className="grid grid-cols-7 gap-4 border-b pb-4">
+            {[...Array(7)].map((_, i) => (
+              <div key={i} className="h-4 bg-gray-200 rounded animate-pulse"></div>
+            ))}
+          </div>
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="grid grid-cols-7 gap-4 py-3 border-b border-gray-100">
+              <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
+              <div className="h-4 bg-gray-200 rounded animate-pulse w-1/2"></div>
+              <div className="h-4 bg-gray-200 rounded animate-pulse w-2/3"></div>
+              <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
+              <div className="h-4 bg-gray-200 rounded animate-pulse w-1/2"></div>
+              <div className="h-6 w-16 bg-gray-200 rounded-full animate-pulse"></div>
+              <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
+            </div>
           ))}
         </div>
-        {[...Array(8)].map((_, i) => (
-          <div key={i} className="grid grid-cols-7 gap-4 py-3 border-b border-gray-100">
-            <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
-            <div className="h-4 bg-gray-200 rounded animate-pulse w-1/2"></div>
-            <div className="h-4 bg-gray-200 rounded animate-pulse w-2/3"></div>
-            <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
-            <div className="h-4 bg-gray-200 rounded animate-pulse w-1/2"></div>
-            <div className="h-6 w-16 bg-gray-200 rounded-full animate-pulse"></div>
-            <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
-          </div>
-        ))}
-      </div>
-    </CardContent>
-  </Card>
-);
+      </CardContent>
+    </Card>
+  );
 
-const CasesPageSkeleton = () => (
-  <div className="space-y-6">
-    <div className="flex items-center justify-between">
-      <div className="h-9 w-32 bg-gray-200 rounded animate-pulse"></div>
-      <div className="h-10 w-28 bg-gray-200 rounded animate-pulse"></div>
+  const CasesPageSkeleton = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="h-9 w-32 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-10 w-28 bg-gray-200 rounded animate-pulse"></div>
+      </div>
+      <CasesTableSkeleton />
     </div>
-    <CasesTableSkeleton />
-  </div>
-);
+  );
 
   if (loading) {
     return <CasesPageSkeleton />;
@@ -228,7 +228,7 @@ const CasesPageSkeleton = () => (
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Cases</h1>
         <Link href="/dashboard/cases/new">
-          <Button>
+          <Button className="bg-[#1a2332] hover:bg-[#253345]">
             <PlusIcon className="mr-2 h-4 w-4" />
             New Case
           </Button>
@@ -286,98 +286,248 @@ const CasesPageSkeleton = () => (
           </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
-            <table className="w-full border-collapse">
-              <thead className="sticky top-0 bg-background z-10">
-                <tr className="border-b">
-                  <th className="py-3 text-left font-medium">Case Title</th>
-                  <th className="py-3 text-left font-medium">Case Number</th>
-                  <th className="py-3 text-left font-medium">Type</th>
-                  {isLawyer && (
-                    <th className="py-3 text-left font-medium">Client</th>
-                  )}
-                  <th className="py-3 text-left font-medium">Court</th>
-                  <th className="py-3 text-left font-medium">Status</th>
-                  <th className="py-3 text-left font-medium">Next Hearing</th>
-                  <th className="py-3 text-left font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredCases.length > 0 ? (
-                  filteredCases.map((caseItem) => {
-                    // Fix client column: show client name if available, fallback to clients[0]?.name, else 'No Client'
-                    let clientName = caseItem.client;
-                    if (
-                      !clientName &&
-                      Array.isArray(caseItem.clients) &&
-                      caseItem.clients.length > 0
-                    ) {
-                      clientName = caseItem.clients[0]?.name;
-                    }
-                    if (!clientName) clientName = "No Client";
-                    return (
-                      <tr
-                        key={caseItem.id}
-                        className="border-b hover:bg-muted/50"
-                      >
-                        <td className="py-3">
-                          <Link
-                            href={`/dashboard/cases/${caseItem.id}`}
-                            className="font-medium text-primary hover:underline"
-                          >
-                            {caseItem.title}
-                          </Link>
-                        </td>
-                        <td className="py-3">{caseItem.number}</td>
-                        <td className="py-3">{caseItem.type}</td>
-                        {isLawyer && <td className="py-3">{clientName}</td>}
-                        <td className="py-3">{caseItem.court}</td>
-                        <td className="py-3">
-                          <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                              caseItem.status === "Active"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-gray-100 text-gray-800"
-                            }`}
-                          >
-                            {caseItem.status}
+          <div className="space-y-5">
+            {filteredCases.length > 0 ? (
+              uniqueCases.map((rawCase) => {
+                const caseItem = mapCaseFields(rawCase);
+                const petitioners = rawCase.parties?.petitioner || [];
+                const respondents = rawCase.parties?.respondent || [];
+                const lawyers = rawCase.lawyers || [];
+                const advocates = rawCase.advocates || [];
+                const nextHearing = rawCase.nextHearingDate || rawCase.hearingDate;
+                const courtName = rawCase.court || "Not specified";
+                const caseType = rawCase.caseType || rawCase.type || "";
+                const priority = rawCase.priority || "normal";
+
+                // Fix client name
+                let clientName = rawCase.client?.name || rawCase.client;
+                if (!clientName && Array.isArray(rawCase.clients) && rawCase.clients.length > 0) {
+                  clientName = rawCase.clients[0]?.name;
+                }
+
+                return (
+                  <div
+                    key={caseItem.id}
+                    className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all duration-200 bg-white"
+                  >
+                    {/* Case Header */}
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-bold text-gray-900 text-lg">
+                          {caseItem.number || "N/A"}
+                        </p>
+                        <span className={`px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full tracking-wider ${priority === "urgent" ? "bg-red-600 text-white" :
+                            priority === "high" ? "bg-red-500 text-white" :
+                              priority === "low" ? "bg-green-500 text-white" :
+                                "bg-orange-400 text-white"
+                          }`}>
+                          {priority}
+                        </span>
+                        <span className={`px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full tracking-wider ${caseItem.status === "Active"
+                            ? "bg-green-100 text-green-700 border border-green-200"
+                            : "bg-gray-100 text-gray-600 border border-gray-200"
+                          }`}>
+                          {caseItem.status}
+                        </span>
+                        {(priority === "high" || priority === "urgent") && (
+                          <span className="text-red-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                            </svg>
                           </span>
-                        </td>
-                        <td className="py-3">
-                          {caseItem.nextHearing
-                            ? new Date(
-                                caseItem.nextHearing
-                              ).toLocaleDateString()
-                            : "N/A"}
-                        </td>
-                        <td className="py-3 text-right">
-                          <Button variant="ghost" size="sm" asChild>
-                            <Link href={`/dashboard/cases/${caseItem.id}`}>
-                              View
-                            </Link>
-                          </Button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td
-                      colSpan={isLawyer ? 8 : 7}
-                      className="py-6 text-center text-muted-foreground"
-                    >
-                      No cases found. Try adjusting your filters or{" "}
-                      <Link
-                        href="/dashboard/cases/new"
-                        className="text-primary hover:underline"
-                      >
-                        add a new case
-                      </Link>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                        )}
+                      </div>
+                      <button className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="5" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="12" cy="19" r="1" /></svg>
+                      </button>
+                    </div>
+
+                    {/* Case Title */}
+                    <p className="text-sm text-gray-600 mb-1">{caseItem.title}</p>
+
+                    {/* Type & Court */}
+                    <div className="flex items-center gap-4 text-xs text-gray-500 mb-5">
+                      {caseType && (
+                        <span>
+                          <span className="font-semibold text-gray-700">Type:</span>{" "}
+                          <span className="capitalize">{caseType.replace("_", " ")}</span>
+                        </span>
+                      )}
+                      <span>
+                        <span className="font-semibold text-gray-700">Court:</span> {courtName}
+                      </span>
+                    </div>
+
+                    {/* Parties Row */}
+                    {(petitioners.length > 0 || respondents.length > 0) && (
+                      <div className="grid grid-cols-2 gap-4 mb-5">
+                        <div className="bg-gray-50 rounded-lg p-4">
+                          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Plaintiff/Petitioner</p>
+                          {petitioners.length > 0 ? (
+                            petitioners.map((p, i) => (
+                              <div key={i} className="flex items-center gap-1.5 text-sm text-gray-800">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                                <span>{p.name}</span>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-xs text-gray-400 italic">Not specified</p>
+                          )}
+                        </div>
+                        <div className="bg-gray-50 rounded-lg p-4">
+                          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Defendant/Respondent</p>
+                          {respondents.length > 0 ? (
+                            respondents.map((r, i) => (
+                              <div key={i} className="flex items-center gap-1.5 text-sm text-gray-800">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                                <span>{r.name}</span>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-xs text-gray-400 italic">Not specified</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Legal Representation Comparison */}
+                    {lawyers.length > 0 && (
+                      <div className="mb-5">
+                        <p className="text-sm font-semibold text-gray-800 mb-3">Legal Representation Comparison</p>
+                        <div className="grid grid-cols-2 gap-6">
+                          {(() => {
+                            // Split lawyers into petitioner vs respondent based on index or isPrimary
+                            const petitionerLawyers = lawyers.filter((_, i) => i % 2 === 0).slice(0, 1);
+                            const respondentLawyers = lawyers.filter((_, i) => i % 2 !== 0).slice(0, 1);
+                            // If only one lawyer, show them on petitioner side
+                            if (lawyers.length === 1) {
+                              return (
+                                <>
+                                  <div className="border-l-3 border-gray-800 pl-4" style={{ borderLeftWidth: '3px' }}>
+                                    <p className="text-xs font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                      <span className="w-2.5 h-2.5 rounded-full bg-gray-800"></span>
+                                      Legal Representation (Plaintiff/Petitioner)
+                                    </p>
+                                    <div className="space-y-2">
+                                      {lawyers[0].company && (
+                                        <div>
+                                          <p className="text-xs text-gray-500">Office Name: <span className="text-red-500">*</span></p>
+                                          <p className="text-sm text-gray-800 font-medium">{lawyers[0].company}</p>
+                                        </div>
+                                      )}
+                                      <div>
+                                        <p className="text-xs text-gray-500">Advocate on Record: <span className="text-red-500">*</span></p>
+                                        <p className="text-sm text-gray-800 font-medium">Adv. {lawyers[0].name}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-gray-500">Handled by: <span className="text-red-500">*</span></p>
+                                        <p className="text-sm text-gray-800 font-medium">Adv. {lawyers[0].name}</p>
+                                      </div>
+                                      {lawyers[0].level && (
+                                        <div>
+                                          <p className="text-xs text-gray-500">Senior Advocate:</p>
+                                          <p className="text-sm text-gray-800 font-medium">{lawyers[0].level === "Senior" ? `Sr. Adv. ${lawyers[0].name}` : "N/A"}</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="border-l-3 border-red-400 pl-4 opacity-40" style={{ borderLeftWidth: '3px' }}>
+                                    <p className="text-xs font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                      <span className="w-2.5 h-2.5 rounded-full bg-red-400"></span>
+                                      Defendant Legal Representation
+                                    </p>
+                                    <p className="text-xs text-gray-400 italic">Not assigned</p>
+                                  </div>
+                                </>
+                              );
+                            }
+                            return lawyers.slice(0, 2).map((lawyer, i) => (
+                              <div key={i} className={`pl-4 ${i === 0 ? 'border-gray-800' : 'border-red-400'}`} style={{ borderLeftWidth: '3px', borderLeftStyle: 'solid', borderLeftColor: i === 0 ? '#1f2937' : '#f87171' }}>
+                                <p className="text-xs font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                  <span className={`w-2.5 h-2.5 rounded-full ${i === 0 ? 'bg-gray-800' : 'bg-red-400'}`}></span>
+                                  {i === 0 ? 'Legal Representation (Plaintiff/Petitioner)' : 'Defendant Legal Representation'}
+                                </p>
+                                <div className="space-y-2">
+                                  {lawyer.company && (
+                                    <div>
+                                      <p className="text-xs text-gray-500">Office Name: <span className="text-red-500">*</span></p>
+                                      <p className="text-sm text-gray-800 font-medium">{lawyer.company}</p>
+                                    </div>
+                                  )}
+                                  <div>
+                                    <p className="text-xs text-gray-500">Advocate on Record: <span className="text-red-500">*</span></p>
+                                    <p className="text-sm text-gray-800 font-medium">Adv. {lawyer.name}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-500">Handled by: <span className="text-red-500">*</span></p>
+                                    <p className="text-sm text-gray-800 font-medium">Adv. {lawyer.name}</p>
+                                  </div>
+                                  {lawyer.level && (
+                                    <div>
+                                      <p className="text-xs text-gray-500">Senior Advocate:</p>
+                                      <p className="text-sm text-gray-800 font-medium">{lawyer.level === "Senior" ? `Sr. Adv. ${lawyer.name}` : "N/A"}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ));
+                          })()}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Case Footer */}
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                      {nextHearing && (
+                        <p className="text-sm text-gray-500 flex items-center gap-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+                          <span className="text-gray-400">Next Hearing:</span>
+                          <span className="font-semibold text-gray-700">
+                            {new Date(nextHearing).toLocaleDateString("en-IN", {
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "numeric",
+                            })}
+                          </span>
+                        </p>
+                      )}
+                      <div className="flex items-center gap-2 ml-auto">
+                        <Link
+                          href={`/dashboard/cases/${caseItem.id}`}
+                          className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors inline-flex items-center gap-1.5"
+                        >
+                          View Details
+                        </Link>
+                        <Link
+                          href={`/dashboard/documents?case=${caseItem.id}`}
+                          className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors inline-flex items-center gap-1.5"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>
+                          Documents
+                        </Link>
+                        <Link
+                          href={`/dashboard/cases/${caseItem.id}`}
+                          className="px-4 py-2 text-sm font-medium text-white bg-[#1a2332] rounded-lg hover:bg-[#253345] transition-colors inline-flex items-center gap-1.5"
+                        >
+                          Update Status
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-center py-12 text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-14 w-14 mx-auto mb-3 text-gray-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+                <p className="font-medium text-gray-500">No cases found</p>
+                <p className="text-sm mt-1">
+                  Try adjusting your filters or{" "}
+                  <Link href="/dashboard/cases/new" className="text-blue-600 hover:underline">
+                    add a new case
+                  </Link>
+                </p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

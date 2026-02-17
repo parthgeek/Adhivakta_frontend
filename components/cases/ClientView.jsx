@@ -151,28 +151,7 @@ export default function ClientView({ caseData, setCaseData }) {
                   </Select>
                 </div>
 
-                <div className="space-y-1">
-                  <Label htmlFor={`adv-chair-${idx}`} className="text-sm font-medium">
-                    Chair Position
-                  </Label>
-                  <Select
-                    value={advocate.chairPosition || "supporting"}
-                    onValueChange={(value) => {
-                      const arr = [...caseData.advocates];
-                      arr[idx].chairPosition = value;
-                      setCaseData((prev) => ({ ...prev, advocates: arr }));
-                    }}
-                  >
-                    <SelectTrigger id={`adv-chair-${idx}`} className="h-9 text-sm">
-                      <SelectValue placeholder="Select position" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="first_chair">First Chair</SelectItem>
-                      <SelectItem value="second_chair">Second Chair</SelectItem>
-                      <SelectItem value="supporting">Supporting Counsel</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+
 
                 <div className="space-y-1">
                   <Label htmlFor={`adv-poc-${idx}`} className="text-sm font-medium">
@@ -231,7 +210,7 @@ export default function ClientView({ caseData, setCaseData }) {
                     gst: "",
                     poc: "",
                     level: "Senior",
-                    chairPosition: "first_chair",
+
                     isLead: (prev.advocates || []).length === 0,
                   },
                 ],

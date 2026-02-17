@@ -152,28 +152,6 @@ export default function LawyerView({ caseData, setCaseData, updateClientField, r
                   </Select>
                 </div>
 
-                <div className="space-y-1">
-                  <Label htmlFor={`lawyer-chair-${idx}`} className="text-sm font-medium">
-                    Chair Position
-                  </Label>
-                  <Select
-                    value={lawyer.chairPosition || "supporting"}
-                    onValueChange={(value) => {
-                      const arr = [...caseData.lawyers];
-                      arr[idx].chairPosition = value;
-                      setCaseData((prev) => ({ ...prev, lawyers: arr }));
-                    }}
-                  >
-                    <SelectTrigger id={`lawyer-chair-${idx}`} className="h-9 text-sm">
-                      <SelectValue placeholder="Select position" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="first_chair">First Chair</SelectItem>
-                      <SelectItem value="second_chair">Second Chair</SelectItem>
-                      <SelectItem value="supporting">Supporting Counsel</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
 
                 <div className="space-y-1 md:col-span-2">
                   <div className="flex items-center space-x-2">
@@ -214,7 +192,7 @@ export default function LawyerView({ caseData, setCaseData, updateClientField, r
                     company: "",
                     gst: "",
                     level: "Associate",
-                    chairPosition: "supporting",
+
                     isPrimary: (prev.lawyers || []).length === 0,
                     addedBy: user?._id,
                   },

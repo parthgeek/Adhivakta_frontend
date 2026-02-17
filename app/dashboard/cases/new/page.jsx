@@ -17,7 +17,7 @@ export default function NewCasePage() {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploadProgress, setUploadProgress] = useState({});
   const [activeTab, setActiveTab] = useState("details");
-  
+
   const [caseData, setCaseData] = useState({
     title: "",
     caseNumber: "",
@@ -93,7 +93,7 @@ export default function NewCasePage() {
       const hearingDate = new Date(caseData.nextHearingDate);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       if (hearingDate < today) {
         errors.push({ tab: 'details', message: 'First hearing date must be in the future' });
       }
@@ -101,7 +101,7 @@ export default function NewCasePage() {
       if (caseData.filingDate) {
         const filingDate = new Date(caseData.filingDate);
         filingDate.setHours(0, 0, 0, 0);
-        
+
         if (hearingDate <= filingDate) {
           errors.push({ tab: 'details', message: 'First hearing date must be after the filing date' });
         }
@@ -174,11 +174,11 @@ export default function NewCasePage() {
   const handleNext = () => {
     const tabOrder = ["details", "court", "party", "documents", "associatedParties"];
     const currentIndex = tabOrder.indexOf(activeTab);
-    
+
     // Validate all fields and filter for current tab
     const allErrors = validateAllFields();
     const currentTabErrors = allErrors.filter(error => error.tab === activeTab);
-    
+
     if (currentTabErrors.length > 0) {
       const errorMessage = currentTabErrors.map(e => e.message).join('\n');
       toast({
@@ -188,7 +188,7 @@ export default function NewCasePage() {
       });
       return;
     }
-    
+
     if (currentIndex < tabOrder.length - 1) {
       setActiveTab(tabOrder[currentIndex + 1]);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -349,72 +349,72 @@ export default function NewCasePage() {
         // Role-specific data
         ...(isLawyer
           ? {
-              // For lawyers
-              clients: (caseData.clients || []).map((client) => ({
-                name: client.name.trim(),
-                email: client.email?.trim() || "",
-                contact: client.contact?.trim() || "",
-                address: client.address?.trim() || "",
-                isPrimary: client.isPrimary || false,
-              })),
+            // For lawyers
+            clients: (caseData.clients || []).map((client) => ({
+              name: client.name.trim(),
+              email: client.email?.trim() || "",
+              contact: client.contact?.trim() || "",
+              address: client.address?.trim() || "",
+              isPrimary: client.isPrimary || false,
+            })),
 
-              lawyers: (caseData.lawyers || []).map((lawyer) => ({
-                name: lawyer.name.trim(),
-                email: lawyer.email?.trim() || "",
-                contact: lawyer.contact?.trim() || "",
-                company: lawyer.company?.trim() || "",
-                gst: lawyer.gst?.trim() || "",
-                isLead: lawyer.isLead || false,
-                level: lawyer.level || "",
-                chairPosition: lawyer.chairPosition || "supporting",
-                isPrimary: lawyer.isPrimary || false,
-                poc: lawyer.poc?.trim() || "",
-                spock: lawyer.spock?.trim() || "",
-              })),
+            lawyers: (caseData.lawyers || []).map((lawyer) => ({
+              name: lawyer.name.trim(),
+              email: lawyer.email?.trim() || "",
+              contact: lawyer.contact?.trim() || "",
+              company: lawyer.company?.trim() || "",
+              gst: lawyer.gst?.trim() || "",
+              isLead: lawyer.isLead || false,
+              level: lawyer.level || "",
 
-              stakeholders: (caseData.stakeholders || []).map(
-                (stakeholder) => ({
-                  name: stakeholder.name.trim(),
-                  email: stakeholder.email?.trim() || "",
-                  contact: stakeholder.contact?.trim() || "",
-                  address: stakeholder.address?.trim() || "",
-                  roleInCase: stakeholder.roleInCase?.trim() || "",
-                })
-              ),
-            }
+              isPrimary: lawyer.isPrimary || false,
+              poc: lawyer.poc?.trim() || "",
+              spock: lawyer.spock?.trim() || "",
+            })),
+
+            stakeholders: (caseData.stakeholders || []).map(
+              (stakeholder) => ({
+                name: stakeholder.name.trim(),
+                email: stakeholder.email?.trim() || "",
+                contact: stakeholder.contact?.trim() || "",
+                address: stakeholder.address?.trim() || "",
+                roleInCase: stakeholder.roleInCase?.trim() || "",
+              })
+            ),
+          }
           : {
-              // For clients
-              clients: [
-                {
-                  name: user?.name || "",
-                  email: user?.email || "",
-                  contact: user?.phone || "",
-                  address: user?.address || "",
-                },
-              ],
-              
-              lawyers: (caseData.advocates || []).map((adv) => ({
-                name: adv.name.trim(),
-                email: adv.email?.trim() || "",
-                contact: adv.contact?.trim() || "",
-                company: adv.company?.trim() || "",
-                gst: adv.gst?.trim() || "",
-                isLead: adv.isLead || false,
-                level: adv.level || "",
-                poc: adv.poc?.trim() || "",
-                spock: adv.spock?.trim() || "",
-              })),
+            // For clients
+            clients: [
+              {
+                name: user?.name || "",
+                email: user?.email || "",
+                contact: user?.phone || "",
+                address: user?.address || "",
+              },
+            ],
 
-              stakeholders: (caseData.stakeholders || []).map(
-                (stakeholder) => ({
-                  name: stakeholder.name.trim(),
-                  email: stakeholder.email?.trim() || "",
-                  contact: stakeholder.contact?.trim() || "",
-                  address: stakeholder.address?.trim() || "",
-                  roleInCase: stakeholder.roleInCase?.trim() || "",
-                })
-              ),
-            }),
+            lawyers: (caseData.advocates || []).map((adv) => ({
+              name: adv.name.trim(),
+              email: adv.email?.trim() || "",
+              contact: adv.contact?.trim() || "",
+              company: adv.company?.trim() || "",
+              gst: adv.gst?.trim() || "",
+              isLead: adv.isLead || false,
+              level: adv.level || "",
+              poc: adv.poc?.trim() || "",
+              spock: adv.spock?.trim() || "",
+            })),
+
+            stakeholders: (caseData.stakeholders || []).map(
+              (stakeholder) => ({
+                name: stakeholder.name.trim(),
+                email: stakeholder.email?.trim() || "",
+                contact: stakeholder.contact?.trim() || "",
+                address: stakeholder.address?.trim() || "",
+                roleInCase: stakeholder.roleInCase?.trim() || "",
+              })
+            ),
+          }),
       };
 
       let response;
@@ -469,7 +469,7 @@ export default function NewCasePage() {
         });
 
         // Extract case ID
-        const createdCaseId = 
+        const createdCaseId =
           response?.data?.data?.case?._id ||
           response?.data?.data?._id ||
           response?.data?.case?._id ||
@@ -491,13 +491,13 @@ export default function NewCasePage() {
       return response;
     } catch (error) {
       console.error("Error saving case:", error);
-      
+
       // Handle specific error types
       if (error.response?.data?.errors) {
         const backendErrors = error.response.data.errors
           .map(err => err.message)
           .join('\n');
-        
+
         toast({
           title: "Validation Error",
           description: backendErrors,
@@ -511,7 +511,7 @@ export default function NewCasePage() {
           variant: "destructive",
         });
       }
-      
+
       throw error;
     } finally {
       setIsSubmitting(false);
@@ -652,7 +652,7 @@ export default function NewCasePage() {
           </p>
         </div>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2">
           <CaseTabs
@@ -682,7 +682,7 @@ export default function NewCasePage() {
             handleBack={handleBack}
           />
         </div>
-        
+
         <div className="hidden md:block">
           <SidebarGuide />
         </div>

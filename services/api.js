@@ -628,6 +628,15 @@ const api = {
 
       return handleResponse(response);
     },
+
+    sendNotification: async (id) => {
+      const response = await fetch(`${API_URL}/events/${id}/notify`, {
+        method: "POST",
+        headers: createHeaders(),
+      });
+
+      return handleResponse(response);
+    },
   },
 
   dashboard: {

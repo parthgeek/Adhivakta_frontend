@@ -56,7 +56,7 @@ const getLawyerNavItems = (counts, t) => [
   },
   {
     name: "Hearings",
-    href: "/dashboard/calendar",
+    href: "/dashboard/hearings",
     icon: Gavel,
     tooltip: "Hearings",
     badge: counts.events,
@@ -107,6 +107,13 @@ const getClientNavItems = (counts, t) => [
     href: "/dashboard/cases",
     icon: FileText,
     tooltip: t.myCases || "My Cases",
+  },
+  {
+    name: "Hearings",
+    href: "/dashboard/hearings",
+    icon: Gavel,
+    tooltip: "Hearings",
+    badge: counts.events,
   },
   {
     name: t.documents,
