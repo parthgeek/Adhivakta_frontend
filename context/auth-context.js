@@ -39,7 +39,6 @@ export const AuthProvider = ({ children }) => {
   const pathname = usePathname()
   const isValidatingRef = useRef(false)
   const lastValidationRef = useRef(0)
-  const hasSentBeaconRef = useRef(false)
 
   // Initialize Firebase
   useEffect(() => {
@@ -55,46 +54,6 @@ export const AuthProvider = ({ children }) => {
       initializeApp(firebaseConfig)
     } catch (error) {
       console.log("Firebase initialization skipped:", error.message)
-    }
-  }, [])
-
-  // Best-effort logout when the tab/window is actually being closed
-  useEffect(() => {
-    if (typeof window === "undefined") return
-
-    const logoutBeacon = () => {
-      if (hasSentBeaconRef.current) return
-      const token = localStorage.getItem("auth_token")
-      if (!token) return
-
-      const url = `${process.env.NEXT_PUBLIC_API_URL}/auth/logout-beacon`
-      const payload = JSON.stringify({ token })
-      const blob = new Blob([payload], { type: "application/json" })
-
-      try {
-        const sent = navigator.sendBeacon(url, blob)
-        if (sent) {
-          hasSentBeaconRef.current = true
-          return
-        }
-      } catch (err) {
-        console.warn("sendBeacon failed, falling back to fetch", err)
-      }
-
-      fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: payload,
-        keepalive: true,
-      }).catch(() => {})
-    }
-
-    window.addEventListener("beforeunload", logoutBeacon)
-    window.addEventListener("pagehide", logoutBeacon)
-
-    return () => {
-      window.removeEventListener("beforeunload", logoutBeacon)
-      window.removeEventListener("pagehide", logoutBeacon)
     }
   }, [])
 

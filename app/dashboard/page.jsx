@@ -24,6 +24,9 @@ import {
 } from "lucide-react";
 import api from "@/services/api";
 import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 // Helper function to format relative time
 const formatRelativeTime = (date) => {
@@ -94,8 +97,8 @@ const DashboardSkeleton = () => (
         <div className="h-9 w-48 bg-gray-200 rounded animate-pulse"></div>
         <div className="h-5 w-64 bg-gray-200 rounded animate-pulse"></div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[...Array(4)].map((_, i) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[...Array(3)].map((_, i) => (
           <StatsCardSkeleton key={i} />
         ))}
       </div>
@@ -112,28 +115,36 @@ const DashboardSkeleton = () => (
 );
 
 // Stats Card Component — Redesigned
-const StatsCard = ({ title, value, icon: Icon, iconBgColor, iconColor, growth, href }) => {
-  const CardContent = (
-    <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-500 mb-1">{title}</p>
-          <p className="text-3xl font-bold text-gray-900">{value}</p>
-          {growth && (
-            <p className="text-xs font-medium text-gray-500 mt-1.5 flex items-center gap-1">
-              <TrendingUp className="h-3 w-3" />
-              {growth}
-            </p>
-          )}
+const StatsCard = ({ title, value, change, changeType = 'neutral', icon: Icon, iconColor = 'text-primary', href }) => {
+  const content = (
+    <Card className="hover:shadow-md transition-shadow">
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-muted-foreground">{title}</p>
+            <div className="flex items-baseline gap-2">
+              <h3 className="text-2xl font-bold">{value}</h3>
+              {change && (
+                <span className={cn(
+                  "text-xs font-medium",
+                  changeType === 'positive' && "text-green-600",
+                  changeType === 'negative' && "text-red-600",
+                  changeType === 'neutral' && "text-muted-foreground"
+                )}>
+                  {change}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className={cn("p-3 rounded-lg bg-muted", iconColor)}>
+            <Icon className="h-6 w-6" />
+          </div>
         </div>
-        <div className={`p-3 rounded-xl ${iconBgColor} group-hover:scale-110 transition-transform duration-200`}>
-          <Icon className={`h-6 w-6 ${iconColor}`} />
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 
-  return href ? <Link href={href}>{CardContent}</Link> : CardContent;
+  return href ? <Link href={href}>{content}</Link> : content;
 };
 
 // Priority Badge
@@ -358,81 +369,68 @@ const PriorityAlerts = ({ cases = [] }) => {
   );
 };
 
-// Enhanced Quick Actions Component
+// Quick Actions Component
 const QuickActions = () => {
   const actions = [
     {
-      name: "New Case",
-      subtitle: "File a new case",
       icon: Plus,
+      label: "New Case",
+      description: "File a new case",
+      variant: "default",
       href: "/dashboard/cases/new",
-      primary: true,
     },
     {
-      name: "Draft Document",
-      subtitle: "Create legal document",
       icon: FileText,
+      label: "Draft Document",
+      description: "Create legal document",
+      variant: "outline",
       href: "/dashboard/documents",
-      primary: false,
     },
     {
-      name: "Add Client",
-      subtitle: "Register new client",
       icon: UserPlus,
+      label: "Add Client",
+      description: "Register new client",
+      variant: "outline",
       href: "/dashboard/clients-parties",
-      primary: false,
     },
     {
-      name: "Schedule Hearing",
-      subtitle: "Book court date",
       icon: Calendar,
+      label: "Schedule Hearing",
+      description: "Book court date",
+      variant: "outline",
       href: "/dashboard/calendar",
-      primary: false,
     },
     {
-      name: "Upload Documents",
-      subtitle: "Add case files",
       icon: Upload,
+      label: "Upload Documents",
+      description: "Add case files",
+      variant: "outline",
       href: "/dashboard/documents",
-      primary: false,
     },
   ];
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
-      <h3 className="text-lg font-bold text-gray-900 mb-5">Quick Actions</h3>
-      <div className="space-y-2.5">
-        {actions.map((action, index) => (
-          <Link key={index} href={action.href}>
-            <div
-              className={`flex items-center gap-3.5 p-3.5 rounded-xl transition-all duration-200 cursor-pointer ${action.primary
-                ? "bg-black text-white hover:bg-gray-900 shadow-sm"
-                : "bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-100"
-                }`}
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg font-semibold">Quick Actions</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {actions.map((action) => (
+          <Link key={action.label} href={action.href}>
+            <Button
+              variant={action.variant}
+              className="w-full justify-start gap-3 h-12"
             >
-              <div
-                className={`p-2 rounded-lg ${action.primary ? "bg-white/10" : "bg-white"
-                  }`}
-              >
-                <action.icon
-                  className={`h-4.5 w-4.5 ${action.primary ? "text-white" : "text-gray-500"
-                    }`}
-                  style={{ width: 18, height: 18 }}
-                />
+              <action.icon className="h-5 w-5" />
+              <div className="text-left">
+                <div className="font-medium">{action.label}</div>
+                <div className="text-xs text-muted-foreground">{action.description}</div>
               </div>
-              <div>
-                <p className={`text-sm font-semibold ${action.primary ? "text-white" : "text-gray-800"}`}>
-                  {action.name}
-                </p>
-                <p className={`text-xs ${action.primary ? "text-gray-300" : "text-gray-400"}`}>
-                  {action.subtitle}
-                </p>
-              </div>
-            </div>
+            </Button>
           </Link>
         ))}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -590,45 +588,33 @@ const NewDashboard = () => {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           <StatsCard
             title="Active Cases"
             value={dashboardData.stats.activeCases}
+            change={`+${Math.max(1, Math.floor(dashboardData.stats.activeCases * 0.12))} this month`}
+            changeType="positive"
             icon={FileText}
-            iconBgColor="bg-blue-50"
             iconColor="text-blue-600"
-            growth={`+${Math.max(1, Math.floor(dashboardData.stats.activeCases * 0.12))} this month`}
             href="/dashboard/cases?filter=active"
           />
           <StatsCard
             title="Total Clients"
             value={dashboardData.stats.activeClients || dashboardData.stats.totalCases}
+            change={`+${Math.max(1, Math.floor((dashboardData.stats.activeClients || dashboardData.stats.totalCases) * 0.05))} this month`}
+            changeType="positive"
             icon={Users}
-            iconBgColor="bg-green-50"
             iconColor="text-green-600"
-            growth={`+${Math.max(1, Math.floor((dashboardData.stats.activeClients || dashboardData.stats.totalCases) * 0.05))} this month`}
             href="/dashboard/clients-parties"
           />
           <StatsCard
             title="Upcoming Hearings"
             value={dashboardData.stats.upcomingHearings}
+            change="Next 7 days"
+            changeType="neutral"
             icon={Calendar}
-            iconBgColor="bg-orange-50"
             iconColor="text-orange-500"
-            growth="Next 7 days"
             href="/dashboard/calendar"
-          />
-          <StatsCard
-            title="Cases Won (YTD)"
-            value={dashboardData.stats.closedCases > 0
-              ? `${Math.round((dashboardData.stats.closedCases / Math.max(1, dashboardData.stats.totalCases)) * 100)}%`
-              : "0%"
-            }
-            icon={TrendingUp}
-            iconBgColor="bg-purple-50"
-            iconColor="text-purple-600"
-            growth="+5% from last year"
-            href="/dashboard/reports"
           />
         </div>
 
@@ -640,17 +626,16 @@ const NewDashboard = () => {
             <UpcomingHearings events={dashboardData.events} />
           </div>
 
-          {/* Right Column - Priority Alerts + Quick Actions */}
+          {/* Right Column - Quick Actions + Recent Activity + Priority Alerts */}
           <div className="space-y-6">
-            <PriorityAlerts cases={dashboardData.cases} />
             <QuickActions />
 
-            {/* Recent Uploads */}
+            {/* Recent Activity */}
             <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
               <div className="flex items-center justify-between mb-5">
                 <h3 className="text-lg font-bold flex items-center gap-2 text-gray-900">
                   <Clock className="h-5 w-5 text-gray-400" />
-                  Recent Uploads
+                  Recent Activity
                 </h3>
                 <Link
                   href="/dashboard/documents"
@@ -683,11 +668,13 @@ const NewDashboard = () => {
                 {dashboardData.documents.length === 0 && (
                   <div className="text-center py-6 text-gray-400">
                     <FileText className="h-8 w-8 mx-auto mb-2 text-gray-200" />
-                    <p className="text-gray-500">No recent uploads</p>
+                    <p className="text-gray-500">No recent activity</p>
                   </div>
                 )}
               </div>
             </div>
+
+            <PriorityAlerts cases={dashboardData.cases} />
           </div>
         </div>
       </div>

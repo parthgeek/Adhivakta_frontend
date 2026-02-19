@@ -692,12 +692,23 @@ const api = {
       return data.data || [];
     },
     getUnreadCount: async () => {
-      const response = await fetch(`${API_URL}/notifications/count`, {
-        method: "GET",
-        headers: createHeaders(),
-      });
-      const data = await handleResponse(response);
-      return data.data?.count || 0;
+      try {
+        const response = await fetch(`${API_URL}/notifications/count`, {
+          method: "GET",
+          headers: createHeaders(),
+        });
+        const data = await handleResponse(response);
+        if (typeof data?.data?.count === "number") {
+          return data.data.count;
+        }
+      } catch (error) {
+        if (error?.response?.status !== 404) {
+          throw error;
+        }
+      }
+
+      const notifications = await api.notifications.getAll();
+      return notifications.filter((notification) => !notification.read).length;
     },
     markAsRead: async (id) => {
       const response = await fetch(`${API_URL}/notifications/${id}/read`, {
