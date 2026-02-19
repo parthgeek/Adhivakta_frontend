@@ -311,8 +311,8 @@ const NewDashboard = () => {
             </div>
 
             {/* Priority Alerts */}
-            <div className="bg-white rounded-lg border p-6 shadow-sm">
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-gray-900">
+            <div className="bg-white rounded-m border p-6 shadow-sm">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-4 text-gray-900">
                 <AlertTriangle className="h-5 w-5 text-red-600" />
                 Priority Alerts
               </h3>

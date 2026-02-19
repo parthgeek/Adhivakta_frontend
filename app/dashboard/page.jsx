@@ -26,6 +26,7 @@ import api from "@/services/api";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 // Helper function to format relative time
@@ -147,35 +148,25 @@ const StatsCard = ({ title, value, change, changeType = 'neutral', icon: Icon, i
   return href ? <Link href={href}>{content}</Link> : content;
 };
 
-// Priority Badge
-const PriorityBadge = ({ priority }) => {
-  const styles = {
-    high: "bg-red-500 text-white",
-    medium: "bg-orange-400 text-white",
-    low: "bg-green-500 text-white",
-    urgent: "bg-red-600 text-white",
-  };
-  const p = (priority || "medium").toLowerCase();
-  return (
-    <span className={`px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full tracking-wider ${styles[p] || styles.medium}`}>
-      {priority || "MEDIUM"}
-    </span>
-  );
+// Helper: get priority badge color
+const getPriorityColor = (priority) => {
+  switch ((priority || "medium").toLowerCase()) {
+    case "high": return "bg-red-500 text-white border-transparent";
+    case "urgent": return "bg-red-600 text-white border-transparent";
+    case "medium": return "bg-orange-400 text-white border-transparent";
+    case "low": return "bg-green-500 text-white border-transparent";
+    default: return "bg-muted text-foreground";
+  }
 };
 
-// Status Badge
-const StatusBadge = ({ status }) => {
-  const styles = {
-    active: "bg-green-100 text-green-700 border border-green-200",
-    closed: "bg-gray-100 text-gray-600 border border-gray-200",
-    pending: "bg-yellow-100 text-yellow-700 border border-yellow-200",
-  };
-  const s = (status || "active").toLowerCase();
-  return (
-    <span className={`px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-full tracking-wider ${styles[s] || styles.active}`}>
-      {status || "Active"}
-    </span>
-  );
+// Helper: get status badge color
+const getStatusColor = (status) => {
+  switch ((status || "active").toLowerCase()) {
+    case "active": return "bg-green-700 text-white border-transparent";
+    case "pending": return "bg-yellow-100 text-yellow-700 border-yellow-200";
+    case "closed": return "bg-gray-100 text-gray-600 border-gray-200";
+    default: return "bg-muted text-foreground";
+  }
 };
 
 // Helper: safely extract display text from a value that might be an object (populated Mongoose ref)
@@ -186,23 +177,33 @@ const safeText = (val) => {
   return String(val);
 };
 
-// Enhanced Cases List Component
+// Cases List Component
 const CasesList = ({ cases = [] }) => {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
-      <div className="flex items-center justify-between mb-5">
-        <h3 className="text-lg font-bold text-gray-900">Recent Cases</h3>
-        <Link
-          href="/dashboard/cases"
-          className="px-4 py-1.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-        >
-          View All
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="text-lg font-semibold">Recent Cases</CardTitle>
+        <Link href="/dashboard/cases">
+          <Button variant="outline" size="sm">View All</Button>
         </Link>
-      </div>
-      <div className="space-y-4">
+      </CardHeader>
+      <CardContent className="space-y-4">
         {cases.slice(0, 5).map((caseItem, index) => {
           const clientName = safeText(caseItem.clientName) || safeText(caseItem.client);
-          const lawyerName = safeText(caseItem.lawyer) || safeText(caseItem.assignedTo);
+          const lawyerName = (() => {
+            // Check advocates array (lead advocate first)
+            if (caseItem.advocates?.length) {
+              const lead = caseItem.advocates.find(a => a.isLead);
+              return safeText(lead || caseItem.advocates[0]);
+            }
+            // Check lawyers array (primary/lead first)
+            if (caseItem.lawyers?.length) {
+              const primary = caseItem.lawyers.find(l => l.isPrimary || l.isLead);
+              return safeText(primary || caseItem.lawyers[0]);
+            }
+            // Fallback to legacy fields
+            return safeText(caseItem.lawyer) || safeText(caseItem.assignedTo);
+          })();
           const courtName = safeText(caseItem.court);
           const caseType = safeText(caseItem.caseType) || safeText(caseItem.type);
           const title = safeText(caseItem.title) || safeText(caseItem.description) || "No description available";
@@ -211,82 +212,78 @@ const CasesList = ({ cases = [] }) => {
           return (
             <div
               key={caseItem._id || caseItem.id || index}
-              className="border border-gray-100 rounded-xl p-5 hover:border-gray-200 hover:shadow-sm transition-all duration-200"
+              className="p-4 border rounded-lg hover:shadow-sm transition-shadow space-y-3"
             >
-              {/* Case Header */}
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <p className="font-bold text-gray-900 text-base">
-                    {caseItem.caseNumber || caseItem.number || "N/A"}
-                  </p>
-                  <PriorityBadge priority={caseItem.priority} />
-                  <StatusBadge status={caseItem.status} />
+              {/* Header */}
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-medium text-foreground">
+                      {caseItem.caseNumber || caseItem.number || "N/A"}
+                    </h4>
+                    <Badge className={cn("text-xs", getPriorityColor(caseItem.priority))}>
+                      {(caseItem.priority || "MEDIUM").toUpperCase()}
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      className={cn("text-xs", getStatusColor(caseItem.status))}
+                    >
+                      {(caseItem.status || "Active").toUpperCase()}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{title}</p>
                 </div>
                 {(caseItem.priority === "high" || caseItem.priority === "urgent") && (
-                  <AlertCircle className="h-5 w-5 text-red-400" />
+                  <AlertCircle className="h-5 w-5 text-red-500" />
                 )}
               </div>
 
-              {/* Case Title */}
-              <p className="text-sm text-gray-600 mb-3">{title}</p>
-
-              {/* Case Details Grid */}
-              <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-gray-500 mb-4">
+              {/* Details */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 {clientName && (
-                  <div className="flex items-center gap-1.5">
-                    <Users className="h-3.5 w-3.5" />
-                    <span className="text-gray-400">Client:</span>
-                    <span className="font-medium text-gray-700">{clientName}</span>
-                  </div>
-                )}
-                {lawyerName && (
-                  <div className="flex items-center gap-1.5">
-                    <Briefcase className="h-3.5 w-3.5" />
-                    <span className="text-gray-400">Lawyer:</span>
-                    <span className="font-medium text-gray-700">{lawyerName}</span>
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">Client:</span>
+                    <span className="font-medium">{clientName}</span>
                   </div>
                 )}
                 {nextHearing && (
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5" />
-                    <span className="text-gray-400">Next Hearing:</span>
-                    <span className="font-medium text-gray-700">
-                      {new Date(nextHearing).toLocaleDateString()}
-                    </span>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4  text-muted-foreground" />
+                    <span className="text-muted-foreground">Next Hearing:</span>
+                    <span className="font-medium">{new Date(nextHearing).toLocaleDateString()}</span>
                   </div>
                 )}
                 {caseType && (
-                  <div className="flex items-center gap-1.5">
-                    <FileText className="h-3.5 w-3.5" />
-                    <span className="text-gray-400">Type:</span>
-                    <span className="font-medium text-gray-700">{caseType}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Type:</span>
+                    <span className="font-medium">{caseType}</span>
                   </div>
                 )}
                 {courtName && (
-                  <div className="flex items-center gap-1.5">
-                    <Gavel className="h-3.5 w-3.5" />
-                    <span className="text-gray-400">Court:</span>
-                    <span className="font-medium text-gray-700">{courtName}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Court:</span>
+                    <span className="font-medium">{courtName}</span>
                   </div>
                 )}
               </div>
 
-              {/* Case Footer */}
-              <div className="flex items-center justify-between pt-3 border-t border-gray-50">
-                <div className="flex items-center gap-2 ml-auto">
-                  <Link
-                    href={`/dashboard/cases/${caseItem._id || caseItem.id}`}
-                    className="px-3.5 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors inline-flex items-center gap-1.5"
-                  >
-                    <Eye className="h-3.5 w-3.5" />
-                    View Details
+              {/* Actions */}
+              <div className="flex justify-between items-center pt-2 border-t">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  {lawyerName && (
+                    <>
+                      <Clock className="h-4 w-4" />
+                      <span>Handled by Adv. {lawyerName}</span>
+                    </>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Link href={`/dashboard/cases/${caseItem._id || caseItem.id}`}>
+                    <Button variant="outline" size="sm">View Details</Button>
                   </Link>
-                  <Link
-                    href={`/dashboard/cases/${caseItem._id || caseItem.id}`}
-                    className="px-3.5 py-1.5 text-xs font-medium text-white bg-[#1a2332] rounded-lg hover:bg-[#253345] transition-colors inline-flex items-center gap-1.5"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" />
-                    Update Status
+                  <Link href={`/dashboard/cases/${caseItem._id || caseItem.id}`}>
+                    <Button size="sm" className="bg-[#03234b] hover:bg-[#042d5e]">Update Status</Button>
                   </Link>
                 </div>
               </div>
@@ -294,14 +291,14 @@ const CasesList = ({ cases = [] }) => {
           );
         })}
         {cases.length === 0 && (
-          <div className="text-center py-12 text-gray-400">
-            <FileText className="h-14 w-14 mx-auto mb-3 text-gray-200" />
-            <p className="font-medium text-gray-500">No cases found</p>
+          <div className="text-center py-12 text-muted-foreground">
+            <FileText className="h-14 w-14 mx-auto mb-3 text-muted-foreground/30" />
+            <p className="font-medium">No cases found</p>
             <p className="text-sm mt-1">Create your first case to get started</p>
           </div>
         )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -312,9 +309,9 @@ const PriorityAlerts = ({ cases = [] }) => {
   );
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
+    <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
       <div className="flex items-center justify-between mb-5">
-        <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+        <h3 className="text-lg font-bold text-gray-900 flex items-center gap-4">
           <AlertTriangle className="h-5 w-5 text-red-500" />
           Priority Alerts
         </h3>
@@ -324,15 +321,16 @@ const PriorityAlerts = ({ cases = [] }) => {
           </span>
         )}
       </div>
-      <div className="space-y-3">
+      <div className="flex flex-col gap-6">
         {priorityCases.slice(0, 5).map((caseItem, index) => {
           const nextHearing = caseItem.nextHearingDate || caseItem.nextHearing || caseItem.hearingDate;
           return (
             <Link
               key={caseItem._id || index}
               href={`/dashboard/cases/${caseItem._id || caseItem.id}`}
+              className="block"
             >
-              <div className="flex items-start gap-3 p-3.5 bg-red-50/60 rounded-xl hover:bg-red-50 transition-colors border border-red-100/60 cursor-pointer">
+              <div className="flex items-start gap-3 p-3.5 bg-red-50/60 rounded-md hover:bg-red-50 transition-colors border border-red-100/60 cursor-pointer">
                 <div className={`mt-0.5 p-1.5 rounded-lg ${caseItem.priority === "urgent" ? "bg-red-100" : "bg-orange-100"}`}>
                   <AlertCircle className={`h-4 w-4 ${caseItem.priority === "urgent" ? "text-red-600" : "text-orange-500"}`} />
                 </div>
@@ -352,7 +350,9 @@ const PriorityAlerts = ({ cases = [] }) => {
                     </p>
                   )}
                 </div>
-                <PriorityBadge priority={caseItem.priority} />
+                <Badge className={cn("text-xs", getPriorityColor(caseItem.priority))}>
+                  {(caseItem.priority || "MEDIUM").toUpperCase()}
+                </Badge>
               </div>
             </Link>
           );
@@ -414,17 +414,23 @@ const QuickActions = () => {
       <CardHeader>
         <CardTitle className="text-lg font-semibold">Quick Actions</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="flex flex-col gap-5">
         {actions.map((action) => (
-          <Link key={action.label} href={action.href}>
+          <Link key={action.label} href={action.href} className="block">
             <Button
               variant={action.variant}
-              className="w-full justify-start gap-3 h-12"
+              className={cn(
+                "w-full justify-start gap-3 h-auto py-3.5 px-4",
+                action.variant === "default" && "bg-[#03234b] hover:bg-[#042d5e] text-white"
+              )}
             >
-              <action.icon className="h-5 w-5" />
+              <action.icon className="h-5 w-5 shrink-0" />
               <div className="text-left">
-                <div className="font-medium">{action.label}</div>
-                <div className="text-xs text-muted-foreground">{action.description}</div>
+                <div className="font-medium text-sm">{action.label}</div>
+                <div className={cn(
+                  "text-xs",
+                  action.variant === "default" ? "text-gray-400" : "text-muted-foreground"
+                )}>{action.description}</div>
               </div>
             </Button>
           </Link>
@@ -577,12 +583,12 @@ const NewDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-6">
+    <div className="min-h-screen bg-gray-50/50 pt-3 px-6 pb-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Welcome Section */}
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500 text-sm">
+        <div className="space-y-0.5">
+          <h1 className="text-4xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-500 text-base">
             Welcome back, {user?.name || "User"}. Here's your legal practice overview.
           </p>
         </div>
@@ -620,14 +626,14 @@ const NewDashboard = () => {
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Cases and Hearings */}
+          {/* Left Column - Cases */}
           <div className="lg:col-span-2 space-y-6">
             <CasesList cases={dashboardData.cases} />
-            <UpcomingHearings events={dashboardData.events} />
           </div>
 
-          {/* Right Column - Quick Actions + Recent Activity + Priority Alerts */}
+          {/* Right Column - Priority Alerts + Quick Actions + Recent Activity */}
           <div className="space-y-6">
+            <PriorityAlerts cases={dashboardData.cases} />
             <QuickActions />
 
             {/* Recent Activity */}
@@ -674,7 +680,6 @@ const NewDashboard = () => {
               </div>
             </div>
 
-            <PriorityAlerts cases={dashboardData.cases} />
           </div>
         </div>
       </div>
