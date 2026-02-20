@@ -1,13 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import {
     Check,
     Crown,
@@ -26,6 +36,15 @@ import {
 import api from "@/services/api";
 import Image from "next/image";
 
+const PACKAGE_TIERS = [
+    { key: "base", name: "Bronze", limit: 10 },
+    { key: "superior-20", name: "Silver", limit: 20 },
+    { key: "superior-30", name: "Gold", limit: 30 },
+    { key: "superior-40", name: "Platinum", limit: 40 },
+    { key: "superior-50", name: "Diamond ", limit: 50 },
+];
+const getPlanKey = (plan) => plan?._id || plan?.slug;
+
 export default function PricingPage() {
     const { user, isAuthenticated } = useAuth();
     const router = useRouter();
@@ -33,6 +52,13 @@ export default function PricingPage() {
     const [loading, setLoading] = useState(true);
     const [selectedRole, setSelectedRole] = useState("lawyer");
     const [processingPlan, setProcessingPlan] = useState(null);
+    const [selectedPlanKey, setSelectedPlanKey] = useState(null);
+    const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
+    const [quotePlan, setQuotePlan] = useState(null);
+    const [quoteForm, setQuoteForm] = useState({
+        name: "",
+        contact: "",
+    });
 
     useEffect(() => {
         fetchPlans();
@@ -40,7 +66,7 @@ export default function PricingPage() {
 
     useEffect(() => {
         // Auto-select role based on user's role if logged in
-        if (user?.role) {
+        if (user?.role === "lawyer" || user?.role === "client") {
             setSelectedRole(user.role);
         }
     }, [user]);
@@ -60,15 +86,28 @@ export default function PricingPage() {
         }
     };
 
+    const openQuoteModal = (plan) => {
+        setQuotePlan(plan);
+        setSelectedPlanKey(getPlanKey(plan));
+        setQuoteForm({
+            name: user?.name || "",
+            contact: user?.email || "",
+        });
+        setIsQuoteModalOpen(true);
+    };
+
     const handleSelectPlan = async (plan) => {
-        if (!isAuthenticated) {
-            router.push(`/auth/register?redirect=/pricing&plan=${plan.slug}`);
+        const planKey = getPlanKey(plan);
+        setSelectedPlanKey(planKey);
+        const isContactPlan = plan.price === -1 || !plan._id;
+
+        if (isContactPlan) {
+            openQuoteModal(plan);
             return;
         }
 
-        if (plan.price === -1) {
-            // Enterprise plan - contact sales
-            window.location.href = "mailto:sales@adhivakta.net?subject=Enterprise Plan Inquiry";
+        if (!isAuthenticated) {
+            router.push(`/auth/register?redirect=/pricing&plan=${plan.slug}`);
             return;
         }
 
@@ -137,6 +176,26 @@ export default function PricingPage() {
         }
     };
 
+    const handleQuoteSubmit = (e) => {
+        e.preventDefault();
+        const name = quoteForm.name.trim();
+        const contact = quoteForm.contact.trim();
+
+        if (!name || !contact) {
+            return;
+        }
+
+        const packageName = quotePlan?.name || "Subscription Package";
+        const userType = selectedRole === "lawyer" ? "Lawyer" : "Customer";
+        const subject = encodeURIComponent(`Quote Request - ${packageName}`);
+        const body = encodeURIComponent(
+            `Package: ${packageName}\nUser Type: ${userType}\nName: ${name}\nEmail/Phone: ${contact}`
+        );
+
+        setIsQuoteModalOpen(false);
+        window.location.href = `mailto:sales@adhivakta.net?subject=${subject}&body=${body}`;
+    };
+
     const loadRazorpayScript = () => {
         return new Promise((resolve, reject) => {
             const script = document.createElement("script");
@@ -148,7 +207,7 @@ export default function PricingPage() {
     };
 
     const formatPrice = (price) => {
-        if (price === -1) return "Custom";
+        if (price === -1 || price === null || price === undefined) return null;
         if (price === 0) return "Free";
         return `₹${(price / 100).toLocaleString("en-IN")}`;
     };
@@ -156,6 +215,7 @@ export default function PricingPage() {
     const getFeatureIcon = (feature) => {
         const icons = {
             maxAccounts: Users,
+            maxCases: Briefcase,
             maxDocuments: FileText,
             documentStorage: HardDrive,
             prioritySupport: Headphones,
@@ -174,7 +234,8 @@ export default function PricingPage() {
     };
 
     const featureLabels = {
-        maxAccounts: "Team Accounts",
+        maxAccounts: "Users Allowed",
+        maxCases: "Cases Allowed",
         maxDocuments: "Documents",
         documentStorage: "Storage",
         prioritySupport: "Priority Support",
@@ -183,6 +244,66 @@ export default function PricingPage() {
         unlimitedCases: "Unlimited Cases",
     };
 
+    const currentPlans = useMemo(() => {
+        const rolePlans = plans[selectedRole] || [];
+        const sortedPlans = [...rolePlans].sort((a, b) => {
+            const aPrice = a.price === -1 ? Number.MAX_SAFE_INTEGER : a.price;
+            const bPrice = b.price === -1 ? Number.MAX_SAFE_INTEGER : b.price;
+            return aPrice - bPrice;
+        });
+
+        return PACKAGE_TIERS.map((tier, index) => {
+            const sourcePlan = sortedPlans[index];
+            const roleLabel = selectedRole === "lawyer" ? "lawyers" : "customers";
+            const tierDescription = `Package for ${roleLabel} with up to ${tier.limit} active cases and ${tier.limit} users.`;
+            const fallbackPlan = {
+                _id: null,
+                slug: `${selectedRole}-${tier.key}`,
+                name: tier.name,
+                description: tierDescription,
+                price: -1,
+                isPopular: tier.limit === 30,
+                features: {
+                    maxCases: tier.limit,
+                    maxAccounts: tier.limit,
+                    prioritySupport: tier.limit >= 30,
+                    advancedReports: tier.limit >= 40,
+                    apiAccess: tier.limit >= 50,
+                    unlimitedCases: false,
+                },
+            };
+
+            if (!sourcePlan) {
+                return fallbackPlan;
+            }
+
+            return {
+                ...sourcePlan,
+                name: tier.name,
+                description: tierDescription,
+                isPopular: sourcePlan.isPopular ?? tier.limit === 30,
+                features: {
+                    ...(sourcePlan.features || {}),
+                    maxCases: tier.limit,
+                    maxAccounts: tier.limit,
+                    unlimitedCases: false,
+                },
+            };
+        });
+    }, [plans, selectedRole]);
+
+    useEffect(() => {
+        if (!currentPlans.length) {
+            setSelectedPlanKey(null);
+            return;
+        }
+
+        const hasSelectedInCurrentRole = currentPlans.some((plan) => getPlanKey(plan) === selectedPlanKey);
+        if (!hasSelectedInCurrentRole) {
+            setSelectedPlanKey(getPlanKey(currentPlans[0]));
+        }
+    }, [currentPlans, selectedPlanKey]);
+
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -190,8 +311,6 @@ export default function PricingPage() {
             </div>
         );
     }
-
-    const currentPlans = plans[selectedRole] || [];
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
@@ -242,8 +361,8 @@ export default function PricingPage() {
                         Choose the Perfect Plan for Your Practice
                     </h1>
                     <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
-                        Flexible pricing designed for solo practitioners, growing firms, and enterprises.
-                        All plans include unlimited cases.
+                        Separate plans for lawyers and customers. Base packages start at 10 cases and 10 users, and
+                        superior packages scale to 20, 30, 40, and 50.
                     </p>
 
                     {/* Role Toggle */}
@@ -251,11 +370,11 @@ export default function PricingPage() {
                         <TabsList className="grid w-full grid-cols-2">
                             <TabsTrigger value="lawyer" className="flex items-center gap-2">
                                 <Scale className="h-4 w-4" />
-                                For Lawyers
+                                Lawyer Packages
                             </TabsTrigger>
                             <TabsTrigger value="client" className="flex items-center gap-2">
                                 <Briefcase className="h-4 w-4" />
-                                For Clients
+                                Customer Packages
                             </TabsTrigger>
                         </TabsList>
                     </Tabs>
@@ -265,91 +384,167 @@ export default function PricingPage() {
             {/* Pricing Cards */}
             <section className="pb-20 px-4 md:px-8">
                 <div className="max-w-6xl mx-auto">
-                    <div className="grid gap-8 md:grid-cols-3">
-                        {currentPlans.map((plan, index) => (
-                            <Card
-                                key={plan._id}
-                                className={`relative flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${plan.isPopular
-                                        ? "border-2 border-black shadow-lg scale-105"
-                                        : "border border-gray-200"
-                                    }`}
-                            >
-                                {plan.isPopular && (
-                                    <div className="absolute -top-4 left-0 right-0 mx-auto w-fit">
-                                        <Badge className="bg-black text-white px-4 py-1">
-                                            Most Popular
-                                        </Badge>
-                                    </div>
-                                )}
+                    <div className="text-center mb-10">
+                        <h2 className="text-2xl font-bold text-gray-900">
+                            {selectedRole === "lawyer" ? "Lawyer Package Plans" : "Customer Package Plans"}
+                        </h2>
+                        <p className="text-gray-600 mt-2">
+                            Base package allows 10 cases and 10 users. Superior package tiers increase to 20, 30, 40,
+                            and 50.
+                        </p>
+                    </div>
+                    <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-5">
+                        {currentPlans.map((plan) => {
+                            const planKey = getPlanKey(plan);
+                            const isSelected = selectedPlanKey === planKey;
+                            const isProcessing = Boolean(plan._id) && processingPlan === plan._id;
+                            const displayPrice = formatPrice(plan.price);
+                            const isContactPlan = plan.price === -1 || !plan._id;
 
-                                <CardHeader className="pb-4">
-                                    <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                                    <CardDescription className="min-h-[48px]">
-                                        {plan.description}
-                                    </CardDescription>
-                                </CardHeader>
+                            return (
+                                <Card
+                                    key={planKey}
+                                    onClick={() => setSelectedPlanKey(planKey)}
+                                    className={`relative flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer ${plan.isPopular
+                                            ? "border-2 border-black shadow-lg scale-105"
+                                            : "border border-gray-200"
+                                        } ${isSelected
+                                            ? "ring-2 ring-black ring-offset-2 bg-white"
+                                            : ""
+                                        }`}
+                                >
+                                    {plan.isPopular && (
+                                        <div className="absolute -top-4 left-0 right-0 mx-auto w-fit">
+                                            <Badge className="bg-black text-white px-4 py-1">
+                                                Most Popular
+                                            </Badge>
+                                        </div>
+                                    )}
 
-                                <CardContent className="flex-1">
-                                    <div className="mb-6">
-                                        <span className="text-4xl font-bold text-gray-900">
-                                            {formatPrice(plan.price)}
-                                        </span>
-                                        {plan.price !== -1 && plan.price !== 0 && (
-                                            <span className="text-gray-600 ml-1">/year</span>
-                                        )}
-                                    </div>
+                                    <CardHeader className="pb-4">
+                                        <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                                        <CardDescription className="min-h-[48px]">
+                                            {plan.description}
+                                        </CardDescription>
+                                    </CardHeader>
 
-                                    <ul className="space-y-3">
-                                        {Object.entries(plan.features).map(([key, value]) => {
-                                            const formattedValue = formatFeatureValue(key, value);
-                                            if (formattedValue === null) return null;
+                                    <CardContent className="flex-1">
+                                        <div className="mb-6">
+                                            {displayPrice ? (
+                                                <span className="text-4xl font-bold text-gray-900">
+                                                    {displayPrice}
+                                                </span>
+                                            ) : (
+                                                <span className="text-sm font-medium uppercase tracking-wide text-gray-500">
+                                                    Pricing on request
+                                                </span>
+                                            )}
+                                            {displayPrice && plan.price !== 0 && (
+                                                <span className="text-gray-600 ml-1">/year</span>
+                                            )}
+                                        </div>
 
-                                            const IconComponent = getFeatureIcon(key);
+                                        <ul className="space-y-3">
+                                            {Object.entries(plan.features).map(([key, value]) => {
+                                                const formattedValue = formatFeatureValue(key, value);
+                                                if (formattedValue === null) return null;
 
-                                            return (
-                                                <li key={key} className="flex items-center gap-3">
-                                                    <div className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center ${value === false ? "bg-gray-100" : "bg-green-100"
-                                                        }`}>
-                                                        <IconComponent className={`h-3 w-3 ${value === false ? "text-gray-400" : "text-green-600"
-                                                            }`} />
-                                                    </div>
-                                                    <span className="text-sm text-gray-700">
-                                                        <span className="font-medium">{formattedValue}</span>
-                                                        {" "}
-                                                        {featureLabels[key]}
-                                                    </span>
-                                                </li>
-                                            );
-                                        })}
-                                    </ul>
-                                </CardContent>
+                                                const IconComponent = getFeatureIcon(key);
 
-                                <CardFooter>
-                                    <Button
-                                        className={`w-full ${plan.isPopular
-                                                ? "bg-black hover:bg-gray-800 text-white"
-                                                : "bg-gray-100 hover:bg-gray-200 text-gray-900"
-                                            }`}
-                                        onClick={() => handleSelectPlan(plan)}
-                                        disabled={processingPlan === plan._id}
-                                    >
-                                        {processingPlan === plan._id ? (
-                                            <>
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                Processing...
-                                            </>
-                                        ) : plan.price === -1 ? (
-                                            "Contact Sales"
-                                        ) : (
-                                            "Get Started"
-                                        )}
-                                    </Button>
-                                </CardFooter>
-                            </Card>
-                        ))}
+                                                return (
+                                                    <li key={key} className="flex items-center gap-3">
+                                                        <div className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center ${value === false ? "bg-gray-100" : "bg-green-100"
+                                                            }`}>
+                                                            <IconComponent className={`h-3 w-3 ${value === false ? "text-gray-400" : "text-green-600"
+                                                                }`} />
+                                                        </div>
+                                                        <span className="text-sm text-gray-700">
+                                                            <span className="font-medium">{formattedValue}</span>
+                                                            {" "}
+                                                            {featureLabels[key]}
+                                                        </span>
+                                                    </li>
+                                                );
+                                            })}
+                                        </ul>
+                                    </CardContent>
+
+                                    <CardFooter>
+                                        <Button
+                                            className={`w-full ${plan.isPopular
+                                                    ? "bg-black hover:bg-gray-800 text-white"
+                                                    : "bg-gray-100 hover:bg-gray-200 text-gray-900"
+                                                }`}
+                                            onClick={() => handleSelectPlan(plan)}
+                                            disabled={isProcessing}
+                                        >
+                                            {isProcessing ? (
+                                                <>
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                    Processing...
+                                                </>
+                                            ) : isContactPlan ? (
+                                                "Request Quote"
+                                            ) : (
+                                                "Get Started"
+                                            )}
+                                        </Button>
+                                    </CardFooter>
+                                </Card>
+                            );
+                        })}
                     </div>
                 </div>
             </section>
+
+            <Dialog open={isQuoteModalOpen} onOpenChange={setIsQuoteModalOpen}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <form onSubmit={handleQuoteSubmit}>
+                        <DialogHeader>
+                            <DialogTitle>Request Quote</DialogTitle>
+                            <DialogDescription>
+                                Share your details for {quotePlan?.name || "this package"} and our team will contact you.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="quote-name">Name</Label>
+                                <Input
+                                    id="quote-name"
+                                    placeholder="Enter your full name"
+                                    value={quoteForm.name}
+                                    onChange={(e) =>
+                                        setQuoteForm((prev) => ({ ...prev, name: e.target.value }))
+                                    }
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="quote-contact">Email / Phone</Label>
+                                <Input
+                                    id="quote-contact"
+                                    placeholder="Enter your email or phone"
+                                    value={quoteForm.contact}
+                                    onChange={(e) =>
+                                        setQuoteForm((prev) => ({ ...prev, contact: e.target.value }))
+                                    }
+                                    required
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setIsQuoteModalOpen(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button type="submit">Submit Request</Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
 
             {/* Features Comparison */}
             <section className="py-16 px-4 md:px-8 bg-gray-50">
@@ -359,9 +554,9 @@ export default function PricingPage() {
                     </h2>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                         {[
-                            { icon: Briefcase, label: "Unlimited Cases" },
+                            { icon: Briefcase, label: "Case Capacity Tiers" },
                             { icon: FileText, label: "Document Management" },
-                            { icon: Users, label: "Team Collaboration" },
+                            { icon: Users, label: "User Capacity Tiers" },
                             { icon: Check, label: "Secure Platform" },
                         ].map(({ icon: Icon, label }) => (
                             <div key={label} className="flex flex-col items-center p-4">
