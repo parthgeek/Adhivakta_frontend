@@ -32,7 +32,7 @@ export default function Home() {
           {[
             { href: "#features", label: "Features" },
             { href: "#testimonials", label: "Testimonials" },
-            { href: "#pricing", label: "Pricing" },
+            { href: "/pricing", label: "Pricing" },
           ].map((link) => (
             <div key={link.href}>
               <Link
