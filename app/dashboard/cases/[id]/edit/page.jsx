@@ -117,99 +117,100 @@ export default function EditCasePage() {
   const [caseData, setCaseData] = useState(null);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploadProgress, setUploadProgress] = useState({});
-const [hasEditAccess, setHasEditAccess] = useState(false);
+  const [hasEditAccess, setHasEditAccess] = useState(false);
   useEffect(() => {
     if (user) {
       setIsLawyer(user?.role === 'lawyer' || user?.role === 'admin');
     }
   }, [user]);
 
- useEffect(() => {
-  const fetchCase = async () => {
-    try {
-      const response = await api.cases.getById(id);
-      const d = response.data;
-      
-      // Check if user has edit access
-      const canEdit = checkEditAccess(d, user);
-      setHasEditAccess(canEdit);
-      
-      if (!canEdit) {
-        toast({
-          title: "Access Denied",
-          description: "You don't have permission to edit this case.",
-          variant: "destructive",
-        });
-        router.push(`/dashboard/cases/${id}`);
-        return;
-      }
+  useEffect(() => {
+    const fetchCase = async () => {
+      try {
+        const response = await api.cases.getById(id);
+        const d = response.data;
 
-      // Normalize data to match the new case form structure
-      setCaseData({
-        ...d,
-        courtState: d.courtState || "karnataka",
-        district: d.district || "bengaluru_urban",
-        bench: d.bench || "",
-        courtType: d.courtType || "district_court",
-        court: d.court || "",
-        courtHall: d.courtHall || "",
-        courtComplex: d.courtComplex || "",
-        filingDate: d.filingDate ? new Date(d.filingDate) : new Date(),
-        nextHearingDate: d.nextHearingDate ? new Date(d.nextHearingDate) : null,
-        petitionerRole: d.petitionerRole || "Petitioner",
-        petitionerType: d.petitionerType || "Individual",
-        petitioners: d.parties?.petitioner || [],
-        respondentRole: d.respondentRole || "Defendant",
-        respondents: d.parties?.respondent || [],
-        description: d.description || "",
-        status: d.status || "active",
-        priority: d.priority || "normal",
-        isUrgent: d.isUrgent || false,
-        caseStage: d.caseStage || "filing",
-        actSections: d.actSections || "",
-        reliefSought: d.reliefSought || "",
-        notes: d.notes || "",
-        advocates: d.advocates || [],
-        clients: d.clients || [],
-        stakeholders: d.stakeholders || [],
-        lawyers: d.lawyers || [],
-      });
-    } catch (err) {
-      toast({ 
-        title: "Error", 
-        description: err.message || "Failed to load case details.",
-        variant: "destructive" 
-      });
-      router.push("/dashboard/cases");
+        // Check if user has edit access
+        const canEdit = checkEditAccess(d, user);
+        setHasEditAccess(canEdit);
+
+        if (!canEdit) {
+          toast({
+            title: "Access Denied",
+            description: "You don't have permission to edit this case.",
+            variant: "destructive",
+          });
+          router.push(`/dashboard/cases/${id}`);
+          return;
+        }
+
+
+        // Normalize data to match the new case form structure
+        setCaseData({
+          ...d,
+          courtState: d.courtState || "karnataka",
+          district: d.district || "bengaluru_urban",
+          bench: d.bench || "",
+          courtType: d.courtType || "district_court",
+          court: d.court || "",
+          courtHall: d.courtHall || "",
+          courtComplex: d.courtComplex || "",
+          filingDate: d.filingDate ? new Date(d.filingDate) : new Date(),
+          nextHearingDate: d.nextHearingDate ? new Date(d.nextHearingDate) : null,
+          petitionerRole: d.petitionerRole || "Petitioner",
+          petitionerType: d.petitionerType || "Individual",
+          petitioners: d.parties?.petitioner || [],
+          respondentRole: d.respondentRole || "Defendant",
+          respondents: d.parties?.respondent || [],
+          description: d.description || "",
+          status: d.status || "active",
+          priority: d.priority || "normal",
+          isUrgent: d.isUrgent || false,
+          caseStage: d.caseStage || "filing",
+          actSections: d.actSections || "",
+          reliefSought: d.reliefSought || "",
+          notes: d.notes || "",
+          advocates: d.advocates || [],
+          clients: d.clients || [],
+          stakeholders: d.stakeholders || [],
+          lawyers: d.lawyers || [],
+        });
+      } catch (err) {
+        toast({
+          title: "Error",
+          description: err.message || "Failed to load case details.",
+          variant: "destructive"
+        });
+        router.push("/dashboard/cases");
+      }
+    };
+
+    if (id && user) fetchCase();
+  }, [id, user]);
+  // Check if user has edit access to this case
+  const checkEditAccess = (caseData, user) => {
+    if (!user || !caseData) return false;
+
+    if (user.role === 'lawyer' || user.role === 'admin') {
+      // Lawyer can edit if they are in the lawyers array
+      const caseLawyers = caseData.lawyers || [];
+      return caseLawyers.some(lawyer =>
+        lawyer.user?._id === user.id ||
+        lawyer.user === user.id ||
+        lawyer._id === user.id
+      );
+    } else if (user.role === 'client') {
+      // Client can edit if they are in the clients array
+      const caseClients = caseData.clients || [];
+      return caseClients.some(client =>
+        client.user?._id === user.id ||
+        client.user === user.id ||
+        client._id === user.id
+      );
     }
+
+    return false;
   };
-  
-  if (id && user) fetchCase();
-}, [id, user]);
-// Check if user has edit access to this case
-const checkEditAccess = (caseData, user) => {
-  if (!user || !caseData) return false;
-  
-  if (user.role === 'lawyer' || user.role === 'admin') {
-    // Lawyer can edit if they are in the lawyers array
-    const caseLawyers = caseData.lawyers || [];
-    return caseLawyers.some(lawyer => 
-      lawyer.user?._id === user.id || 
-      lawyer.user === user.id ||
-      lawyer._id === user.id
-    );
-  } else if (user.role === 'client') {
-    // Client can edit if they are in the clients array
-    const caseClients = caseData.clients || [];
-    return caseClients.some(client => 
-      client.user?._id === user.id || 
-      client.user === user.id ||
-      client._id === user.id
-    );
-  }
-  
-  return false;
-};
   const handleChange = (e) => {
     const { name, value } = e.target;
     setCaseData((prev) => ({ ...prev, [name]: value }));
@@ -222,7 +223,7 @@ const checkEditAccess = (caseData, user) => {
   const handleDateChange = (name, value) => {
     setCaseData((prev) => {
       const newData = { ...prev, [name]: value };
-      
+
       // Validate that next hearing date is after filing date
       if (name === 'nextHearingDate' && newData.filingDate && value) {
         if (new Date(value) <= new Date(newData.filingDate)) {
@@ -234,7 +235,7 @@ const checkEditAccess = (caseData, user) => {
           return prev; // Don't update if validation fails
         }
       }
-      
+
       return newData;
     });
   };
@@ -244,158 +245,166 @@ const checkEditAccess = (caseData, user) => {
   };
 
 
-const handleSubmit = async (e, section = 'all') => {
-  // prevent default when event provided
-  if (e && e.preventDefault) e.preventDefault();
-  if (!caseData) return;
+  const handleSubmit = async (e, section = 'all') => {
+    // prevent default when event provided
+    if (e && e.preventDefault) e.preventDefault();
+    if (!caseData) return;
 
-  // When saving details/party/all -> validate petitioners/respondents (same rules as before)
-  if (section === 'all' || section === 'details' || section === 'party') {
-    if (!caseData.petitioners || caseData.petitioners.length === 0) {
-      toast({ title: "Error", description: "Please add at least one petitioner/plaintiff/appellant/complainant", variant: "destructive" });
-      return;
-    }
-    for (let i = 0; i < caseData.petitioners.length; i++) {
-      const petitioner = caseData.petitioners[i];
-      if (!petitioner.name) {
-        toast({ title: "Error", description: `Please enter a name for Petitioner ${i + 1}`, variant: "destructive" });
+    // When saving details/party/all -> validate petitioners/respondents (same rules as before)
+    if (section === 'all' || section === 'details' || section === 'party') {
+      if (!caseData.petitioners || caseData.petitioners.length === 0) {
+        toast({ title: "Error", description: "Please add at least one petitioner/plaintiff/appellant/complainant", variant: "destructive" });
         return;
       }
-      if (!petitioner.type) {
-        toast({ title: "Error", description: `Please select a type for Petitioner ${i + 1}`, variant: "destructive" });
-        return;
-      }
-    }
-
-    if (caseData.respondents && caseData.respondents.length > 0) {
-      for (let i = 0; i < caseData.respondents.length; i++) {
-        const respondent = caseData.respondents[i];
-        if (!respondent.name) {
-          toast({ title: "Error", description: `Please enter a name for Respondent ${i + 1}`, variant: "destructive" });
+      for (let i = 0; i < caseData.petitioners.length; i++) {
+        const petitioner = caseData.petitioners[i];
+        if (!petitioner.name) {
+          toast({ title: "Error", description: `Please enter a name for Petitioner ${i + 1}`, variant: "destructive" });
           return;
         }
-        if (!respondent.role) {
-          toast({ title: "Error", description: `Please select a role for Respondent ${i + 1}`, variant: "destructive" });
-          return;
-        }
-        if (!respondent.type) {
-          toast({ title: "Error", description: `Please select a type for Respondent ${i + 1}`, variant: "destructive" });
+        if (!petitioner.type) {
+          toast({ title: "Error", description: `Please select a type for Petitioner ${i + 1}`, variant: "destructive" });
           return;
         }
       }
-    }
-  }
 
-  // Validate lawyers/clients only if saving associated parties or everything
-  if ((isLawyer && (section === 'all' || section === 'associatedParties'))) {
-    if (!caseData.lawyers || caseData.lawyers.length === 0) {
-      toast({ title: "Error", description: "Please add at least one lawyer to the case.", variant: "destructive" });
-      return;
-    }
-    for (let i = 0; i < caseData.lawyers.length; i++) {
-      const lawyer = caseData.lawyers[i];
-      if (!lawyer.name || lawyer.name.trim() === '') {
-        toast({ title: "Error", description: `Please enter a name for Lawyer ${i + 1}.`, variant: "destructive" });
-        return;
-      }
-    }
-  }
-
-  if (isLawyer && (section === 'all' || section === 'associatedParties')) {
-    if (!caseData.clients || caseData.clients.length === 0) {
-      toast({ title: "Error", description: "Please add at least one client for the case.", variant: "destructive" });
-      return;
-    }
-    for (let i = 0; i < (caseData.clients || []).length; i++) {
-      const client = caseData.clients[i];
-      if (!client.name) {
-        toast({ title: "Error", description: `Please enter a name for Client ${i + 1}.`, variant: "destructive" });
-        return;
-      }
-    }
-  }
-
-  setIsSubmitting(true);
-
-  try {
-    // Build formattedData but include only relevant sections for smaller saves
-    const formattedData = {
-      // Always include basic fields only when saving details/all
-      ...(section === 'all' || section === 'details' ? {
-        title: caseData.title,
-        caseNumber: caseData.caseNumber,
-        caseType: caseData.caseType,
-        status: caseData.status || "active",
-        courtState: caseData.courtState,
-        district: caseData.district,
-        bench: caseData.bench,
-        courtType: caseData.courtType,
-        court: caseData.court,
-        courtHall: caseData.courtHall,
-        courtComplex: caseData.courtComplex,
-        filingDate: caseData.filingDate ? new Date(caseData.filingDate).toISOString() : null,
-        nextHearingDate: caseData.nextHearingDate ? new Date(caseData.nextHearingDate).toISOString() : null,
-        description: caseData.description || "",
-        priority: caseData.priority || "normal",
-        isUrgent: caseData.isUrgent || false,
-        caseStage: caseData.caseStage || "filing",
-        actSections: caseData.actSections || "",
-        reliefSought: caseData.reliefSought || "",
-        notes: caseData.notes || ""
-      } : {}),
-
-      // Include party arrays only when saving party/all
-      ...(section === 'all' || section === 'party' ? {
-        parties: {
-          petitioner: (caseData.petitioners || []).map(p => {
-            const obj = { name: p.name };
-            if (p.type) obj.type = p.type;
-            if (p.role) obj.role = p.role;
-            if (p.email) obj.email = p.email;
-            if (p.contact) obj.contact = p.contact;
-            if (p.address) obj.address = p.address;
-            return obj;
-          }),
-          respondent: (caseData.respondents || []).map(r => {
-            const obj = { name: r.name };
-            if (r.type) obj.type = r.type;
-            if (r.role) obj.role = r.role;
-            if (r.email) obj.email = r.email;
-            if (r.contact) obj.contact = r.contact;
-            if (r.address) obj.address = r.address;
-            if (r.opposingCounsel) obj.opposingCounsel = r.opposingCounsel;
-            return obj;
-          })
+      if (caseData.respondents && caseData.respondents.length > 0) {
+        for (let i = 0; i < caseData.respondents.length; i++) {
+          const respondent = caseData.respondents[i];
+          if (!respondent.name) {
+            toast({ title: "Error", description: `Please enter a name for Respondent ${i + 1}`, variant: "destructive" });
+            return;
+          }
+          if (!respondent.role) {
+            toast({ title: "Error", description: `Please select a role for Respondent ${i + 1}`, variant: "destructive" });
+            return;
+          }
+          if (!respondent.type) {
+            toast({ title: "Error", description: `Please select a type for Respondent ${i + 1}`, variant: "destructive" });
+            return;
+          }
         }
-      } : {}),
+      }
+    }
 
-      // Include associated parties only when saving them or all
-      ...(section === 'all' || section === 'associatedParties' ? (isLawyer ? {
-        lawyers: (caseData.lawyers || []).map(l => ({
-          name: l.name, email: l.email || "", contact: l.contact || "", company: l.company || "", gst: l.gst || "", role: l.role || "", position: l.position || "", isPrimary: l.isPrimary || false, level: l.level || "", chairPosition: l.chairPosition || ""
-        })),
-        clients: (caseData.clients || []).map(c => ({ name: c.name, email: c.email || "", contact: c.contact || "", address: c.address || "" })),
-        stakeholders: (caseData.stakeholders || []).map(s => ({ name: s.name, email: s.email || "", contact: s.contact || "", address: s.address || "", roleInCase: s.roleInCase || "" }))
-      } : {
-        // For clients, only send client field and advocates, NOT lawyers
-        client: user._id || user.id,
-        advocates: (caseData.advocates || []).map(a => ({ name: a.name, email: a.email || "", contact: a.contact || "", company: a.company || "", gst: a.gst || "", isLead: a.isLead || false, level: a.level || "", poc: a.poc || "", spock: a.spock || "" })),
-        // Remove lawyers field for clients
-        stakeholders: (caseData.stakeholders || []).map(s => ({ name: s.name, email: s.email || "", contact: s.contact || "", address: s.address || "", roleInCase: s.roleInCase || "" }))
-      }) : {})
-    };
+    // Validate lawyers/clients only if saving associated parties or everything
+    if ((isLawyer && (section === 'all' || section === 'associatedParties'))) {
+      if (!caseData.lawyers || caseData.lawyers.length === 0) {
+        toast({ title: "Error", description: "Please add at least one lawyer to the case.", variant: "destructive" });
+        return;
+      }
+      for (let i = 0; i < caseData.lawyers.length; i++) {
+        const lawyer = caseData.lawyers[i];
+        if (!lawyer.name || lawyer.name.trim() === '') {
+          toast({ title: "Error", description: `Please enter a name for Lawyer ${i + 1}.`, variant: "destructive" });
+          return;
+        }
+      }
+    }
 
-    // Submit update
-    await api.cases.update(id, formattedData);
-    toast({ title: "Success", description: section === 'all' ? "Case updated successfully." : `Section "${section}" saved.` });
-    // only redirect on full save
-    if (section === 'all') router.push(`/dashboard/cases/${id}`);
-  } catch (err) {
-    toast({ title: "Error", description: err.message || "Failed to update case." });
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+    if (isLawyer && (section === 'all' || section === 'associatedParties')) {
+      if (!caseData.clients || caseData.clients.length === 0) {
+        toast({ title: "Error", description: "Please add at least one client for the case.", variant: "destructive" });
+        return;
+      }
+      for (let i = 0; i < (caseData.clients || []).length; i++) {
+        const client = caseData.clients[i];
+        if (!client.name) {
+          toast({ title: "Error", description: `Please enter a name for Client ${i + 1}.`, variant: "destructive" });
+          return;
+        }
+      }
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Build formattedData but include only relevant sections for smaller saves
+      const formattedData = {
+        // Always include basic fields only when saving details/all
+        ...(section === 'all' || section === 'details' ? {
+          title: caseData.title,
+          caseNumber: caseData.caseNumber,
+          caseType: caseData.caseType,
+          status: caseData.status || "active",
+          courtState: caseData.courtState,
+          district: caseData.district,
+          bench: caseData.bench,
+          courtType: caseData.courtType,
+          court: caseData.court,
+          courtHall: caseData.courtHall,
+          courtComplex: caseData.courtComplex,
+          filingDate: caseData.filingDate ? new Date(caseData.filingDate).toISOString() : null,
+          nextHearingDate: caseData.nextHearingDate ? new Date(caseData.nextHearingDate).toISOString() : null,
+          description: caseData.description || "",
+          priority: caseData.priority || "normal",
+          isUrgent: caseData.isUrgent || false,
+          caseStage: caseData.caseStage || "filing",
+          actSections: caseData.actSections || "",
+          reliefSought: caseData.reliefSought || "",
+          notes: caseData.notes || ""
+        } : {}),
+
+        // Include party arrays only when saving party/all
+        ...(section === 'all' || section === 'party' ? {
+          parties: {
+            petitioner: (caseData.petitioners || []).map(p => {
+              const obj = { name: p.name };
+              if (p.type) obj.type = p.type;
+              if (p.role) obj.role = p.role;
+              if (p.email) obj.email = p.email;
+              if (p.contact) obj.contact = p.contact;
+              if (p.address) obj.address = p.address;
+              return obj;
+            }),
+            respondent: (caseData.respondents || []).map(r => {
+              const obj = { name: r.name };
+              if (r.type) obj.type = r.type;
+              if (r.role) obj.role = r.role;
+              if (r.email) obj.email = r.email;
+              if (r.contact) obj.contact = r.contact;
+              if (r.address) obj.address = r.address;
+              if (r.opposingCounsel) obj.opposingCounsel = r.opposingCounsel;
+              return obj;
+            })
+          }
+        } : {}),
+
+        // Include associated parties only when saving them or all
+        ...(section === 'all' || section === 'associatedParties' ? (isLawyer ? {
+          lawyers: (caseData.lawyers || []).map(l => ({
+            ...(l.user ? { user: typeof l.user === 'object' ? l.user._id || l.user.id : l.user } : {}),
+            name: l.name,
+            email: l.email || "",
+            contact: l.contact || "",
+            company: l.company || "",
+            gst: l.gst || "",
+            isPrimary: l.isPrimary || false,
+            level: l.level || undefined,
+            addedBy: l.addedBy ? (typeof l.addedBy === 'object' ? l.addedBy._id || l.addedBy.id : l.addedBy) : (user?.id || user?._id),
+          })),
+          clients: (caseData.clients || []).map(c => ({ name: c.name, email: c.email || "", contact: c.contact || "", address: c.address || "" })),
+          stakeholders: (caseData.stakeholders || []).map(s => ({ name: s.name, email: s.email || "", contact: s.contact || "", address: s.address || "", roleInCase: s.roleInCase || "" }))
+        } : {
+          // For clients, only send client field and advocates, NOT lawyers
+          client: user?.id || user?._id,
+          advocates: (caseData.advocates || []).map(a => ({ name: a.name, email: a.email || "", contact: a.contact || "", company: a.company || "", gst: a.gst || "", isLead: a.isLead || false, level: a.level || "", poc: a.poc || "", spock: a.spock || "" })),
+          // Remove lawyers field for clients
+          stakeholders: (caseData.stakeholders || []).map(s => ({ name: s.name, email: s.email || "", contact: s.contact || "", address: s.address || "", roleInCase: s.roleInCase || "" }))
+        }) : {})
+      };
+
+      // Submit update
+      await api.cases.update(id, formattedData);
+      toast({ title: "Success", description: section === 'all' ? "Case updated successfully." : `Section "${section}" saved.` });
+      // only redirect on full save
+      if (section === 'all') router.push(`/dashboard/cases/${id}`);
+    } catch (err) {
+      toast({ title: "Error", description: err.message || "Failed to update case." });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
 
   const handleFileChange = (e) => {
@@ -776,15 +785,15 @@ const handleSubmit = async (e, section = 'all') => {
                             <SelectItem value="Complainant">Complainant</SelectItem>
                           </SelectContent>
                         </Select>
-                        <Button 
-                          type="button" 
+                        <Button
+                          type="button"
                           onClick={() => setCaseData(prev => ({
                             ...prev,
                             petitioners: [
-                              ...(prev.petitioners || []), 
-                              { 
-                                label: prev.petitionerLabel || 'Petitioner', 
-                                type: 'Individual', 
+                              ...(prev.petitioners || []),
+                              {
+                                label: prev.petitionerLabel || 'Petitioner',
+                                type: 'Individual',
                                 name: '',
                                 email: '',
                                 contact: '',
@@ -802,12 +811,12 @@ const handleSubmit = async (e, section = 'all') => {
                             <div key={idx} className="border rounded-lg p-4 space-y-3">
                               <div className="flex items-center justify-between">
                                 <h4 className="font-medium">{petitioner.label || 'Petitioner'} {idx + 1}</h4>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  onClick={() => setCaseData(prev => ({ 
-                                    ...prev, 
-                                    petitioners: prev.petitioners.filter((_, i) => i !== idx) 
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setCaseData(prev => ({
+                                    ...prev,
+                                    petitioners: prev.petitioners.filter((_, i) => i !== idx)
                                   }))}
                                 >
                                   Remove
@@ -819,8 +828,8 @@ const handleSubmit = async (e, section = 'all') => {
                                   <Input
                                     value={petitioner.name}
                                     onChange={e => {
-                                      const arr = [...caseData.petitioners]; 
-                                      arr[idx].name = e.target.value; 
+                                      const arr = [...caseData.petitioners];
+                                      arr[idx].name = e.target.value;
                                       setCaseData(prev => ({ ...prev, petitioners: arr }));
                                     }}
                                     placeholder="Full name"
@@ -831,8 +840,8 @@ const handleSubmit = async (e, section = 'all') => {
                                   <Select
                                     value={petitioner.type}
                                     onValueChange={val => {
-                                      const arr = [...caseData.petitioners]; 
-                                      arr[idx].type = val; 
+                                      const arr = [...caseData.petitioners];
+                                      arr[idx].type = val;
                                       setCaseData(prev => ({ ...prev, petitioners: arr }));
                                     }}
                                   >
@@ -852,8 +861,8 @@ const handleSubmit = async (e, section = 'all') => {
                                     type="email"
                                     value={petitioner.email}
                                     onChange={e => {
-                                      const arr = [...caseData.petitioners]; 
-                                      arr[idx].email = e.target.value; 
+                                      const arr = [...caseData.petitioners];
+                                      arr[idx].email = e.target.value;
                                       setCaseData(prev => ({ ...prev, petitioners: arr }));
                                     }}
                                     placeholder="email@example.com"
@@ -865,8 +874,8 @@ const handleSubmit = async (e, section = 'all') => {
                                     type="tel"
                                     value={petitioner.contact}
                                     onChange={e => {
-                                      const arr = [...caseData.petitioners]; 
-                                      arr[idx].contact = e.target.value; 
+                                      const arr = [...caseData.petitioners];
+                                      arr[idx].contact = e.target.value;
                                       setCaseData(prev => ({ ...prev, petitioners: arr }));
                                     }}
                                     placeholder="+91 XXXXXXXXXX"
@@ -877,8 +886,8 @@ const handleSubmit = async (e, section = 'all') => {
                                   <Textarea
                                     value={petitioner.address}
                                     onChange={e => {
-                                      const arr = [...caseData.petitioners]; 
-                                      arr[idx].address = e.target.value; 
+                                      const arr = [...caseData.petitioners];
+                                      arr[idx].address = e.target.value;
                                       setCaseData(prev => ({ ...prev, petitioners: arr }));
                                     }}
                                     placeholder="Full address"
@@ -909,15 +918,15 @@ const handleSubmit = async (e, section = 'all') => {
                             <SelectItem value="Opponent">Opponent</SelectItem>
                           </SelectContent>
                         </Select>
-                        <Button 
-                          type="button" 
+                        <Button
+                          type="button"
                           onClick={() => setCaseData(prev => ({
                             ...prev,
                             respondents: [
-                              ...(prev.respondents || []), 
-                              { 
-                                label: prev.respondentLabel || 'Defendant', 
-                                type: 'Individual', 
+                              ...(prev.respondents || []),
+                              {
+                                label: prev.respondentLabel || 'Defendant',
+                                type: 'Individual',
                                 name: '',
                                 email: '',
                                 contact: '',
@@ -935,12 +944,12 @@ const handleSubmit = async (e, section = 'all') => {
                             <div key={idx} className="border rounded-lg p-4 space-y-3">
                               <div className="flex items-center justify-between">
                                 <h4 className="font-medium">{respondent.label || 'Defendant'} {idx + 1}</h4>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  onClick={() => setCaseData(prev => ({ 
-                                    ...prev, 
-                                    respondents: prev.respondents.filter((_, i) => i !== idx) 
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setCaseData(prev => ({
+                                    ...prev,
+                                    respondents: prev.respondents.filter((_, i) => i !== idx)
                                   }))}
                                 >
                                   Remove
@@ -952,8 +961,8 @@ const handleSubmit = async (e, section = 'all') => {
                                   <Input
                                     value={respondent.name}
                                     onChange={e => {
-                                      const arr = [...caseData.respondents]; 
-                                      arr[idx].name = e.target.value; 
+                                      const arr = [...caseData.respondents];
+                                      arr[idx].name = e.target.value;
                                       setCaseData(prev => ({ ...prev, respondents: arr }));
                                     }}
                                     placeholder="Full name"
@@ -964,8 +973,8 @@ const handleSubmit = async (e, section = 'all') => {
                                   <Select
                                     value={respondent.type}
                                     onValueChange={val => {
-                                      const arr = [...caseData.respondents]; 
-                                      arr[idx].type = val; 
+                                      const arr = [...caseData.respondents];
+                                      arr[idx].type = val;
                                       setCaseData(prev => ({ ...prev, respondents: arr }));
                                     }}
                                   >
@@ -985,8 +994,8 @@ const handleSubmit = async (e, section = 'all') => {
                                     type="email"
                                     value={respondent.email}
                                     onChange={e => {
-                                      const arr = [...caseData.respondents]; 
-                                      arr[idx].email = e.target.value; 
+                                      const arr = [...caseData.respondents];
+                                      arr[idx].email = e.target.value;
                                       setCaseData(prev => ({ ...prev, respondents: arr }));
                                     }}
                                     placeholder="email@example.com"
@@ -998,8 +1007,8 @@ const handleSubmit = async (e, section = 'all') => {
                                     type="tel"
                                     value={respondent.contact}
                                     onChange={e => {
-                                      const arr = [...caseData.respondents]; 
-                                      arr[idx].contact = e.target.value; 
+                                      const arr = [...caseData.respondents];
+                                      arr[idx].contact = e.target.value;
                                       setCaseData(prev => ({ ...prev, respondents: arr }));
                                     }}
                                     placeholder="+91 XXXXXXXXXX"
@@ -1010,8 +1019,8 @@ const handleSubmit = async (e, section = 'all') => {
                                   <Textarea
                                     value={respondent.address}
                                     onChange={e => {
-                                      const arr = [...caseData.respondents]; 
-                                      arr[idx].address = e.target.value; 
+                                      const arr = [...caseData.respondents];
+                                      arr[idx].address = e.target.value;
                                       setCaseData(prev => ({ ...prev, respondents: arr }));
                                     }}
                                     placeholder="Full address"
@@ -1157,9 +1166,9 @@ const handleSubmit = async (e, section = 'all') => {
                                 <h4 className="font-medium flex items-center gap-2">
                                   Lawyer {idx + 1}
                                 </h4>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
                                   onClick={() => setCaseData(prev => ({
                                     ...prev,
                                     lawyers: prev.lawyers.filter((_, i) => i !== idx)
@@ -1172,67 +1181,67 @@ const handleSubmit = async (e, section = 'all') => {
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-1">
                                   <Label>Full Name</Label>
-                                  <Input 
-                                    value={lawyer.name || ''} 
+                                  <Input
+                                    value={lawyer.name || ''}
                                     onChange={e => {
                                       const arr = [...caseData.lawyers];
                                       arr[idx].name = e.target.value;
                                       setCaseData(prev => ({ ...prev, lawyers: arr }));
-                                    }} 
-                                    placeholder="Full Name" 
+                                    }}
+                                    placeholder="Full Name"
                                     className="h-9 text-sm"
-                                    required 
+                                    required
                                   />
                                 </div>
                                 <div className="space-y-1">
                                   <Label>Email</Label>
-                                  <Input 
-                                    type="email" 
-                                    value={lawyer.email || ''} 
+                                  <Input
+                                    type="email"
+                                    value={lawyer.email || ''}
                                     onChange={e => {
                                       const arr = [...caseData.lawyers];
                                       arr[idx].email = e.target.value;
                                       setCaseData(prev => ({ ...prev, lawyers: arr }));
-                                    }} 
+                                    }}
                                     placeholder="email@example.com"
                                     className="h-9 text-sm"
                                   />
                                 </div>
                                 <div className="space-y-1">
                                   <Label>Contact Number</Label>
-                                  <Input 
-                                    value={lawyer.contact || ''} 
+                                  <Input
+                                    value={lawyer.contact || ''}
                                     onChange={e => {
                                       const arr = [...caseData.lawyers];
                                       arr[idx].contact = e.target.value;
                                       setCaseData(prev => ({ ...prev, lawyers: arr }));
-                                    }} 
+                                    }}
                                     placeholder="+91 XXXXXXXXXX"
                                     className="h-9 text-sm"
                                   />
                                 </div>
                                 <div className="space-y-1">
                                   <Label>Law Firm</Label>
-                                  <Input 
-                                    value={lawyer.company || ''} 
+                                  <Input
+                                    value={lawyer.company || ''}
                                     onChange={e => {
                                       const arr = [...caseData.lawyers];
                                       arr[idx].company = e.target.value;
                                       setCaseData(prev => ({ ...prev, lawyers: arr }));
-                                    }} 
+                                    }}
                                     placeholder="Law Firm Name"
                                     className="h-9 text-sm"
                                   />
                                 </div>
                                 <div className="space-y-1">
                                   <Label>GST Number</Label>
-                                  <Input 
-                                    value={lawyer.gst || ''} 
+                                  <Input
+                                    value={lawyer.gst || ''}
                                     onChange={e => {
                                       const arr = [...caseData.lawyers];
                                       arr[idx].gst = e.target.value;
                                       setCaseData(prev => ({ ...prev, lawyers: arr }));
-                                    }} 
+                                    }}
                                     placeholder="22AAAAA0000A1Z5"
                                     className="h-9 text-sm"
                                   />
@@ -1240,7 +1249,7 @@ const handleSubmit = async (e, section = 'all') => {
                                 <div className="space-y-1">
                                   <Label>Level</Label>
                                   <Select
-                                    value={lawyer.level || ''}
+                                    value={lawyer.level || undefined}
                                     onValueChange={value => {
                                       const arr = [...caseData.lawyers];
                                       arr[idx].level = value;
@@ -1260,8 +1269,8 @@ const handleSubmit = async (e, section = 'all') => {
                               </div>
                             </div>
                           ))}
-                          <Button 
-                            type="button" 
+                          <Button
+                            type="button"
                             onClick={() => setCaseData(prev => ({
                               ...prev,
                               lawyers: [
@@ -1273,11 +1282,11 @@ const handleSubmit = async (e, section = 'all') => {
                                   company: '',
                                   gst: '',
                                   level: 'Associate',
-                                  addedBy: user._id
+                                  addedBy: user?.id || user?._id
                                 }
                               ]
-                            }))} 
-                            variant="outline" 
+                            }))}
+                            variant="outline"
                             className="mt-2 w-full border-dashed border-gray-300 hover:border-primary hover:bg-primary/5"
                           >
                             Add Lawyer to Case
@@ -1323,7 +1332,7 @@ const handleSubmit = async (e, section = 'all') => {
                                     const arr = [...caseData.clients];
                                     arr[idx].address = e.target.value;
                                     setCaseData(prev => ({ ...prev, clients: arr }));
-                                  }} placeholder="Full Address" rows={2}/>
+                                  }} placeholder="Full Address" rows={2} />
                                 </div>
                               </div>
                             </div>
@@ -1335,18 +1344,44 @@ const handleSubmit = async (e, section = 'all') => {
                       </>
                     ) : (
                       <>
-                        {/* Advocates List for Clients */}
+                        {/* Lawyers (read-only for clients) */}
                         <div className="space-y-4">
                           <h3 className="text-lg font-semibold">Legal Team</h3>
-                          {(caseData.advocates || []).map((advocate, idx) => (
-                            <div key={`advocate-${idx}`} className="space-y-2 border p-4 rounded-lg shadow-sm">
-                              <div className="font-medium">Advocate {idx + 1}</div>
-                              <div>Name: {advocate.name || ''}</div>
-                              <div>Email: {advocate.email || ''}</div>
-                              <div>Contact: {advocate.contact || ''}</div>
-                              <div>Law Firm: {advocate.company || ''}</div>
-                            </div>
-                          ))}
+                          {(caseData.lawyers || []).length > 0 ? (
+                            (caseData.lawyers || []).map((lawyer, idx) => (
+                              <div key={`lawyer-${idx}`} className="space-y-2 border p-4 rounded-lg shadow-sm bg-muted/30">
+                                <div className="font-medium">Lawyer {idx + 1}</div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                  <div><span className="text-muted-foreground">Name:</span> {lawyer.name || (lawyer.user?.name) || 'N/A'}</div>
+                                  <div><span className="text-muted-foreground">Email:</span> {lawyer.email || (lawyer.user?.email) || 'N/A'}</div>
+                                  <div><span className="text-muted-foreground">Contact:</span> {lawyer.contact || (lawyer.user?.contact) || 'N/A'}</div>
+                                  <div><span className="text-muted-foreground">Law Firm:</span> {lawyer.company || (lawyer.user?.company) || 'N/A'}</div>
+                                  {lawyer.level && <div><span className="text-muted-foreground">Level:</span> {lawyer.level}</div>}
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-sm text-muted-foreground italic">No lawyers assigned to this case.</p>
+                          )}
+                        </div>
+
+                        {/* Clients (read-only for clients) */}
+                        <div className="space-y-4 mt-6">
+                          <h3 className="text-lg font-semibold">Associated Clients</h3>
+                          {(caseData.clients || []).length > 0 ? (
+                            (caseData.clients || []).map((client, idx) => (
+                              <div key={`client-${idx}`} className="space-y-2 border p-4 rounded-lg shadow-sm bg-muted/30">
+                                <div className="font-medium">Client {idx + 1}</div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                  <div><span className="text-muted-foreground">Name:</span> {client.name || (client.user?.name) || 'N/A'}</div>
+                                  <div><span className="text-muted-foreground">Email:</span> {client.email || (client.user?.email) || 'N/A'}</div>
+                                  <div><span className="text-muted-foreground">Contact:</span> {client.contact || (client.user?.contact) || 'N/A'}</div>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-sm text-muted-foreground italic">No clients assigned to this case.</p>
+                          )}
                         </div>
                       </>
                     )}

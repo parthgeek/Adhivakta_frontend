@@ -47,7 +47,7 @@ export default function Sidebar() {
     <div
       className={cn(
         "h-full bg-card border-r transition-all duration-300 flex flex-col",
-        collapsed ? "w-16" : "w-56"
+        collapsed ? "w-16" : "w-60"
       )}
     >
       <div className="p-4 border-b flex justify-end">

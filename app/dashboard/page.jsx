@@ -586,9 +586,9 @@ const NewDashboard = () => {
     <div className="min-h-screen bg-gray-50/50 pt-3 px-6 pb-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Welcome Section */}
-        <div className="space-y-0.5">
-          <h1 className="text-4xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500 text-base">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-muted-foreground">
             Welcome back, {user?.name || "User"}. Here's your legal practice overview.
           </p>
         </div>
