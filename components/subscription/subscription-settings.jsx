@@ -151,7 +151,7 @@ export default function SubscriptionSettings() {
                             unlimited document storage, and priority support.
                         </p>
                         <Link href="/pricing">
-                            <Button className="bg-black hover:bg-gray-800 text-white">
+                            <Button className="bg-[#03234b] hover:bg-[#03234b]/90 text-white">
                                 View Plans
                                 <ArrowUpRight className="ml-2 h-4 w-4" />
                             </Button>

@@ -341,7 +341,7 @@ export default function PricingPage() {
                                 <Button variant="ghost">Login</Button>
                             </Link>
                             <Link href="/auth/register">
-                                <Button className="bg-black hover:bg-gray-800 text-white">
+                                <Button className="bg-[#03234b] hover:bg-[#03234b]/90 text-white">
                                     Get Started
                                 </Button>
                             </Link>
@@ -472,7 +472,7 @@ export default function PricingPage() {
                                     <CardFooter>
                                         <Button
                                             className={`w-full ${plan.isPopular
-                                                    ? "bg-black hover:bg-gray-800 text-white"
+                                                    ? "bg-[#03234b] hover:bg-[#03234b]/90 text-white"
                                                     : "bg-gray-100 hover:bg-gray-200 text-gray-900"
                                                 }`}
                                             onClick={() => handleSelectPlan(plan)}

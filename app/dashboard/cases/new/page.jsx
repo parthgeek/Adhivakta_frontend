@@ -818,7 +818,7 @@ export default function NewCasePage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">New Case</h1>
+          <h1 className="text-3xl font-bold">Add Case</h1>
           <p className="text-sm text-muted-foreground mt-2">
             Fill in all required fields marked with <span className="text-red-500">*</span>
           </p>

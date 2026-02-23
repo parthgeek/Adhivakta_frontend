@@ -117,9 +117,9 @@ const QuickActions = () => {
     <div className="bg-white rounded-lg border p-6 shadow-sm">
       <h3 className="text-lg font-semibold mb-4 text-gray-900">Quick Actions</h3>
       <div className="grid grid-cols-2 gap-3">
-        <button className="flex items-center justify-center p-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors">
+        <button className="flex items-center justify-center p-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-[#03234b] transition-colors">
           <Plus className="h-5 w-5 mr-2" />
-          New Case
+          Add Case
         </button>
         <button className="flex items-center justify-center p-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors">
           <FileText className="h-5 w-5 mr-2" />

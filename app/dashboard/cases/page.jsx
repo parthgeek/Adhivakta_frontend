@@ -255,7 +255,7 @@ export default function CasesPage() {
         <Link href="/dashboard/cases/new">
           <Button className="w-full sm:w-auto bg-[#1a2332] hover:bg-[#253345]">
             <Plus className="h-4 w-4 mr-2" />
-            New Case
+            Add Case
           </Button>
         </Link>
       </div>

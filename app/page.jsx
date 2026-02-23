@@ -55,7 +55,7 @@ export default function Home() {
           </div>
           <div>
             <Link href="/auth/register">
-              <Button className="bg-black hover:bg-gray-800 text-white px-6">
+              <Button className="bg-[#03234b] hover:bg-[#03234b]/90 text-white px-6">
                 Get Started
               </Button>
             </Link>
@@ -93,7 +93,7 @@ export default function Home() {
                   <Link href="/auth/register">
                     <Button
                       size="lg"
-                      className="bg-black hover:bg-gray-800 text-white px-8 group"
+                      className="bg-[#03234b] hover:bg-[#03234b]/90 text-white px-8 group"
                     >
                       Start Free Trial
                       <span className="ml-2">
@@ -105,7 +105,7 @@ export default function Home() {
                     <Button
                       size="lg"
                       variant="outline"
-                      className="px-8 border-gray-300 text-black hover:text-black hover:bg-gray-800/50"
+                      className="px-8 border-primary/30 text-primary hover:text-primary hover:bg-primary/10"
                     >
                       Discover More
                     </Button>
@@ -300,7 +300,7 @@ export default function Home() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
                 <Link href="/pricing">
-                  <Button size="lg" className="bg-black hover:bg-gray-800 text-white px-8">
+                  <Button size="lg" className="bg-[#03234b] hover:bg-[#03234b]/90 text-white px-8">
                     View Pricing Plans
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
@@ -344,7 +344,7 @@ export default function Home() {
                   <Button
                     size="lg"
                     variant="outline"
-                    className="bg-black border-white text-white hover:bg-white/20 px-8"
+                    className="bg-[#03234b] border-[#03234b] text-white hover:bg-[#03234b]/90 px-8"
                   >
                     Schedule a Demo
                   </Button>
