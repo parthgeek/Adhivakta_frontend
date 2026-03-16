@@ -27,6 +27,7 @@ import {
   AlertCircle,
   Loader2,
 } from "lucide-react";
+import { formatLegalTeamSummary } from "@/lib/legal-team";
 
 const normalizeStatus = (status) => {
   switch (status) {
@@ -180,12 +181,10 @@ export default function HearingsPage() {
 
       const caseObj = caseMap.get(caseId);
       const startDate = toDate(event.start);
-      const lawyers = caseObj?.lawyers || [];
       const clients = caseObj?.clients || [];
 
       const advocate =
-        lawyers.find((lawyer) => lawyer.isPrimary || lawyer.isLead)?.name ||
-        lawyers[0]?.name ||
+        formatLegalTeamSummary(caseObj, { withPrefix: true }) ||
         "Not assigned";
       const client =
         clients.find((person) => person.isPrimary)?.name ||
@@ -236,12 +235,10 @@ export default function HearingsPage() {
       }
 
       const startDate = toDate(nextHearing);
-      const lawyers = caseItem.lawyers || [];
       const clients = caseItem.clients || [];
 
       const advocate =
-        lawyers.find((lawyer) => lawyer.isPrimary || lawyer.isLead)?.name ||
-        lawyers[0]?.name ||
+        formatLegalTeamSummary(caseItem, { withPrefix: true }) ||
         "Not assigned";
       const client =
         clients.find((person) => person.isPrimary)?.name ||

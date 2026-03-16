@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import api from "@/services/api";
 import { useToast } from "@/components/ui/use-toast";
+import { getDocumentOpenUrl } from "@/lib/document-url";
 
 const CATEGORY_OPTIONS = [
   { value: "all", label: "All Categories" },
@@ -259,8 +260,7 @@ export default function DocumentsPage() {
             doc.uploadedBy?.name || doc.uploadedByName || doc.owner?.name || "Unknown",
           category: normalizeCategory(doc.category),
           status: normalizeStatus(doc.status),
-          fileUrl:
-            doc.downloadUrl || doc.fileUrl || doc.storagePath || doc.filePath || doc.url || null,
+          fileUrl: doc.downloadUrl || doc.fileUrl || doc.signedUrl || doc.url || null,
           raw: doc,
         };
       });
@@ -341,27 +341,29 @@ export default function DocumentsPage() {
     setShowUploadDialog(true);
   };
 
-  const handleView = (doc) => {
-    if (doc.fileUrl) {
-      window.open(doc.fileUrl, "_blank");
+  const openDocument = (doc, mode = "view") => {
+    const url = getDocumentOpenUrl(doc);
+
+    if (!url) {
+      toast({
+        title: "Document link unavailable",
+        description: "This document does not have a valid file URL.",
+        variant: "destructive",
+      });
+      return;
     }
 
+    window.open(url, "_blank", "noopener,noreferrer");
+
     toast({
-      title: "View Document",
-      description: `Opening ${doc.name}`,
+      title: mode === "download" ? "Download Started" : "View Document",
+      description:
+        mode === "download" ? `Downloading ${doc.name}` : `Opening ${doc.name}`,
     });
   };
 
-  const handleDownload = (doc) => {
-    if (doc.fileUrl) {
-      window.open(doc.fileUrl, "_blank");
-    }
-
-    toast({
-      title: "Download Started",
-      description: `Downloading ${doc.name}`,
-    });
-  };
+  const handleView = (doc) => openDocument(doc, "view");
+  const handleDownload = (doc) => openDocument(doc, "download");
 
   const handleDelete = async (doc) => {
     const confirmed = window.confirm(`Delete \"${doc.name}\"?`);

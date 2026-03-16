@@ -108,6 +108,31 @@ const OTHER_COURT_TYPES = [
   { value: "special_court", label: "Special Court" },
 ];
 
+const normalizeEmail = (value = "") =>
+  typeof value === "string" ? value.trim().toLowerCase() : "";
+
+const getEntityId = (value) => {
+  if (!value) return "";
+  if (typeof value === "object") {
+    if (value._id) return value._id.toString();
+    if (value.id) return value.id.toString();
+    if (value.user) return getEntityId(value.user);
+  }
+  return value.toString();
+};
+
+const personMatchesUser = (person, user) => {
+  const userId = getEntityId(user);
+  const userEmail = normalizeEmail(user?.email);
+  const personId = getEntityId(person);
+  const personEmail = normalizeEmail(person?.email || person?.user?.email);
+
+  return (
+    (userId && personId && userId === personId) ||
+    (userEmail && personEmail && userEmail === personEmail)
+  );
+};
+
 export default function EditCasePage() {
   const { id } = useParams();
   const router = useRouter();
@@ -190,22 +215,19 @@ export default function EditCasePage() {
   // Check if user has edit access to this case
   const checkEditAccess = (caseData, user) => {
     if (!user || !caseData) return false;
+    if (user.role === "admin") return true;
 
-    if (user.role === 'lawyer' || user.role === 'admin') {
-      // Lawyer can edit if they are in the lawyers array
+    if (user.role === 'lawyer') {
       const caseLawyers = caseData.lawyers || [];
-      return caseLawyers.some(lawyer =>
-        lawyer.user?._id === user.id ||
-        lawyer.user === user.id ||
-        lawyer._id === user.id
+      return (
+        getEntityId(caseData.lawyer) === getEntityId(user) ||
+        caseLawyers.some((lawyer) => personMatchesUser(lawyer, user))
       );
     } else if (user.role === 'client') {
-      // Client can edit if they are in the clients array
       const caseClients = caseData.clients || [];
-      return caseClients.some(client =>
-        client.user?._id === user.id ||
-        client.user === user.id ||
-        client._id === user.id
+      return (
+        getEntityId(caseData.client) === getEntityId(user) ||
+        caseClients.some((client) => personMatchesUser(client, user))
       );
     }
 
@@ -383,13 +405,19 @@ export default function EditCasePage() {
             level: l.level || undefined,
             addedBy: l.addedBy ? (typeof l.addedBy === 'object' ? l.addedBy._id || l.addedBy.id : l.addedBy) : (user?.id || user?._id),
           })),
-          clients: (caseData.clients || []).map(c => ({ name: c.name, email: c.email || "", contact: c.contact || "", address: c.address || "" })),
+          clients: (caseData.clients || []).map(c => ({
+            ...(c.user ? { user: typeof c.user === 'object' ? c.user._id || c.user.id : c.user } : {}),
+            name: c.name,
+            email: c.email || "",
+            contact: c.contact || "",
+            address: c.address || "",
+            isPrimary: c.isPrimary || false,
+            addedBy: c.addedBy ? (typeof c.addedBy === 'object' ? c.addedBy._id || c.addedBy.id : c.addedBy) : (user?.id || user?._id),
+          })),
           stakeholders: (caseData.stakeholders || []).map(s => ({ name: s.name, email: s.email || "", contact: s.contact || "", address: s.address || "", roleInCase: s.roleInCase || "" }))
         } : {
-          // For clients, only send client field and advocates, NOT lawyers
-          client: user?.id || user?._id,
+          // For clients, only send the fields the update API accepts.
           advocates: (caseData.advocates || []).map(a => ({ name: a.name, email: a.email || "", contact: a.contact || "", company: a.company || "", gst: a.gst || "", isLead: a.isLead || false, level: a.level || "", poc: a.poc || "", spock: a.spock || "" })),
-          // Remove lawyers field for clients
           stakeholders: (caseData.stakeholders || []).map(s => ({ name: s.name, email: s.email || "", contact: s.contact || "", address: s.address || "", roleInCase: s.roleInCase || "" }))
         }) : {})
       };

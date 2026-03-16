@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label"
 import { Calendar as DatePicker } from "@/components/ui/calendar"
 import { Calendar as CalendarIcon } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
+import { getDocumentOpenUrl } from "@/lib/document-url"
 
 export default function CaseDetailsPage() {
   const { id } = useParams()
@@ -224,6 +225,14 @@ export default function CaseDetailsPage() {
     }
   };
 
+  const handleViewDocument = (documentUrl) => {
+    if (!documentUrl) {
+      toast({ title: "Error", description: "Document link is unavailable." });
+      return;
+    }
+    window.open(documentUrl, "_blank", "noopener,noreferrer");
+  };
+
   const handleViewOutcome = (event, idx) => {
     setViewingEvent(event);
     setViewingIndex(idx);
@@ -306,10 +315,6 @@ export default function CaseDetailsPage() {
           </Button>
           <h1 className="text-3xl font-bold">{caseData.title}</h1>
         </div>
-        {((isLawyer && (caseData?.lawyer?._id === user?.id || caseData?.lawyer === user?.id)) || 
-          (user?.role === 'client' && (caseData?.client?._id === user?.id || caseData?.client === user?.id))) && (
-          <Button onClick={() => router.push(`/dashboard/cases/${id}/edit`)}>Edit Case</Button>
-        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -796,22 +801,29 @@ export default function CaseDetailsPage() {
                 <CardContent>
                   {documents && documents.length > 0 ? (
                     <div className="space-y-4">
-                      {documents.map((doc, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 border rounded-md">
-                          <div className="flex items-center">
-                            <FileText className="mr-3 h-5 w-5 text-muted-foreground" />
-                            <div>
-                              <p className="font-medium">{doc.name}</p>
-                              <p className="text-sm text-muted-foreground">{doc.description || "No description"}</p>
+                      {documents.map((doc, index) => {
+                        const documentUrl = getDocumentOpenUrl(doc);
+
+                        return (
+                          <div key={index} className="flex items-center justify-between p-3 border rounded-md">
+                            <div className="flex items-center">
+                              <FileText className="mr-3 h-5 w-5 text-muted-foreground" />
+                              <div>
+                                <p className="font-medium">{doc.name}</p>
+                                <p className="text-sm text-muted-foreground">{doc.description || "No description"}</p>
+                              </div>
                             </div>
-                          </div>
-                          <Button variant="outline" size="sm" asChild>
-                            <a href={doc.fileUrl || doc.signedUrl} target="_blank" rel="noopener noreferrer">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={!documentUrl}
+                              onClick={() => handleViewDocument(documentUrl)}
+                            >
                               View
-                            </a>
-                          </Button>
-                        </div>
-                      ))}
+                            </Button>
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="text-center py-8">

@@ -39,6 +39,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import api from "@/services/api";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  getCaseLegalTeam,
+  getLeadLegalTeamMember,
+  formatLegalTeamSummary,
+} from "@/lib/legal-team";
 
 const getPriorityColor = (priority) => {
   switch ((priority || "medium").toLowerCase()) {
@@ -323,8 +328,18 @@ export default function CasesPage() {
             const caseItem = mapCaseFields(rawCase);
             const petitioners = rawCase.parties?.petitioner || [];
             const respondents = rawCase.parties?.respondent || [];
-            const lawyers = rawCase.lawyers || [];
-            const advocates = rawCase.advocates || [];
+            const legalTeam = getCaseLegalTeam(rawCase);
+            const leadCounsel = getLeadLegalTeamMember(legalTeam);
+            const handledBy = formatLegalTeamSummary(legalTeam, {
+              withPrefix: true,
+            });
+            const officeNames = Array.from(
+              new Set(legalTeam.map((member) => member.company).filter(Boolean))
+            ).join(", ");
+            const seniorCounsel = legalTeam
+              .filter((member) => member.level === "Senior" && member.name)
+              .map((member) => `Sr. Adv. ${member.name}`)
+              .join(", ");
             const nextHearing = rawCase.nextHearingDate || rawCase.hearingDate;
             const courtName = rawCase.court || "Not specified";
             const caseType = rawCase.caseType || rawCase.type || "";
@@ -419,96 +434,46 @@ export default function CasesPage() {
                     )}
 
                     {/* Legal Representation - Side by Side Comparison */}
-                    {lawyers.length > 0 && (
+                    {legalTeam.length > 0 && (
                       <div className="space-y-4">
                         <h4 className="text-base font-semibold text-foreground border-b pb-2">Legal Representation Comparison</h4>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                          {(() => {
-                            if (lawyers.length === 1) {
-                              return (
-                                <>
-                                  {/* Plaintiff/Petitioner Legal Representation */}
-                                  <div className="space-y-3 p-4 bg-muted/30 rounded-lg border-l-4 border-primary">
-                                    <h5 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                      <span className="w-3 h-3 rounded-full bg-primary"></span>
-                                      Legal Representation (Plaintiff/Petitioner)
-                                    </h5>
-                                    <div className="space-y-3 text-sm">
-                                      {lawyers[0].company && (
-                                        <div>
-                                          <span className="text-muted-foreground">Office Name: <span className="text-destructive">*</span></span>
-                                          <div className="font-medium">{lawyers[0].company}</div>
-                                        </div>
-                                      )}
-                                      <div>
-                                        <span className="text-muted-foreground">Advocate on Record: <span className="text-destructive">*</span></span>
-                                        <div className="font-medium">Adv. {lawyers[0].name}</div>
-                                      </div>
-                                      <div>
-                                        <span className="text-muted-foreground">Handled by: <span className="text-destructive">*</span></span>
-                                        <div className="font-medium">Adv. {lawyers[0].name}</div>
-                                      </div>
-                                      {lawyers[0].level && (
-                                        <div>
-                                          <span className="text-muted-foreground">Senior Advocate:</span>
-                                          <div className="font-medium">
-                                            {lawyers[0].level === "Senior" ? `Sr. Adv. ${lawyers[0].name}` : "N/A"}
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  {/* Defendant/Respondent Legal Representation (not assigned) */}
-                                  <div className="space-y-3 p-4 bg-muted/30 rounded-lg border-l-4 border-destructive opacity-40">
-                                    <h5 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                      <span className="w-3 h-3 rounded-full bg-destructive"></span>
-                                      Defendant Legal Representation
-                                    </h5>
-                                    <p className="text-xs text-muted-foreground italic">Not assigned</p>
-                                  </div>
-                                </>
-                              );
-                            }
-
-                            return lawyers.slice(0, 2).map((lawyer, i) => (
-                              <div
-                                key={i}
-                                className={`space-y-3 p-4 bg-muted/30 rounded-lg border-l-4 ${i === 0 ? "border-primary" : "border-destructive"}`}
-                              >
-                                <h5 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                  <span className={`w-3 h-3 rounded-full ${i === 0 ? "bg-primary" : "bg-destructive"}`}></span>
-                                  {i === 0
-                                    ? "Legal Representation (Plaintiff/Petitioner)"
-                                    : "Defendant Legal Representation"}
-                                </h5>
-                                <div className="space-y-3 text-sm">
-                                  {lawyer.company && (
-                                    <div>
-                                      <span className="text-muted-foreground">Office Name: <span className="text-destructive">*</span></span>
-                                      <div className="font-medium">{lawyer.company}</div>
-                                    </div>
-                                  )}
-                                  <div>
-                                    <span className="text-muted-foreground">Advocate on Record: <span className="text-destructive">*</span></span>
-                                    <div className="font-medium">Adv. {lawyer.name}</div>
-                                  </div>
-                                  <div>
-                                    <span className="text-muted-foreground">Handled by: <span className="text-destructive">*</span></span>
-                                    <div className="font-medium">Adv. {lawyer.name}</div>
-                                  </div>
-                                  {lawyer.level && (
-                                    <div>
-                                      <span className="text-muted-foreground">Senior Advocate:</span>
-                                      <div className="font-medium">
-                                        {lawyer.level === "Senior" ? `Sr. Adv. ${lawyer.name}` : "N/A"}
-                                      </div>
-                                    </div>
-                                  )}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          <div className="space-y-3 p-4 bg-muted/30 rounded-lg border-l-4 border-primary">
+                            <h5 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                              <span className="w-3 h-3 rounded-full bg-primary"></span>
+                              Legal Representation (Plaintiff/Petitioner)
+                            </h5>
+                            <div className="space-y-3 text-sm">
+                              {officeNames && (
+                                <div>
+                                  <span className="text-muted-foreground">Office Name: <span className="text-destructive">*</span></span>
+                                  <div className="font-medium">{officeNames}</div>
+                                </div>
+                              )}
+                              <div>
+                                <span className="text-muted-foreground">Advocate on Record: <span className="text-destructive">*</span></span>
+                                <div className="font-medium">
+                                  {leadCounsel?.name ? `Adv. ${leadCounsel.name}` : "Not assigned"}
                                 </div>
                               </div>
-                            ));
-                          })()}
+                              <div>
+                                <span className="text-muted-foreground">Handled by: <span className="text-destructive">*</span></span>
+                                <div className="font-medium">{handledBy || "Not assigned"}</div>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Senior Advocate:</span>
+                                <div className="font-medium">{seniorCounsel || "N/A"}</div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3 p-4 bg-muted/30 rounded-lg border-l-4 border-destructive opacity-40">
+                            <h5 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                              <span className="w-3 h-3 rounded-full bg-destructive"></span>
+                              Defendant Legal Representation
+                            </h5>
+                            <p className="text-xs text-muted-foreground italic">Not assigned</p>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -540,8 +505,8 @@ export default function CasesPage() {
                             Documents
                           </Button>
                         </Link>
-                        <Link href={`/dashboard/cases/${caseItem.id}`}>
-                          <Button size="sm" className="bg-[#1a2332] hover:bg-[#253345]">Update Status</Button>
+                        <Link href={`/dashboard/cases/${caseItem.id}/edit`}>
+                          <Button size="sm" className="bg-[#1a2332] hover:bg-[#253345]">Edit Case</Button>
                         </Link>
                       </div>
                     </div>

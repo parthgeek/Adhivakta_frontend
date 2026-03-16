@@ -28,6 +28,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { formatLegalTeamSummary } from "@/lib/legal-team";
 
 // Helper function to format relative time
 const formatRelativeTime = (date) => {
@@ -190,20 +191,10 @@ const CasesList = ({ cases = [] }) => {
       <CardContent className="space-y-4">
         {cases.slice(0, 5).map((caseItem, index) => {
           const clientName = safeText(caseItem.clientName) || safeText(caseItem.client);
-          const lawyerName = (() => {
-            // Check advocates array (lead advocate first)
-            if (caseItem.advocates?.length) {
-              const lead = caseItem.advocates.find(a => a.isLead);
-              return safeText(lead || caseItem.advocates[0]);
-            }
-            // Check lawyers array (primary/lead first)
-            if (caseItem.lawyers?.length) {
-              const primary = caseItem.lawyers.find(l => l.isPrimary || l.isLead);
-              return safeText(primary || caseItem.lawyers[0]);
-            }
-            // Fallback to legacy fields
-            return safeText(caseItem.lawyer) || safeText(caseItem.assignedTo);
-          })();
+          const lawyerName =
+            formatLegalTeamSummary(caseItem) ||
+            safeText(caseItem.lawyer) ||
+            safeText(caseItem.assignedTo);
           const courtName = safeText(caseItem.court);
           const caseType = safeText(caseItem.caseType) || safeText(caseItem.type);
           const title = safeText(caseItem.title) || safeText(caseItem.description) || "No description available";
