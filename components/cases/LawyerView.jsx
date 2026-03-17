@@ -109,7 +109,7 @@ export default function LawyerView({ caseData, setCaseData, updateClientField, r
 
                   <div className="space-y-1">
                     <Label htmlFor={`lawyer-contact-${idx}`} className="text-sm font-medium">
-                      Contact Number
+                      Contact Number <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       id={`lawyer-contact-${idx}`}
@@ -127,7 +127,7 @@ export default function LawyerView({ caseData, setCaseData, updateClientField, r
 
                   <div className="space-y-1">
                     <Label htmlFor={`lawyer-company-${idx}`} className="text-sm font-medium">
-                      Law Firm
+                      Law Firm <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       id={`lawyer-company-${idx}`}

@@ -127,6 +127,15 @@ const toKey = (value) => {
   return String(value);
 };
 
+const toDayKey = (value) => {
+  const date = toDate(value);
+  if (!date) {
+    return null;
+  }
+
+  return date.toISOString().slice(0, 10);
+};
+
 export default function HearingsPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -164,6 +173,24 @@ export default function HearingsPage() {
 
   useEffect(() => {
     fetchHearingsAndCases();
+
+    const handleWindowFocus = () => {
+      fetchHearingsAndCases();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchHearingsAndCases();
+      }
+    };
+
+    window.addEventListener("focus", handleWindowFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", handleWindowFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
   const normalizedHearings = useMemo(() => {
@@ -171,17 +198,18 @@ export default function HearingsPage() {
     const caseMap = new Map(
       cases.map((caseItem) => [toKey(caseItem._id || caseItem.id), caseItem])
     );
-    const eventCaseIds = new Set();
+    const hearingEventKeys = new Set();
 
     hearings.forEach((event) => {
       const caseId = toKey(event.case?._id || event.case);
-      if (caseId) {
-        eventCaseIds.add(caseId);
-      }
-
       const caseObj = caseMap.get(caseId);
       const startDate = toDate(event.start);
+      const eventDayKey = toDayKey(startDate);
       const clients = caseObj?.clients || [];
+
+      if (caseId && eventDayKey && normalizeType(event.type) === "hearing") {
+        hearingEventKeys.add(`${caseId}:${eventDayKey}`);
+      }
 
       const advocate =
         formatLegalTeamSummary(caseObj, { withPrefix: true }) ||
@@ -230,7 +258,15 @@ export default function HearingsPage() {
     cases.forEach((caseItem) => {
       const caseId = toKey(caseItem._id || caseItem.id);
       const nextHearing = caseItem.nextHearingDate || caseItem.hearingDate;
-      if (!caseId || !nextHearing || eventCaseIds.has(caseId)) {
+      const nextHearingDayKey = toDayKey(nextHearing);
+      const nextHearingKey =
+        caseId && nextHearingDayKey ? `${caseId}:${nextHearingDayKey}` : null;
+
+      if (
+        !caseId ||
+        !nextHearing ||
+        (nextHearingKey && hearingEventKeys.has(nextHearingKey))
+      ) {
         return;
       }
 
