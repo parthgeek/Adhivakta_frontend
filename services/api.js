@@ -379,6 +379,14 @@ const api = {
       const data = await handleResponse(response);
       return data.data || [];
     },
+
+    sendReminder: async (id) => {
+      const response = await fetch(`${API_URL}/cases/${id}/send-reminder`, {
+        method: "POST",
+        headers: createHeaders(),
+      });
+      return handleResponse(response);
+    },
   },
 
   documents: {
@@ -447,7 +455,12 @@ const api = {
               reject(new Error("Invalid JSON response"));
             }
           } else {
-            reject(new Error(`Upload failed with status ${xhr.status}`));
+            try {
+              const errorData = JSON.parse(xhr.responseText);
+              reject(new Error(errorData.message || errorData.errors?.[0]?.msg || `Upload failed with status ${xhr.status}`));
+            } catch (error) {
+              reject(new Error(`Upload failed with status ${xhr.status}`));
+            }
           }
         };
 
@@ -494,7 +507,12 @@ const api = {
               reject(new Error("Invalid JSON response"));
             }
           } else {
-            reject(new Error(`Upload failed with status ${xhr.status}`));
+            try {
+              const errorData = JSON.parse(xhr.responseText);
+              reject(new Error(errorData.message || errorData.errors?.[0]?.msg || `Upload failed with status ${xhr.status}`));
+            } catch (error) {
+              reject(new Error(`Upload failed with status ${xhr.status}`));
+            }
           }
         };
 
@@ -525,6 +543,16 @@ const api = {
 
       const data = await handleResponse(response);
       return data.data;
+    },
+
+    review: async (id, reviewData) => {
+      const response = await fetch(`${API_URL}/documents/${id}/review`, {
+        method: "PUT",
+        headers: createHeaders(),
+        body: JSON.stringify(reviewData),
+      });
+
+      return handleResponse(response);
     },
 
     delete: async (id) => {

@@ -14,6 +14,7 @@ import PartyDetails from "@/components/ui/party-details"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Calendar as DatePicker } from "@/components/ui/calendar"
 import { Calendar as CalendarIcon } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
@@ -32,6 +33,7 @@ export default function CaseDetailsPage() {
   const [showScheduleDialog, setShowScheduleDialog] = useState(false)
   const [uploadForm, setUploadForm] = useState({ file: null, description: "" })
   const [uploading, setUploading] = useState(false)
+  const [reviewingDocumentId, setReviewingDocumentId] = useState(null)
   const [hearingDate, setHearingDate] = useState(null)
   const [scheduling, setScheduling] = useState(false)
   const [showOutcomeDialog, setShowOutcomeDialog] = useState(false)
@@ -45,24 +47,30 @@ export default function CaseDetailsPage() {
   const [deleting, setDeleting] = useState(false)
   
 
+  const fetchCaseDocuments = async () => {
+    const docsResponse = await api.documents.getByCaseId(id)
+    if (docsResponse && Array.isArray(docsResponse.data)) {
+      setDocuments(docsResponse.data)
+    } else if (docsResponse && Array.isArray(docsResponse)) {
+      setDocuments(docsResponse)
+    } else {
+      setDocuments([])
+    }
+  }
+
   useEffect(() => {
     const fetchCaseDetails = async () => {
       setLoading(true)
       try {
-        console.log("Fetching case details for ID:", id)
-        // Fetch case details
         const response = await api.cases.getById(id)
-        console.log("Case details response:", response)
 
-        let rawData;
+        let rawData
         if (response && response.data) {
-          console.log('API response.data:', response.data);
-          rawData = response.data;
-        } else if (response) { // Should ideally not hit this if API is consistent
-          console.log('API response (direct):', response);
-          rawData = response;
+          rawData = response.data
+        } else if (response) {
+          rawData = response
         } else {
-          throw new Error("Invalid response format");
+          throw new Error("Invalid response format")
         }
 
         const processedData = {
@@ -74,30 +82,17 @@ export default function CaseDetailsPage() {
             petitioner: Array.isArray(rawData.parties?.petitioner) ? rawData.parties.petitioner : [],
             respondent: Array.isArray(rawData.parties?.respondent) ? rawData.parties.respondent : []
           }
-        };
-        console.log('Processed caseData.parties:', processedData.parties);
-        console.log('Processed caseData.advocates:', processedData.advocates);
-        console.log('Processed caseData.clients:', processedData.clients);
-        setCaseData(processedData);
+        }
+        setCaseData(processedData)
 
-        // Fetch related documents if available
         try {
-          const docsResponse = await api.documents.getByCaseId(id)
-          console.log("Documents response:", docsResponse)
-          if (docsResponse && Array.isArray(docsResponse.data)) {
-            setDocuments(docsResponse.data)
-          } else if (docsResponse && Array.isArray(docsResponse)) {
-            setDocuments(docsResponse)
-          }
+          await fetchCaseDocuments()
         } catch (docError) {
           console.error("Error fetching documents:", docError)
-          // Non-critical error, continue with case display
         }
 
-        // Fetch related events if available
         try {
           const eventsResponse = await api.events.getByCaseId(id)
-          console.log("Events response:", eventsResponse)
           if (eventsResponse && Array.isArray(eventsResponse.data)) {
             setEvents(eventsResponse.data)
           } else if (eventsResponse && Array.isArray(eventsResponse)) {
@@ -105,7 +100,6 @@ export default function CaseDetailsPage() {
           }
         } catch (eventError) {
           console.error("Error fetching events:", eventError)
-          // Non-critical error, continue with case display
         }
       } catch (error) {
         console.error("Error fetching case details:", error)
@@ -139,6 +133,26 @@ export default function CaseDetailsPage() {
     return statusMap[status?.toLowerCase()] || "bg-gray-100 text-gray-800"
   }
 
+  const getDocumentApprovalStatus = (document) => {
+    const value = (
+      document?.approvalStatus ||
+      document?.status ||
+      "approved"
+    ).toLowerCase()
+
+    if (value === "active") return "approved"
+    if (value === "archived") return "rejected"
+    if (value === "draft") return "pending"
+    return value
+  }
+
+  const getDocumentStatusColor = (status) => {
+    if (status === "approved") return "bg-green-100 text-green-800"
+    if (status === "pending") return "bg-yellow-100 text-yellow-800"
+    if (status === "rejected") return "bg-red-100 text-red-800"
+    return "bg-gray-100 text-gray-800"
+  }
+
   const getPriorityColor = (priority) => {
     const priorityMap = {
       low: "bg-blue-100 text-blue-800",
@@ -161,15 +175,53 @@ export default function CaseDetailsPage() {
       formData.append("file", uploadForm.file)
       formData.append("description", uploadForm.description)
       formData.append("caseId", id)
-      await api.documents.upload(formData)
+      const result = await api.documents.upload(formData)
       setShowUploadDialog(false)
       setUploadForm({ file: null, description: "" })
-      // Optionally refresh documents list here
-      toast({ title: "Success", description: "Document uploaded." })
+      await fetchCaseDocuments()
+      toast({
+        title: "Success",
+        description: result?.message || "Document uploaded.",
+      })
     } catch (err) {
       toast({ title: "Error", description: "Failed to upload document." })
     } finally {
       setUploading(false)
+    }
+  }
+
+  const handleReviewDocument = async (document, decision) => {
+    const reviewNotes =
+      decision === "rejected"
+        ? window.prompt("Add rejection reason (optional):", "") ?? ""
+        : ""
+
+    setReviewingDocumentId(document._id || document.id)
+
+    try {
+      const result = await api.documents.review(document._id || document.id, {
+        decision,
+        reviewNotes,
+      })
+
+      await fetchCaseDocuments()
+
+      toast({
+        title: "Success",
+        description:
+          result?.message ||
+          (decision === "approved"
+            ? "Document approved successfully."
+            : "Document rejected successfully."),
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to review document.",
+        variant: "destructive",
+      })
+    } finally {
+      setReviewingDocumentId(null)
     }
   }
 
@@ -303,6 +355,19 @@ export default function CaseDetailsPage() {
   }
 
   const isLawyer = user?.role === "lawyer"
+  const userId = user?.id || user?._id
+  const canReviewDocuments =
+    user?.role === "admin" ||
+    (user?.role === "lawyer" &&
+      (caseData?.lawyer?._id === userId ||
+        caseData?.lawyer === userId ||
+        (caseData?.lawyers || []).some((lawyer) => personMatchesUser(lawyer, user))))
+  const canUploadDocuments =
+    canReviewDocuments ||
+    (user?.role === "client" &&
+      (caseData?.client?._id === userId ||
+        caseData?.client === userId ||
+        (caseData?.clients || []).some((client) => personMatchesUser(client, user))))
   
 
 
@@ -377,7 +442,7 @@ export default function CaseDetailsPage() {
                       <h3 className="text-sm font-medium text-muted-foreground">First Hearing</h3>
                       <p className="text-base flex items-center">
                         <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
-                        {formatDate(caseData.hearingDate || caseData.nextHearingDate)}
+                        {formatDate(caseData.nextHearingDate || caseData.hearingDate)}
                       </p>
                     </div>
                     <div>
@@ -796,31 +861,80 @@ export default function CaseDetailsPage() {
               <Card>
                 <CardHeader>
                   <CardTitle>Case Documents</CardTitle>
-                  <CardDescription>Documents related to this case</CardDescription>
+                  <CardDescription>Documents related to this case and their lawyer review status</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {documents && documents.length > 0 ? (
                     <div className="space-y-4">
                       {documents.map((doc, index) => {
                         const documentUrl = getDocumentOpenUrl(doc);
+                        const approvalStatus = getDocumentApprovalStatus(doc);
+                        const documentId = doc._id || doc.id;
+                        const isPending = approvalStatus === "pending";
+                        const isRejected = approvalStatus === "rejected";
+                        const isReviewing = reviewingDocumentId === documentId;
 
                         return (
-                          <div key={index} className="flex items-center justify-between p-3 border rounded-md">
-                            <div className="flex items-center">
+                          <div key={documentId || index} className="flex items-center justify-between p-3 border rounded-md gap-4">
+                            <div className="flex items-center min-w-0">
                               <FileText className="mr-3 h-5 w-5 text-muted-foreground" />
-                              <div>
-                                <p className="font-medium">{doc.name}</p>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="font-medium">{doc.name}</p>
+                                  <Badge className={getDocumentStatusColor(approvalStatus)}>
+                                    {approvalStatus.charAt(0).toUpperCase() + approvalStatus.slice(1)}
+                                  </Badge>
+                                </div>
                                 <p className="text-sm text-muted-foreground">{doc.description || "No description"}</p>
+                                {doc.reviewNotes && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Review note: {doc.reviewNotes}
+                                  </p>
+                                )}
+                                {doc.uploadedByName && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Uploaded by {doc.uploadedByName}
+                                  </p>
+                                )}
                               </div>
                             </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={!documentUrl}
-                              onClick={() => handleViewDocument(documentUrl)}
-                            >
-                              View
-                            </Button>
+                            <div className="flex items-center gap-2 flex-wrap justify-end">
+                              {(isPending || isRejected) && !canReviewDocuments && (
+                                <span className="text-xs text-muted-foreground">
+                                  {isPending
+                                    ? "Waiting for lawyer approval"
+                                    : "Rejected by lawyer"}
+                                </span>
+                              )}
+                              {canReviewDocuments && isPending && (
+                                <>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={isReviewing}
+                                    onClick={() => handleReviewDocument(doc, "approved")}
+                                  >
+                                    {isReviewing ? "Saving..." : "Approve"}
+                                  </Button>
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    disabled={isReviewing}
+                                    onClick={() => handleReviewDocument(doc, "rejected")}
+                                  >
+                                    {isReviewing ? "Saving..." : "Reject"}
+                                  </Button>
+                                </>
+                              )}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={!documentUrl}
+                                onClick={() => handleViewDocument(documentUrl)}
+                              >
+                                View
+                              </Button>
+                            </div>
                           </div>
                         );
                       })}
@@ -833,7 +947,7 @@ export default function CaseDetailsPage() {
                     </div>
                   )}
                 </CardContent>
-                {isLawyer && (
+                {canUploadDocuments && (
                   <CardFooter>
                     <div className="flex gap-2">
                       <Button onClick={() => setShowUploadDialog(true)} variant="secondary">Upload Document</Button>
@@ -852,7 +966,7 @@ export default function CaseDetailsPage() {
                 <CardContent>
                   {(() => {
                     // Prepare the hearings list
-                    const firstHearingDate = caseData.hearingDate || caseData.nextHearingDate;
+                    const firstHearingDate = caseData.nextHearingDate || caseData.hearingDate;
                     let hearings = events
                       .filter(e => e.type === 'hearing')
                       .sort((a, b) => new Date(a.start) - new Date(b.start));
@@ -889,15 +1003,14 @@ export default function CaseDetailsPage() {
                               <span className="text-sm text-muted-foreground">{event.description || "No description"}</span>
                           </div>
                             <div className="flex items-center gap-2 mt-2 md:mt-0">
-                              <span className="text-xs text-gray-600">Outcome:</span>
-                              <span className="text-sm font-semibold">{event.outcome || "-"}</span>
+                              <span className="text-xs text-gray-600">Proceedings:</span>
+                              <span className="text-sm font-semibold">{event.outcome ? event.outcome.slice(0, 40) + (event.outcome.length > 40 ? "…" : "") : "-"}</span>
                               <Button size="sm" variant="outline" onClick={() => handleViewOutcome(event, idx)}>
-                                View Outcome
+                                View
                               </Button>
-                              {((isLawyer && (caseData?.lawyer?._id === user?.id || caseData?.lawyer === user?.id)) || 
-                                (user?.role === 'client' && (caseData?.client?._id === user?.id || caseData?.client === user?.id))) && !event.isVirtualFirst && (
+                              {isLawyer && !event.isVirtualFirst && (
                                 <Button size="sm" variant="outline" onClick={() => handleEditOutcome(event)}>
-                                  Edit Outcome
+                                  {event.outcome ? "Edit Proceedings" : "Add Proceedings"}
                                 </Button>
                               )}
                         </div>
@@ -951,7 +1064,7 @@ export default function CaseDetailsPage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <h3 className="text-sm font-medium">First Hearing</h3>
-                  <span className="text-sm">{formatDate(caseData.hearingDate || caseData.nextHearingDate)}</span>
+                  <span className="text-sm">{formatDate(caseData.nextHearingDate || caseData.hearingDate)}</span>
                 </div>
                 {caseData.court && (
                   <div className="flex justify-between items-center">
@@ -1004,8 +1117,7 @@ export default function CaseDetailsPage() {
                 </>
               )}
             </CardContent>
-            {((isLawyer && (caseData?.lawyer?._id === user?.id || caseData?.lawyer === user?.id)) || 
-              (user?.role === 'client' && (caseData?.client?._id === user?.id || caseData?.client === user?.id))) && (
+            {canUploadDocuments && (
               <CardFooter className="flex flex-col space-y-2">
                 <Button className="w-full" variant="outline" onClick={() => router.push(`/dashboard/cases/${id}/edit`)}>
                   Edit Case
@@ -1013,7 +1125,7 @@ export default function CaseDetailsPage() {
                 <Button
                   className="w-full"
                   variant="outline"
-                  onClick={() => router.push(`/dashboard/documents/upload?caseId=${id}`)}
+                  onClick={() => setShowUploadDialog(true)}
                 >
                   Upload Document
                 </Button>
@@ -1059,7 +1171,7 @@ export default function CaseDetailsPage() {
               selected={hearingDate}
               onSelect={setHearingDate}
               disabled={(date) => {
-                const firstHearing = caseData.hearingDate ? new Date(caseData.hearingDate) : (caseData.nextHearingDate ? new Date(caseData.nextHearingDate) : null);
+                const firstHearing = caseData.nextHearingDate ? new Date(caseData.nextHearingDate) : (caseData.hearingDate ? new Date(caseData.hearingDate) : null);
                 return firstHearing ? date <= firstHearing : false;
               }}
             />
@@ -1070,26 +1182,31 @@ export default function CaseDetailsPage() {
       <Dialog open={showOutcomeDialog} onOpenChange={setShowOutcomeDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Hearing Outcome</DialogTitle>
+            <DialogTitle>Record Hearing Proceedings</DialogTitle>
+            <DialogDescription>
+              Document what happened at this hearing — orders passed, adjournments, arguments made, etc.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <Input
-              type="text"
-              placeholder="Enter outcome"
+            <Textarea
+              placeholder="Describe what happened at this hearing..."
               value={outcomeValue}
               onChange={e => setOutcomeValue(e.target.value)}
+              rows={6}
             />
-            <Button onClick={handleSaveOutcome} disabled={!outcomeValue}>Save Outcome</Button>
+            <Button onClick={handleSaveOutcome}>Save Proceedings</Button>
           </div>
         </DialogContent>
       </Dialog>
       <Dialog open={showViewOutcomeDialog} onOpenChange={setShowViewOutcomeDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>View Outcome{viewingIndex !== null ? `: ${getOrdinal(viewingIndex + 1)} Hearing` : ''}</DialogTitle>
+            <DialogTitle>Proceedings{viewingIndex !== null ? ` — ${getOrdinal(viewingIndex + 1)} Hearing` : ''}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="text-base">{viewingEvent?.outcome || "No outcome set for this hearing."}</div>
+            <div className="text-sm whitespace-pre-wrap text-foreground leading-relaxed">
+              {viewingEvent?.outcome || "No proceedings recorded for this hearing."}
+            </div>
             <Button onClick={() => setShowViewOutcomeDialog(false)}>Close</Button>
           </div>
         </DialogContent>

@@ -144,8 +144,10 @@ export default function HearingsPage() {
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("scheduled");
   const [filterType, setFilterType] = useState("all");
+  const [activeQuickFilter, setActiveQuickFilter] = useState(null);
+  const [sendingReminderFor, setSendingReminderFor] = useState(null);
 
   const isLawyer = user?.role === "lawyer" || user?.role === "admin";
 
@@ -378,38 +380,59 @@ export default function HearingsPage() {
     return normalizedHearings.filter((hearing) => hearing.status === "completed");
   }, [normalizedHearings]);
 
-  const handleUpdateStatus = async (hearing) => {
-    if (!isLawyer) {
-      toast({
-        title: "Permission Denied",
-        description: "Only lawyers can update hearing status.",
-        variant: "destructive",
-      });
-      return;
+  const displayedHearings = useMemo(() => {
+    let base;
+    switch (activeQuickFilter) {
+      case "today": base = todayHearings; break;
+      case "upcoming": base = upcomingHearings; break;
+      case "thisMonth": base = thisMonthHearings; break;
+      case "completed": base = completedHearings; break;
+      default: base = normalizedHearings;
     }
+    const lower = searchTerm.toLowerCase();
+    return base.filter((hearing) => {
+      const matchesSearch = !searchTerm ||
+        hearing.caseName.toLowerCase().includes(lower) ||
+        hearing.caseNumber.toLowerCase().includes(lower) ||
+        hearing.court.toLowerCase().includes(lower) ||
+        hearing.judge.toLowerCase().includes(lower);
+      const matchesType = filterType === "all" || hearing.type === filterType;
+      const matchesStatus = activeQuickFilter
+        ? true
+        : filterStatus === "all" || hearing.status === filterStatus;
+      return matchesSearch && matchesType && matchesStatus;
+    });
+  }, [activeQuickFilter, todayHearings, upcomingHearings, thisMonthHearings, completedHearings, normalizedHearings, searchTerm, filterType, filterStatus]);
 
-    if (hearing.isCaseHearing || !hearing.sourceId) {
-      toast({
-        title: "Status Update",
-        description: `${hearing.caseNumber} is case-derived. Update via case details.`,
-      });
-      return;
-    }
+  const handleQuickFilter = (key) => {
+    setActiveQuickFilter((prev) => (prev === key ? null : key));
+  };
 
-    try {
-      await api.events.update(hearing.sourceId, { status: "completed" });
-      toast({
-        title: "Status Updated",
-        description: `${hearing.caseNumber} status has been updated.`,
-      });
-      fetchHearingsAndCases();
-    } catch (error) {
-      console.error("Error updating hearing status:", error);
+  const handleSendReminder = async (hearing) => {
+    if (!hearing.caseId) {
       toast({
         title: "Error",
-        description: "Failed to update hearing status.",
+        description: "No case associated with this hearing.",
         variant: "destructive",
       });
+      return;
+    }
+    setSendingReminderFor(hearing.id);
+    try {
+      const result = await api.cases.sendReminder(hearing.caseId);
+      toast({
+        title: "Reminder Sent",
+        description: result?.message || "Reminder emails sent to all case participants.",
+      });
+    } catch (error) {
+      console.error("Error sending reminder:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send reminder.",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingReminderFor(null);
     }
   };
 
@@ -451,7 +474,10 @@ export default function HearingsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+        <Card
+          className={`cursor-pointer transition-all ${activeQuickFilter === "today" ? "ring-2 ring-primary bg-primary/5" : "hover:shadow-md"}`}
+          onClick={() => handleQuickFilter("today")}
+        >
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -463,7 +489,10 @@ export default function HearingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card
+          className={`cursor-pointer transition-all ${activeQuickFilter === "upcoming" ? "ring-2 ring-amber-500 bg-amber-50" : "hover:shadow-md"}`}
+          onClick={() => handleQuickFilter("upcoming")}
+        >
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -475,7 +504,10 @@ export default function HearingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card
+          className={`cursor-pointer transition-all ${activeQuickFilter === "thisMonth" ? "ring-2 ring-green-600 bg-green-50" : "hover:shadow-md"}`}
+          onClick={() => handleQuickFilter("thisMonth")}
+        >
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -487,7 +519,10 @@ export default function HearingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card
+          className={`cursor-pointer transition-all ${activeQuickFilter === "completed" ? "ring-2 ring-gray-500 bg-gray-50" : "hover:shadow-md"}`}
+          onClick={() => handleQuickFilter("completed")}
+        >
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -559,8 +594,16 @@ export default function HearingsPage() {
         </CardContent>
       </Card>
 
+      {activeQuickFilter && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Filter className="h-4 w-4" />
+          <span>Showing: <span className="font-medium text-foreground capitalize">{activeQuickFilter === "thisMonth" ? "This Month" : activeQuickFilter === "today" ? "Today's Hearings" : activeQuickFilter.charAt(0).toUpperCase() + activeQuickFilter.slice(1)}</span></span>
+          <button className="underline text-primary ml-1" onClick={() => setActiveQuickFilter(null)}>Clear</button>
+        </div>
+      )}
+
       <div className="grid gap-4">
-        {filteredHearings.map((hearing) => (
+        {displayedHearings.map((hearing) => (
           <Card key={hearing.id} className="hover:shadow-md transition-shadow">
             <CardContent className="p-6">
               <div className="space-y-4">
@@ -616,11 +659,6 @@ export default function HearingsPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Judge:</span>
-                    <span className="font-medium">{hearing.judge}</span>
-                  </div>
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-muted-foreground" />
                     <span className="text-muted-foreground">Advocate:</span>
@@ -684,25 +722,20 @@ export default function HearingsPage() {
                     <Button
                       variant="outline"
                       size="sm"
+                      disabled={sendingReminderFor === hearing.id}
                       onClick={(event) => {
                         event.stopPropagation();
-                        toast({
-                          title: "Added to Calendar",
-                          description: `${hearing.caseNumber} hearing added to calendar.`,
-                        });
+                        handleSendReminder(hearing);
                       }}
                     >
-                      Add to Calendar
-                    </Button>
-
-                    <Button
-                      size="sm"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleUpdateStatus(hearing);
-                      }}
-                    >
-                      Update Status
+                      {sendingReminderFor === hearing.id ? (
+                        <>
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        "Send Reminder"
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -712,7 +745,7 @@ export default function HearingsPage() {
         ))}
       </div>
 
-      {filteredHearings.length === 0 && (
+      {displayedHearings.length === 0 && (
         <Card>
           <CardContent className="p-12 text-center">
             <div className="space-y-4">
@@ -731,6 +764,7 @@ export default function HearingsPage() {
                   setSearchTerm("");
                   setFilterStatus("all");
                   setFilterType("all");
+                  setActiveQuickFilter(null);
                 }}
               >
                 Clear Filters

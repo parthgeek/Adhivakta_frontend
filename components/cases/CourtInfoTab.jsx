@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { STATES, OTHER_COURT_TYPES, BENCHES } from "@/lib/constants/caseConstants";
+import { STATES } from "@/lib/constants/caseConstants";
 
 export default function CourtInfoTab({
   caseData,
@@ -92,50 +92,6 @@ export default function CourtInfoTab({
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="courtType">Court Type</Label>
-                <Select
-                  value={caseData.courtType}
-                  onValueChange={(value) => handleSelectChange("courtType", value)}
-                >
-                  <SelectTrigger id="courtType">
-                    <SelectValue placeholder="Select court type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="high_court">High Court</SelectItem>
-                    {OTHER_COURT_TYPES.map((court) => (
-                      <SelectItem key={court.value} value={court.value}>
-                        {court.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {caseData.courtType === "high_court" &&
-                caseData.courtState === "karnataka" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="bench">Bench</Label>
-                    <Select
-                      value={caseData.bench}
-                      onValueChange={(value) => handleSelectChange("bench", value)}
-                    >
-                      <SelectTrigger id="bench">
-                        <SelectValue placeholder="Select bench" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {BENCHES.map((bench) => (
-                          <SelectItem key={bench.value} value={bench.value}>
-                            {bench.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="space-y-2">
                 <Label htmlFor="court">
                   Court Name <span className="text-red-500">*</span>
                 </Label>
@@ -157,16 +113,6 @@ export default function CourtInfoTab({
                   onChange={handleChange}
                 />
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="courtComplex">Court Complex</Label>
-              <Input
-                id="courtComplex"
-                name="courtComplex"
-                value={caseData.courtComplex}
-                onChange={handleChange}
-              />
             </div>
           </div>
 

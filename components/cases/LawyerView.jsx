@@ -10,6 +10,9 @@ import { User, Trash2, PlusCircle } from "lucide-react";
 const normalizeEmail = (value) =>
   typeof value === "string" ? value.trim().toLowerCase() : "";
 
+const normalizeValue = (value) =>
+  typeof value === "string" ? value.trim() : "";
+
 const getParticipantUserId = (participant) => {
   if (!participant) return null;
   if (participant.user && typeof participant.user === "object") {
@@ -82,14 +85,14 @@ export default function LawyerView({ caseData, setCaseData, updateClientField, r
                       }}
                       placeholder="Full Name"
                       className="h-9 text-sm"
-                      disabled={primaryLawyer}
+                      disabled={primaryLawyer && !!normalizeValue(lawyer.name)}
                       required
                     />
                   </div>
 
                   <div className="space-y-1">
                     <Label htmlFor={`lawyer-email-${idx}`} className="text-sm font-medium">
-                      Email <span className="text-red-500">*</span>
+                      Email ID <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       id={`lawyer-email-${idx}`}
@@ -102,17 +105,18 @@ export default function LawyerView({ caseData, setCaseData, updateClientField, r
                       }}
                       placeholder="email@example.com"
                       className="h-9 text-sm"
-                      disabled={primaryLawyer}
+                      disabled={primaryLawyer && !!normalizeEmail(lawyer.email)}
                       required
                     />
                   </div>
 
                   <div className="space-y-1">
                     <Label htmlFor={`lawyer-contact-${idx}`} className="text-sm font-medium">
-                      Contact Number <span className="text-red-500">*</span>
+                      Mobile Number <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       id={`lawyer-contact-${idx}`}
+                      type="tel"
                       value={lawyer.contact || ""}
                       onChange={(e) => {
                         const arr = [...caseData.lawyers];
@@ -121,7 +125,7 @@ export default function LawyerView({ caseData, setCaseData, updateClientField, r
                       }}
                       placeholder="+91 XXXXXXXXXX"
                       className="h-9 text-sm"
-                      disabled={primaryLawyer}
+                      required
                     />
                   </div>
 
@@ -139,7 +143,7 @@ export default function LawyerView({ caseData, setCaseData, updateClientField, r
                       }}
                       placeholder="Law Firm Name"
                       className="h-9 text-sm"
-                      disabled={primaryLawyer}
+                      required
                     />
                   </div>
 

@@ -259,7 +259,7 @@ export default function DocumentsPage() {
           uploadedBy:
             doc.uploadedBy?.name || doc.uploadedByName || doc.owner?.name || "Unknown",
           category: normalizeCategory(doc.category),
-          status: normalizeStatus(doc.status),
+          status: normalizeStatus(doc.approvalStatus || doc.status),
           fileUrl: doc.downloadUrl || doc.fileUrl || doc.signedUrl || doc.url || null,
           raw: doc,
         };
@@ -419,11 +419,11 @@ export default function DocumentsPage() {
         formData.append("tags", uploadForm.tags);
       }
 
-      await api.documents.upload(formData);
+      const result = await api.documents.upload(formData);
 
       toast({
         title: "Document uploaded",
-        description: "Your document has been uploaded successfully.",
+        description: result?.message || "Your document has been uploaded successfully.",
       });
 
       setShowUploadDialog(false);

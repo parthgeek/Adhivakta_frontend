@@ -16,7 +16,6 @@ import {
   Info,
   Trash2,
   Check,
-  X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
@@ -73,7 +72,13 @@ export default function NotificationsPageEnhanced() {
     }
   };
 
-  const getIcon = (type) => {
+  const isPriorityNotification = (notification) =>
+    notification?.meta?.priority === "high";
+
+  const getIcon = (notification) => {
+    const type = notification?.type;
+    const isPriority = isPriorityNotification(notification);
+
     switch (type) {
       case "case_invitation":
         return <Bell className="h-5 w-5 text-indigo-500" />;
@@ -82,7 +87,16 @@ export default function NotificationsPageEnhanced() {
       case "event":
         return <Clock className="h-5 w-5 text-amber-500" />;
       case "document":
+      case "document_upload":
         return <AlertCircle className="h-5 w-5 text-violet-500" />;
+      case "document_review_request":
+        return (
+          <AlertCircle
+            className={`h-5 w-5 ${isPriority ? "text-rose-600" : "text-amber-500"}`}
+          />
+        );
+      case "document_reviewed":
+        return <CheckCircle className="h-5 w-5 text-emerald-600" />;
       case "reminder":
         return <Clock className="h-5 w-5 text-rose-500" />;
       default:
@@ -198,66 +212,84 @@ export default function NotificationsPageEnhanced() {
           </div>
         ) : (
           <div className="space-y-2">
-            {notifications.map((notification) => (
-              <div
-                key={notification._id}
-                className={`group flex items-start gap-4 p-4 rounded-xl border transition-all cursor-pointer ${notification.read
-                    ? "bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm"
-                    : "bg-indigo-50/50 border-indigo-200/50 hover:border-indigo-300 hover:shadow-sm"
-                  }`}
-                onClick={() => handleNotificationClick(notification)}
-              >
-                <div
-                  className={`mt-0.5 p-2 rounded-lg ${notification.read ? "bg-slate-100" : "bg-white"
-                    }`}
-                >
-                  {getIcon(notification.type)}
-                </div>
+            {notifications.map((notification) => {
+              const isPriority = isPriorityNotification(notification);
 
-                <div className="flex-1 min-w-0">
-                  <p
-                    className={`text-sm leading-relaxed ${notification.read
-                        ? "text-slate-700"
-                        : "text-slate-900 font-medium"
-                      }`}
+              return (
+                <div
+                  key={notification._id}
+                  className={`group flex items-start gap-4 p-4 rounded-xl border transition-all cursor-pointer ${
+                    isPriority
+                      ? notification.read
+                        ? "bg-rose-50/40 border-rose-200 hover:border-rose-300 hover:shadow-sm"
+                        : "bg-rose-50 border-rose-200 hover:border-rose-300 hover:shadow-sm"
+                      : notification.read
+                        ? "bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm"
+                        : "bg-indigo-50/50 border-indigo-200/50 hover:border-indigo-300 hover:shadow-sm"
+                  }`}
+                  onClick={() => handleNotificationClick(notification)}
+                >
+                  <div
+                    className={`mt-0.5 p-2 rounded-lg ${
+                      isPriority
+                        ? "bg-rose-100"
+                        : notification.read
+                          ? "bg-slate-100"
+                          : "bg-white"
+                    }`}
                   >
-                    {notification.message}
-                  </p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <p className="text-xs text-slate-500">
-                      {formatDate(notification.createdAt)}
+                    {getIcon(notification)}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className={`text-sm leading-relaxed ${
+                        notification.read ? "text-slate-700" : "text-slate-900 font-medium"
+                      }`}
+                    >
+                      {notification.message}
                     </p>
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                      <p className="text-xs text-slate-500">
+                        {formatDate(notification.createdAt)}
+                      </p>
+                      {isPriority && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-rose-100 text-rose-700">
+                          Priority
+                        </span>
+                      )}
+                      {!notification.read && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-indigo-100 text-indigo-700">
+                          New
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     {!notification.read && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-indigo-100 text-indigo-700">
-                        New
-                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          markAsRead(notification._id);
+                        }}
+                        className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        title="Mark as read"
+                      >
+                        <Check className="h-4 w-4" />
+                      </button>
                     )}
+                    <button
+                      onClick={(e) => handleDelete(e, notification._id)}
+                      className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {!notification.read && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        markAsRead(notification._id);
-                      }}
-                      className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                      title="Mark as read"
-                    >
-                      <Check className="h-4 w-4" />
-                    </button>
-                  )}
-                  <button
-                    onClick={(e) => handleDelete(e, notification._id)}
-                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                    title="Delete"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

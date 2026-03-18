@@ -43,7 +43,7 @@ export default function ClientView({
       <CardHeader>
         <CardTitle>Legal Team</CardTitle>
         <CardDescription>
-          Add your lead and associate advocates for this case
+          Add your lead and associate advocates for this case. At least one lawyer is required.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -91,7 +91,7 @@ export default function ClientView({
 
                 <div className="space-y-1">
                   <Label htmlFor={`adv-email-${idx}`} className="text-sm font-medium">
-                    Email <span className="text-red-500">*</span>
+                    Email ID <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id={`adv-email-${idx}`}
@@ -110,10 +110,11 @@ export default function ClientView({
 
                 <div className="space-y-1">
                   <Label htmlFor={`adv-contact-${idx}`} className="text-sm font-medium">
-                    Contact Number
+                    Mobile Number <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id={`adv-contact-${idx}`}
+                    type="tel"
                     value={advocate.contact || ""}
                     onChange={(e) => {
                       const arr = [...caseData.advocates];
@@ -122,12 +123,13 @@ export default function ClientView({
                     }}
                     placeholder="+91 XXXXXXXXXX"
                     className="h-9 text-sm"
+                    required
                   />
                 </div>
 
                 <div className="space-y-1">
                   <Label htmlFor={`adv-company-${idx}`} className="text-sm font-medium">
-                    Law Firm
+                    Law Firm <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id={`adv-company-${idx}`}
@@ -139,6 +141,7 @@ export default function ClientView({
                     }}
                     placeholder="Law Firm Name"
                     className="h-9 text-sm"
+                    required
                   />
                 </div>
 

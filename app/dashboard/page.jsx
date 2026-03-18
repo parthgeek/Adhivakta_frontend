@@ -7,10 +7,8 @@ import {
   Users,
   Calendar,
   Clock,
-  AlertTriangle,
   Plus,
   BarChart3,
-  CheckCircle,
   TrendingUp,
   Upload,
   UserPlus,
@@ -178,8 +176,22 @@ const safeText = (val) => {
   return String(val);
 };
 
+const isHighPriorityNotification = (notification) =>
+  notification?.meta?.priority === "high";
+
+const sortNotificationsByRecency = (a, b) =>
+  new Date(b?.createdAt || 0) - new Date(a?.createdAt || 0);
+
 // Cases List Component
 const CasesList = ({ cases = [] }) => {
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const recentCases = cases
+    .filter((c) => {
+      const created = new Date(c.createdAt || c.created_at);
+      return !isNaN(created.getTime()) && created >= sevenDaysAgo;
+    })
+    .sort((a, b) => new Date(b.createdAt || b.created_at) - new Date(a.createdAt || a.created_at));
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -189,7 +201,7 @@ const CasesList = ({ cases = [] }) => {
         </Link>
       </CardHeader>
       <CardContent className="space-y-4">
-        {cases.slice(0, 5).map((caseItem, index) => {
+        {recentCases.slice(0, 5).map((caseItem, index) => {
           const clientName = safeText(caseItem.clientName) || safeText(caseItem.client);
           const lawyerName =
             formatLegalTeamSummary(caseItem) ||
@@ -273,90 +285,20 @@ const CasesList = ({ cases = [] }) => {
                   <Link href={`/dashboard/cases/${caseItem._id || caseItem.id}`}>
                     <Button variant="outline" size="sm">View Details</Button>
                   </Link>
-                  <Link href={`/dashboard/cases/${caseItem._id || caseItem.id}`}>
-                    <Button size="sm" className="bg-[#03234b] hover:bg-[#042d5e]">Update Status</Button>
-                  </Link>
                 </div>
               </div>
             </div>
           );
         })}
-        {cases.length === 0 && (
+        {recentCases.length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
             <FileText className="h-14 w-14 mx-auto mb-3 text-muted-foreground/30" />
-            <p className="font-medium">No cases found</p>
-            <p className="text-sm mt-1">Create your first case to get started</p>
+            <p className="font-medium">No recent cases</p>
+            <p className="text-sm mt-1">Cases added in the last 7 days will appear here</p>
           </div>
         )}
       </CardContent>
     </Card>
-  );
-};
-
-// Priority Alerts Component
-const PriorityAlerts = ({ cases = [] }) => {
-  const priorityCases = cases.filter(
-    (c) => (c.priority === "high" || c.priority === "urgent") && c.status === "active"
-  );
-
-  return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-      <div className="flex items-center justify-between mb-5">
-        <h3 className="text-lg font-bold text-gray-900 flex items-center gap-4">
-          <AlertTriangle className="h-5 w-5 text-red-500" />
-          Priority Alerts
-        </h3>
-        {priorityCases.length > 0 && (
-          <span className="bg-red-100 text-red-700 text-xs font-bold px-2.5 py-0.5 rounded-full">
-            {priorityCases.length}
-          </span>
-        )}
-      </div>
-      <div className="flex flex-col gap-6">
-        {priorityCases.slice(0, 5).map((caseItem, index) => {
-          const nextHearing = caseItem.nextHearingDate || caseItem.nextHearing || caseItem.hearingDate;
-          return (
-            <Link
-              key={caseItem._id || index}
-              href={`/dashboard/cases/${caseItem._id || caseItem.id}`}
-              className="block"
-            >
-              <div className="flex items-start gap-3 p-3.5 bg-red-50/60 rounded-md hover:bg-red-50 transition-colors border border-red-100/60 cursor-pointer">
-                <div className={`mt-0.5 p-1.5 rounded-lg ${caseItem.priority === "urgent" ? "bg-red-100" : "bg-orange-100"}`}>
-                  <AlertCircle className={`h-4 w-4 ${caseItem.priority === "urgent" ? "text-red-600" : "text-orange-500"}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">
-                    {caseItem.caseNumber || "N/A"}
-                  </p>
-                  <p className="text-xs text-gray-600 truncate">{caseItem.title}</p>
-                  {nextHearing && (
-                    <p className="text-[11px] text-gray-400 mt-1 flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {new Date(nextHearing).toLocaleDateString("en-IN", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </p>
-                  )}
-                </div>
-                <Badge className={cn("text-xs", getPriorityColor(caseItem.priority))}>
-                  {(caseItem.priority || "MEDIUM").toUpperCase()}
-                </Badge>
-              </div>
-            </Link>
-          );
-        })}
-        {priorityCases.length === 0 && (
-          <div className="text-center py-6 text-gray-400">
-            <CheckCircle className="h-10 w-10 mx-auto mb-2 text-green-300" />
-            <p className="text-sm font-medium text-gray-500">All clear!</p>
-            <p className="text-xs text-gray-400 mt-0.5">No urgent cases right now</p>
-          </div>
-        )}
-      </div>
-    </div>
   );
 };
 
@@ -426,6 +368,86 @@ const QuickActions = () => {
             </Button>
           </Link>
         ))}
+      </CardContent>
+    </Card>
+  );
+};
+
+const PriorityAlerts = ({ notifications = [] }) => {
+  const priorityAlerts = notifications
+    .filter(isHighPriorityNotification)
+    .sort((a, b) => {
+      if (a.read !== b.read) {
+        return a.read ? 1 : -1;
+      }
+
+      return sortNotificationsByRecency(a, b);
+    })
+    .slice(0, 4);
+
+  return (
+    <Card className="border-rose-200/80 bg-gradient-to-br from-rose-50 via-white to-orange-50">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="text-lg font-semibold flex items-center gap-2 text-rose-900">
+          <AlertCircle className="h-5 w-5 text-rose-600" />
+          Priority Alerts
+        </CardTitle>
+        <Link
+          href="/dashboard/notifications"
+          className="text-sm font-medium text-rose-700 hover:text-rose-800"
+        >
+          View all
+        </Link>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {priorityAlerts.length > 0 ? (
+          priorityAlerts.map((notification) => {
+            const href = notification.link || "/dashboard/notifications";
+
+            return (
+              <Link
+                key={notification._id || `${notification.message}-${notification.createdAt}`}
+                href={href}
+                className="block"
+              >
+                <div className="rounded-xl border border-rose-200 bg-white/90 p-4 transition-colors hover:bg-rose-50/80">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 rounded-full bg-rose-100 p-2">
+                      <AlertCircle className="h-4 w-4 text-rose-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-2 flex items-center gap-2 flex-wrap">
+                        <Badge className="bg-rose-100 text-rose-700 hover:bg-rose-100 border-rose-200">
+                          Priority
+                        </Badge>
+                        {!notification.read && (
+                          <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">
+                            New
+                          </Badge>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          {notification.createdAt
+                            ? formatRelativeTime(new Date(notification.createdAt))
+                            : "Just now"}
+                        </span>
+                      </div>
+                      <p className="text-sm font-medium text-slate-900 leading-relaxed">
+                        {notification.message}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            );
+          })
+        ) : (
+          <div className="rounded-xl border border-dashed border-rose-200 bg-white/70 p-5 text-center">
+            <p className="font-medium text-slate-700">No priority alerts right now</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Urgent review requests and other high-priority notices will appear here.
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -569,6 +591,33 @@ const NewDashboard = () => {
     fetchDashboardData();
   }, []);
 
+  useEffect(() => {
+    const handleNewNotification = (event) => {
+      const notification = event?.detail;
+      if (!notification) return;
+
+      setDashboardData((prev) => {
+        if (
+          notification._id &&
+          prev.notifications.some((item) => item._id === notification._id)
+        ) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          notifications: [notification, ...prev.notifications],
+        };
+      });
+    };
+
+    window.addEventListener("app:notification", handleNewNotification);
+
+    return () => {
+      window.removeEventListener("app:notification", handleNewNotification);
+    };
+  }, []);
+
   if (loading) {
     return <DashboardSkeleton />;
   }
@@ -622,10 +671,10 @@ const NewDashboard = () => {
             <CasesList cases={dashboardData.cases} />
           </div>
 
-          {/* Right Column - Priority Alerts + Quick Actions + Recent Activity */}
+          {/* Right Column - Quick Actions + Alerts + Recent Activity */}
           <div className="space-y-6">
-            <PriorityAlerts cases={dashboardData.cases} />
             <QuickActions />
+            <PriorityAlerts notifications={dashboardData.notifications} />
 
             {/* Recent Activity */}
             <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">

@@ -91,22 +91,6 @@ const DISTRICTS = {
   ],
 };
 
-const BENCHES = [
-  { value: "bengaluru", label: "Bengaluru" },
-  { value: "dharwad", label: "Dharwad" },
-  { value: "kalaburagi", label: "Kalaburagi" },
-];
-
-const OTHER_COURT_TYPES = [
-  { value: "district_court", label: "District Court" },
-  { value: "family_court", label: "Family Court" },
-  { value: "consumer_court", label: "Consumer Court" },
-  { value: "labour_court", label: "Labour Court" },
-  { value: "sessions_court", label: "Sessions Court" },
-  { value: "civil_court", label: "Civil Court" },
-  { value: "magistrate_court", label: "Magistrate Court" },
-  { value: "special_court", label: "Special Court" },
-];
 
 const normalizeEmail = (value = "") =>
   typeof value === "string" ? value.trim().toLowerCase() : "";
@@ -266,6 +250,58 @@ export default function EditCasePage() {
     setCaseData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const uploadDocuments = async (caseId) => {
+    if (!caseId || selectedFiles.length === 0 || !caseData) return [];
+
+    const uploadedDocs = [];
+
+    for (const file of selectedFiles) {
+      setUploadProgress((prev) => ({
+        ...prev,
+        [file.name]: 0,
+      }));
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("name", file.name);
+      formData.append(
+        "description",
+        `Document for case ${caseData.title || "Case"}`
+      );
+      formData.append("category", caseData.caseType || "other");
+
+      try {
+        const response = await api.documents.uploadToCaseId(
+          caseId,
+          formData,
+          (event) => {
+            if (!event.lengthComputable) return;
+            const percent = Math.round((event.loaded * 100) / event.total);
+            setUploadProgress((prev) => ({
+              ...prev,
+              [file.name]: percent,
+            }));
+          }
+        );
+
+        if (response?.data) {
+          uploadedDocs.push({
+            message: response.message,
+            document: response.data,
+          });
+          setUploadProgress((prev) => ({
+            ...prev,
+            [file.name]: 100,
+          }));
+        }
+      } catch (error) {
+        console.error(`Error uploading document ${file.name}:`, error);
+      }
+    }
+
+    return uploadedDocs;
+  };
+
 
   const handleSubmit = async (e, section = 'all') => {
     // prevent default when event provided
@@ -422,10 +458,31 @@ export default function EditCasePage() {
         }) : {})
       };
 
-      // Submit update
       await api.cases.update(id, formattedData);
-      toast({ title: "Success", description: section === 'all' ? "Case updated successfully." : `Section "${section}" saved.` });
-      // only redirect on full save
+
+      let uploadedDocs = [];
+      if (selectedFiles.length > 0) {
+        uploadedDocs = await uploadDocuments(id);
+      }
+
+      const hasPendingReviewDocuments = uploadedDocs.some(
+        (item) => item?.document?.approvalStatus === "pending"
+      );
+
+      if (uploadedDocs.length > 0) {
+        setSelectedFiles([]);
+      }
+
+      toast({
+        title: "Success",
+        description:
+          hasPendingReviewDocuments && section === "all"
+            ? "Case updated. Uploaded documents are pending lawyer approval."
+            : section === "all"
+              ? "Case updated successfully."
+              : `Section "${section}" saved.`,
+      });
+
       if (section === 'all') router.push(`/dashboard/cases/${id}`);
     } catch (err) {
       toast({ title: "Error", description: err.message || "Failed to update case." });
@@ -436,16 +493,8 @@ export default function EditCasePage() {
 
 
   const handleFileChange = (e) => {
-    const files = e.target.files;
-    const newFiles = Array.from(files).map(file => ({
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      lastModified: file.lastModified,
-      lastModifiedDate: file.lastModifiedDate,
-      webkitRelativePath: file.webkitRelativePath,
-    }));
-    setSelectedFiles(prev => [...prev, ...newFiles]);
+    const files = Array.from(e.target.files || []);
+    setSelectedFiles((prev) => [...prev, ...files]);
   };
 
   if (!caseData) return <div>Loading...</div>;
@@ -706,47 +755,6 @@ export default function EditCasePage() {
                       </div>
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div className="space-y-2">
-                          <Label htmlFor="courtType">Court Type</Label>
-                          <Select
-                            value={caseData.courtType}
-                            onValueChange={(value) => handleSelectChange("courtType", value)}
-                          >
-                            <SelectTrigger id="courtType">
-                              <SelectValue placeholder="Select court type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="high_court">High Court</SelectItem>
-                              {OTHER_COURT_TYPES.map((court) => (
-                                <SelectItem key={court.value} value={court.value}>
-                                  {court.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        {caseData.courtType === "high_court" && caseData.courtState === "karnataka" && (
-                          <div className="space-y-2">
-                            <Label htmlFor="bench">Bench</Label>
-                            <Select
-                              value={caseData.bench}
-                              onValueChange={(value) => handleSelectChange("bench", value)}
-                            >
-                              <SelectTrigger id="bench">
-                                <SelectValue placeholder="Select bench" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {BENCHES.map((bench) => (
-                                  <SelectItem key={bench.value} value={bench.value}>
-                                    {bench.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
                           <Label htmlFor="court">Court Name</Label>
                           <Input id="court" name="court" value={caseData.court} onChange={handleChange} />
                         </div>
@@ -754,15 +762,6 @@ export default function EditCasePage() {
                           <Label htmlFor="courtHall">Court Hall Number</Label>
                           <Input id="courtHall" name="courtHall" value={caseData.courtHall} onChange={handleChange} />
                         </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="courtComplex">Court Complex</Label>
-                        <Input
-                          id="courtComplex"
-                          name="courtComplex"
-                          value={caseData.courtComplex}
-                          onChange={handleChange}
-                        />
                       </div>
                     </div>
                     <div className="space-y-2">

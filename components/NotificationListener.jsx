@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { Bell } from "lucide-react";
+import { AlertCircle, Bell, CheckCircle } from "lucide-react";
 
 export default function NotificationListener({ user }) {
   const socketRef = useRef(null);
@@ -65,20 +65,38 @@ export default function NotificationListener({ user }) {
 
       console.log(`🔔 Notification received (${eventName}):`, data);
 
+      const isPriority = payload.meta?.priority === "high";
+      const title = payload.title || getDefaultTitle(payload.type, payload.meta);
+      const actionLabel = payload.type === "document_review_request" ? "Review" : "View";
+
       // Show toast notification with enhanced styling
       toast({
         title: (
-          <div className="flex items-center gap-2">
-            <Bell className="h-4 w-4" />
-            <span>{payload.title || getDefaultTitle(payload.type)}</span>
+          <div
+            className={`flex items-center gap-2 ${
+              isPriority ? "text-rose-700" : ""
+            }`}
+          >
+            {isPriority ? (
+              <AlertCircle className="h-4 w-4" />
+            ) : payload.type === "document_reviewed" ? (
+              <CheckCircle className="h-4 w-4 text-emerald-600" />
+            ) : (
+              <Bell className="h-4 w-4" />
+            )}
+            <span>{title}</span>
           </div>
         ),
         description: payload.message || payload.body || "",
-        duration: 8000,
+        duration: isPriority ? 12000 : 8000,
         variant: "default",
-        className: "border-l-4 border-l-blue-500",
+        className: isPriority
+          ? "border-l-4 border-l-rose-600 bg-rose-50"
+          : payload.type === "document_reviewed"
+            ? "border-l-4 border-l-emerald-500"
+            : "border-l-4 border-l-blue-500",
         action: payload.link ? {
-          label: "View",
+          label: actionLabel,
           onClick: () => router.push(payload.link)
         } : undefined,
       });
@@ -143,12 +161,18 @@ export default function NotificationListener({ user }) {
 }
 
 // Helper function to get default title based on notification type
-function getDefaultTitle(type) {
+function getDefaultTitle(type, meta = {}) {
+  if (meta?.priority === "high") {
+    return "Priority Alert";
+  }
+
   const titles = {
     case_invitation: "📋 Case Invitation",
     case_update: "📄 Case Updated",
     event_reminder: "📅 Event Reminder",
     document_upload: "📄 New Document",
+    document_review_request: "📄 Document Review Required",
+    document_reviewed: "✅ Document Reviewed",
     system: "🔔 System Notification"
   };
 

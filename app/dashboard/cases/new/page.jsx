@@ -127,6 +127,42 @@ const ensureCurrentUserPrimaryParticipant = (
 const removeCurrentUserFromParticipants = (participants = [], currentUser) =>
   (participants || []).filter((participant) => !isSameUser(participant, currentUser));
 
+const validateRequiredLegalTeamFields = ({
+  participants = [],
+  roleLabel,
+  tab,
+  errors,
+  requireAtLeastOne = false,
+  emptyStateMessage,
+}) => {
+  if (!Array.isArray(participants) || participants.length === 0) {
+    if (requireAtLeastOne && emptyStateMessage) {
+      errors.push({ tab, message: emptyStateMessage });
+    }
+    return;
+  }
+
+  participants.forEach((participant, index) => {
+    const participantNumber = `${roleLabel} ${index + 1}`;
+
+    if (!normalizeValue(participant?.name)) {
+      errors.push({ tab, message: `${participantNumber} name is required` });
+    }
+
+    if (!normalizeValue(participant?.company)) {
+      errors.push({ tab, message: `${participantNumber} law firm is required` });
+    }
+
+    if (!normalizeValue(participant?.contact)) {
+      errors.push({ tab, message: `${participantNumber} mobile number is required` });
+    }
+
+    if (!normalizeValue(participant?.email)) {
+      errors.push({ tab, message: `${participantNumber} email ID is required` });
+    }
+  });
+};
+
 export default function NewCasePage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -270,15 +306,14 @@ export default function NewCasePage() {
 
     // Lawyer-specific validation
     if (isLawyer) {
-      if (!caseData.lawyers || caseData.lawyers.length === 0) {
-        errors.push({ tab: 'associatedParties', message: 'Primary lawyer details are required' });
-      } else {
-        caseData.lawyers.forEach((lawyer, index) => {
-          if (!lawyer.name || lawyer.name.trim() === '') {
-            errors.push({ tab: 'associatedParties', message: `Lawyer ${index + 1} name is required` });
-          }
-        });
-      }
+      validateRequiredLegalTeamFields({
+        participants: caseData.lawyers,
+        roleLabel: "Lawyer",
+        tab: "associatedParties",
+        errors,
+        requireAtLeastOne: true,
+        emptyStateMessage: "Primary lawyer details are required",
+      });
 
       if (!caseData.clients || caseData.clients.length === 0) {
         errors.push({ tab: 'associatedParties', message: 'At least one client is required when a lawyer creates a case' });
@@ -301,13 +336,14 @@ export default function NewCasePage() {
         });
       }
 
-      if (caseData.advocates && caseData.advocates.length > 0) {
-        caseData.advocates.forEach((advocate, index) => {
-          if (!advocate.name || advocate.name.trim() === '') {
-            errors.push({ tab: 'associatedParties', message: `Advocate ${index + 1} name is required` });
-          }
-        });
-      }
+      validateRequiredLegalTeamFields({
+        participants: caseData.advocates,
+        roleLabel: "Advocate",
+        tab: "associatedParties",
+        errors,
+        requireAtLeastOne: true,
+        emptyStateMessage: "At least one lawyer is required when creating a case",
+      });
     }
 
     // Stakeholders validation (if provided)
@@ -390,7 +426,14 @@ export default function NewCasePage() {
         );
 
         if (response && response.data) {
-          uploadedDocs.push(response.data);
+          uploadedDocs.push({
+            message: response.message,
+            document: response.data,
+          });
+          setUploadProgress((prev) => ({
+            ...prev,
+            [file.name]: 100,
+          }));
         }
       } catch (err) {
         console.error(`Error uploading document ${file.name}:`, err);
@@ -618,8 +661,17 @@ export default function NewCasePage() {
 
       // Upload documents after case is created
       const caseId = response?.case?._id || response?._id || response?.data?._id || response?.data?.case?._id;
+      let uploadedDocs = [];
       if (caseId && selectedFiles.length > 0) {
-        await uploadDocuments(caseId);
+        uploadedDocs = await uploadDocuments(caseId);
+      }
+
+      const hasPendingReviewDocuments = uploadedDocs.some(
+        (item) => item?.document?.approvalStatus === "pending"
+      );
+
+      if (uploadedDocs.length > 0) {
+        setSelectedFiles([]);
       }
 
       if (section !== "all") {
@@ -634,13 +686,13 @@ export default function NewCasePage() {
           description: `Case ${section} saved successfully`,
         });
       } else {
-        // Final submission - show success message
         toast({
           title: "Success",
-          description: "Case created successfully!",
+          description: hasPendingReviewDocuments
+            ? "Case created. Uploaded documents are pending lawyer approval."
+            : "Case created successfully!",
         });
 
-        // Extract case ID
         const createdCaseId =
           response?.data?.data?.case?._id ||
           response?.data?.data?._id ||
@@ -649,7 +701,6 @@ export default function NewCasePage() {
           response?.case?._id ||
           response?._id;
 
-        // Redirect
         setTimeout(() => {
           if (createdCaseId) {
             router.push(`/dashboard/cases/${createdCaseId}`);
