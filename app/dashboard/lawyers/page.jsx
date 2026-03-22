@@ -456,11 +456,11 @@ export default function MyLawyersPage() {
                       key={lawyer._id || lawyer.id || lawyer.name}
                       onClick={() => setSelectedLawyer(lawyer)}
                       className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 ${
-                        selectedLawyer?.name === lawyer.name ? 'bg-blue-50 border-l-4 border-blue-600' : ''
+                        selectedLawyer?.name === lawyer.name ? 'bg-[#03234b]/10 border-l-4 border-[#03234b]' : ''
                       }`}
                     >
                       <div className="flex items-start gap-3">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#03234b] to-[#03234b] flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
                           {lawyer.name?.charAt(0) || 'L'}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -469,7 +469,7 @@ export default function MyLawyersPage() {
                               {lawyer.name}
                             </h3>
                             {lawyer.isPrimary && (
-                              <Badge className="bg-blue-600 text-white text-xs">
+                              <Badge className="bg-[#03234b] text-white text-xs">
                                 Primary
                               </Badge>
                             )}
@@ -515,7 +515,7 @@ export default function MyLawyersPage() {
                   <Card>
                     <CardContent className="pt-6">
                       <div className="flex items-start gap-6 mb-6">
-                        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-4xl">
+                        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#03234b] to-[#03234b] flex items-center justify-center text-white font-bold text-4xl">
                           {selectedLawyer.name?.charAt(0) || 'L'}
                         </div>
                         <div className="flex-1">
@@ -524,7 +524,7 @@ export default function MyLawyersPage() {
                               {selectedLawyer.name}
                             </h2>
                             {selectedLawyer.isPrimary && (
-                              <Badge className="bg-blue-600 text-white">
+                              <Badge className="bg-[#03234b] text-white">
                                 <Award className="h-3 w-3 mr-1" />
                                 Primary Lawyer
                               </Badge>
@@ -593,12 +593,12 @@ export default function MyLawyersPage() {
                       </div>
 
                       {/* Stats Grid - REMOVED CHAIR POSITION */}
-                      <div className="grid grid-cols-3 gap-4 p-4 bg-blue-50 rounded-lg">
+                      <div className="grid grid-cols-3 gap-4 p-4 bg-[#03234b]/10 rounded-lg">
                         <div className="text-center">
-                          <div className="text-2xl font-bold text-blue-900">
+                          <div className="text-2xl font-bold text-[#03234b]">
                             {selectedLawyer.totalCases}
                           </div>
-                          <div className="text-sm text-blue-700">Total Cases</div>
+                          <div className="text-sm text-[#03234b]">Total Cases</div>
                         </div>
                         <div className="text-center">
                           <div className="text-2xl font-bold text-green-900">
@@ -735,14 +735,14 @@ export default function MyLawyersPage() {
                       <div className="space-y-4">
                         {selectedLawyer.email && (
                           <div className="flex items-start gap-3">
-                            <div className="p-2 bg-blue-50 rounded-lg">
-                              <Mail className="h-5 w-5 text-blue-600" />
+                            <div className="p-2 bg-[#03234b]/10 rounded-lg">
+                              <Mail className="h-5 w-5 text-[#03234b]" />
                             </div>
                             <div className="flex-1">
                               <div className="font-medium text-gray-900 mb-1">Email</div>
                               <a 
                                 href={`mailto:${selectedLawyer.email}`}
-                                className="text-blue-600 hover:underline"
+                                className="text-[#03234b] hover:underline"
                               >
                                 {selectedLawyer.email}
                               </a>

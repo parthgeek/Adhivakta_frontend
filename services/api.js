@@ -789,9 +789,9 @@ const api = {
       return data.data;
     },
 
-    markAsRead: async (groupId) => {
+    markAsDelivered: async (groupId) => {
       const response = await fetch(
-        `${API_URL}/chat/groups/${groupId}/read`,
+        `${API_URL}/chat/groups/${groupId}/delivered`,
         {
           method: "POST",
           headers: createHeaders(),
@@ -801,6 +801,22 @@ const api = {
       return data.data;
     },
 
+    markAsSeen: async (groupId) => {
+      const response = await fetch(
+        `${API_URL}/chat/groups/${groupId}/seen`,
+        {
+          method: "POST",
+          headers: createHeaders(),
+        }
+      );
+      const data = await handleResponse(response);
+      return data.data;
+    },
+
+    markAsRead: async (groupId) => {
+      return api.chat.markAsSeen(groupId);
+    },
+
     getUnreadCounts: async () => {
       const response = await fetch(`${API_URL}/chat/unread-counts`, {
         method: "GET",
@@ -808,6 +824,16 @@ const api = {
       });
       const data = await handleResponse(response);
       return data.data || { groups: {}, total: 0 };
+    },
+
+    deleteMessage: async (messageId, scope = "me") => {
+      const response = await fetch(`${API_URL}/chat/messages/${messageId}/delete`, {
+        method: "PATCH",
+        headers: createHeaders(),
+        body: JSON.stringify({ scope }),
+      });
+      const data = await handleResponse(response);
+      return data.data;
     },
   },
 

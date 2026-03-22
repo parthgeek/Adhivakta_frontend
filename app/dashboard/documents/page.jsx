@@ -62,7 +62,7 @@ const STATUS_OPTIONS = [
 const getCategoryColor = (category) => {
   switch (category) {
     case "pleading":
-      return "bg-blue-500 text-white border-transparent";
+      return "bg-[#03234b] text-white border-transparent";
     case "evidence":
       return "bg-green-500 text-white border-transparent";
     case "order":
@@ -512,7 +512,7 @@ export default function DocumentsPage() {
                   <p className="text-sm text-muted-foreground">Pleadings</p>
                   <p className="text-2xl font-bold">{stats.pleadings}</p>
                 </div>
-                <FileText className="h-8 w-8 text-blue-500" />
+                <FileText className="h-8 w-8 text-[#03234b]" />
               </div>
             </CardContent>
           </Card>

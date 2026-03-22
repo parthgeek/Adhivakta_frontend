@@ -74,7 +74,7 @@ export default function Sidebar() {
               variant={isActive ? "default" : "ghost"}
               className={cn(
                 "w-full justify-start gap-3 h-11",
-                isActive && "bg-[#03234b] text-white hover:bg-[#03234b]",
+                isActive && "bg-primary text-primary-foreground hover:bg-primary/90",
                 collapsed && "px-2"
               )}
               onClick={() => router.push(item.path)}

@@ -94,7 +94,7 @@ export default function NotificationListener({ user }) {
           ? "border-l-4 border-l-rose-600 bg-rose-50"
           : payload.type === "document_reviewed"
             ? "border-l-4 border-l-emerald-500"
-            : "border-l-4 border-l-blue-500",
+            : "border-l-4 border-l-[#03234b]",
         action: payload.link ? {
           label: actionLabel,
           onClick: () => router.push(payload.link)

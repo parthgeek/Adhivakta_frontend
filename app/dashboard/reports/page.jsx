@@ -16,15 +16,15 @@ export default function ReportsPage() {
         </div>
 
         {/* Coming Soon Message */}
-        <Card className="border-blue-200 bg-blue-50">
+        <Card className="border-[#03234b]/30 bg-[#03234b]/10">
           <CardContent className="pt-6">
             <div className="text-center py-12">
-              <BarChart3 className="h-16 w-16 text-blue-600 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-blue-900 mb-2">Reports Coming Soon!</h2>
-              <p className="text-blue-700 mb-6">
+              <BarChart3 className="h-16 w-16 text-[#03234b] mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-[#03234b] mb-2">Reports Coming Soon!</h2>
+              <p className="text-[#03234b] mb-6">
                 We're working on powerful analytics and reporting features to help you track your practice performance.
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-blue-600">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-[#03234b]">
                 <div className="flex items-center justify-center gap-2">
                   <TrendingUp className="h-5 w-5" />
                   <span>Performance Metrics</span>
@@ -47,7 +47,7 @@ export default function ReportsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-blue-600" />
+                <BarChart3 className="h-5 w-5 text-[#03234b]" />
                 Case Success Rate
               </CardTitle>
               <CardDescription>Track your case outcomes</CardDescription>

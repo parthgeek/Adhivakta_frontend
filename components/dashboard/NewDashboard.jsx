@@ -21,7 +21,7 @@ const StatsCard = ({ title, value, change, changeType, icon: Icon, iconColor }) 
     switch (type) {
       case 'positive': return 'text-green-600';
       case 'negative': return 'text-red-600';
-      default: return 'text-blue-600';
+      default: return 'text-[#03234b]';
     }
   };
 
@@ -47,7 +47,7 @@ const CasesList = ({ cases = [] }) => {
     <div className="bg-white rounded-lg border p-6 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900">Recent Cases</h3>
-        <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+        <button className="text-[#03234b] hover:text-[#03234b] text-sm font-medium">
           View all
         </button>
       </div>
@@ -82,7 +82,7 @@ const UpcomingHearings = ({ events = [] }) => {
     <div className="bg-white rounded-lg border p-6 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900">Upcoming Hearings</h3>
-        <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+        <button className="text-[#03234b] hover:text-[#03234b] text-sm font-medium">
           View all
         </button>
       </div>
@@ -95,7 +95,7 @@ const UpcomingHearings = ({ events = [] }) => {
                 {new Date(event.start).toLocaleDateString()} at {new Date(event.start).toLocaleTimeString()}
               </p>
             </div>
-            <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+            <span className="px-2 py-1 text-xs rounded-full bg-[#03234b]/20 text-[#03234b]">
               {event.type || 'Hearing'}
             </span>
           </div>
@@ -117,7 +117,7 @@ const QuickActions = () => {
     <div className="bg-white rounded-lg border p-6 shadow-sm">
       <h3 className="text-lg font-semibold mb-4 text-gray-900">Quick Actions</h3>
       <div className="grid grid-cols-2 gap-3">
-        <button className="flex items-center justify-center p-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-[#03234b] transition-colors">
+        <button className="flex items-center justify-center p-3 bg-[#03234b]/10 text-[#03234b] rounded-lg hover:bg-[#03234b] transition-colors">
           <Plus className="h-5 w-5 mr-2" />
           Add Case
         </button>
@@ -213,7 +213,7 @@ const NewDashboard = () => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#03234b] mx-auto mb-4"></div>
           <p className="text-gray-600">Loading dashboard...</p>
         </div>
       </div>

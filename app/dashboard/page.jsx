@@ -641,7 +641,7 @@ const NewDashboard = () => {
             change={`+${Math.max(1, Math.floor(dashboardData.stats.activeCases * 0.12))} this month`}
             changeType="positive"
             icon={FileText}
-            iconColor="text-blue-600"
+            iconColor="text-[#03234b]"
             href="/dashboard/cases?filter=active"
           />
           <StatsCard

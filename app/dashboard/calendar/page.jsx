@@ -125,7 +125,7 @@ const EventDialogSkeleton = () => (
 
 // Event types aligned with backend EventSchema
 const EVENT_TYPES = [
-  { value: "hearing", label: "Court Hearing", color: "bg-blue-100 text-blue-800 border-blue-300" },
+  { value: "hearing", label: "Court Hearing", color: "bg-[#03234b]/20 text-[#03234b] border-[#03234b]/40" },
   { value: "client_meeting", label: "Client Meeting", color: "bg-green-100 text-green-800 border-green-300" },
   { value: "case_filing", label: "Case Filing", color: "bg-red-100 text-red-800 border-red-300" },
   { value: "evidence_submission", label: "Evidence Submission", color: "bg-purple-100 text-purple-800 border-purple-300" },

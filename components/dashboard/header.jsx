@@ -40,24 +40,28 @@ export default function Header({ onMenuClick }) {
   const unreadNotifications = counts?.notifications || 0;
 
   return (
-    <header className="h-16 border-b bg-card shadow-sm flex items-center">
+    <header className="h-24 border-b bg-card shadow-sm flex items-center">
       <div
         className={cn(
           "hidden md:flex h-full items-center px-4 shrink-0",
-          collapsed ? "w-16 justify-center" : "w-64 gap-3"
+          collapsed ? "w-28 justify-center" : "w-72"
         )}
       >
-        <img
-          src="/images/adhi_logo_main.png"
-          alt="Adhivakta Logo"
-          className="h-9 w-9 object-contain"
-        />
-        {!collapsed && (
-          <div className="leading-tight">
-            <h1 className="text-lg md:text-xl font-bold text-primary">ADHIVAKTA</h1>
-            <p className="text-xs text-muted-foreground">Legal Case Management</p>
-          </div>
-        )}
+        <button
+          onClick={() => router.push("/dashboard")}
+          className="flex items-center justify-center overflow-hidden focus:outline-none"
+        >
+          <img
+            src="/images/adhi_logo_main.png"
+            alt="Adhivakta Logo"
+            className={cn(
+              "object-contain transition-all duration-300",
+              collapsed
+                ? "h-[6.75rem] w-[6.75rem] scale-[1.35]"
+                : "h-[6.5rem] w-[6.5rem] scale-[1.15]"
+            )}
+          />
+        </button>
       </div>
 
       <div className="flex flex-1 items-center px-4 md:px-6 gap-4">
@@ -67,11 +71,16 @@ export default function Header({ onMenuClick }) {
               <Menu className="h-5 w-5" />
             </Button>
           )}
-          <img
-            src="/images/adhi_logo_main.png"
-            alt="Adhivakta Logo"
-            className="h-8 w-8 object-contain"
-          />
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="overflow-hidden focus:outline-none"
+          >
+            <img
+              src="/images/adhi_logo_main.png"
+              alt="Adhivakta Logo"
+              className="h-14 w-14 scale-[1.1] object-contain"
+            />
+          </button>
         </div>
 
         <div className="hidden md:block w-full max-w-[450px] ml-20">

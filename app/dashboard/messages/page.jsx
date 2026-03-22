@@ -1,93 +1,146 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { initSocket } from "../../../lib/socket";
 import api from "@/services/api";
 
-// Skeleton Loading Components
-const SidebarSkeleton = () => (
-  <div className="w-1/3 border-r bg-gray-50">
-    <div className="p-4 border-b bg-white">
-      <div className="h-6 w-32 bg-gray-200 rounded animate-pulse mb-2"></div>
-      <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
-    </div>
-    <div className="overflow-y-auto h-full p-4">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <div key={i} className="mb-4 p-4 bg-white rounded-lg border">
-          <div className="h-5 w-3/4 bg-gray-200 rounded animate-pulse mb-3"></div>
-          <div className="h-4 w-full bg-gray-200 rounded animate-pulse mb-2"></div>
-          <div className="flex justify-between mt-3">
-            <div className="h-3 w-16 bg-gray-200 rounded animate-pulse"></div>
-            <div className="h-3 w-20 bg-gray-200 rounded animate-pulse"></div>
-          </div>
-        </div>
-      ))}
-    </div>
-  </div>
-);
+const toId = (value) => {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "object" && value.toString) return value.toString();
+  return String(value);
+};
 
-const ChatHeaderSkeleton = () => (
-  <div className="p-4 border-b bg-white">
-    <div className="flex justify-between items-center">
-      <div>
-        <div className="h-6 w-40 bg-gray-200 rounded animate-pulse mb-2"></div>
-        <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
-      </div>
-      <div className="flex items-center space-x-2">
-        <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-        <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
-      </div>
-    </div>
-  </div>
-);
+const uniqueIds = (values = []) =>
+  Array.from(new Set(values.map((value) => toId(value)).filter(Boolean)));
 
-const MessageSkeleton = () => (
-  <div className="mb-4">
-    <div className="flex items-start space-x-3">
-      <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse flex-shrink-0"></div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-baseline space-x-2 mb-2">
-          <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
-          <div className="h-3 w-16 bg-gray-200 rounded animate-pulse"></div>
-        </div>
-        <div className="h-4 w-full bg-gray-200 rounded animate-pulse mb-1"></div>
-        <div className="h-4 w-2/3 bg-gray-200 rounded animate-pulse"></div>
-      </div>
-    </div>
-  </div>
-);
+const getStoredUser = () => {
+  if (typeof window === "undefined") return {};
 
-const ChatAreaSkeleton = () => (
-  <div className="flex-1 flex flex-col">
-    <ChatHeaderSkeleton />
-    <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
-      {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-        <MessageSkeleton key={i} />
-      ))}
-    </div>
-    <div className="p-4 border-t bg-white">
-      <div className="flex space-x-2">
-        <div className="flex-1 h-10 bg-gray-200 rounded-lg animate-pulse"></div>
-        <div className="w-20 h-10 bg-gray-200 rounded-lg animate-pulse"></div>
-      </div>
-    </div>
-  </div>
-);
+  try {
+    return JSON.parse(localStorage.getItem("user") || "{}");
+  } catch {
+    return {};
+  }
+};
 
-const EmptyChatSkeleton = () => (
-  <div className="flex-1 flex flex-col">
-    <ChatHeaderSkeleton />
-    <div className="flex-1 flex items-center justify-center text-gray-500">
-      <div className="text-center">
-        <div className="text-6xl mb-4">💬</div>
-        <div className="h-6 w-48 bg-gray-200 rounded animate-pulse mx-auto mb-2"></div>
-        <div className="h-4 w-64 bg-gray-200 rounded animate-pulse mx-auto"></div>
-      </div>
-    </div>
-  </div>
-);
+const normalizeMessage = (message) => {
+  const sender =
+    typeof message?.sender === "object" && message?.sender
+      ? {
+          ...message.sender,
+          _id: toId(message.sender._id || message.sender.id),
+          id: toId(message.sender._id || message.sender.id),
+        }
+      : message?.sender
+        ? {
+            _id: toId(message.sender),
+            id: toId(message.sender),
+          }
+        : null;
+
+  const messageId = toId(message?._id || message?.id);
+  const groupId = toId(message?.group || message?.groupId);
+
+  return {
+    ...message,
+    _id: messageId,
+    id: messageId,
+    group: groupId,
+    groupId,
+    sender,
+    senderId: toId(message?.senderId || sender?._id || message?.sender),
+    deliveredTo: uniqueIds(message?.deliveredTo || []),
+    seenBy: uniqueIds(message?.seenBy || []),
+    deletedFor: uniqueIds(message?.deletedFor || []),
+    deletedForEveryone: Boolean(message?.deletedForEveryone),
+  };
+};
+
+const isMessageHiddenForUser = (message, userId) =>
+  normalizeMessage(message).deletedFor.includes(toId(userId));
+
+const getRenderedMessageText = (message) =>
+  message.deletedForEveryone ? "This message was deleted" : message.text || "";
+
+const getMessagePreview = (message) => {
+  if (!message) return "No messages yet";
+  if (message.deletedForEveryone) return "This message was deleted";
+  if (message.text) return message.text;
+  const attachmentCount = Array.isArray(message.attachments)
+    ? message.attachments.length
+    : 0;
+  if (attachmentCount === 1) return "Attachment";
+  if (attachmentCount > 1) return `${attachmentCount} attachments`;
+  return "No messages yet";
+};
+
+const removeMessageFromList = (messageList, messageId) =>
+  messageList.filter((message) => toId(message._id) !== toId(messageId));
+
+const mergeMessageIntoList = (messageList, nextMessage, currentUserId) => {
+  const normalizedMessage = normalizeMessage(nextMessage);
+  const withoutExisting = removeMessageFromList(
+    messageList,
+    normalizedMessage._id
+  );
+
+  if (isMessageHiddenForUser(normalizedMessage, currentUserId)) {
+    return withoutExisting;
+  }
+
+  return [...withoutExisting, normalizedMessage].sort(
+    (left, right) => new Date(left.createdAt) - new Date(right.createdAt)
+  );
+};
+
+const applyStatusUpdates = (messageList, updates, currentUserId) => {
+  if (!Array.isArray(updates) || updates.length === 0) {
+    return messageList;
+  }
+
+  const updateMap = updates.reduce((accumulator, update) => {
+    accumulator[toId(update.messageId || update.id)] = update;
+    return accumulator;
+  }, {});
+
+  return messageList
+    .map((message) => {
+      const messageId = toId(message._id);
+      const update = updateMap[messageId];
+
+      if (!update) return message;
+
+      const mergedMessage = normalizeMessage({
+        ...message,
+        deliveredTo: update.deliveredTo || message.deliveredTo,
+        seenBy: update.seenBy || message.seenBy,
+        deletedFor: update.deletedFor || message.deletedFor,
+        deletedForEveryone:
+          update.deletedForEveryone ?? message.deletedForEveryone,
+      });
+
+      return mergedMessage;
+    })
+    .filter((message) => !isMessageHiddenForUser(message, currentUserId));
+};
+
+const updateGroupPreview = (groupList, groupId, message) =>
+  groupList.map((group) =>
+    toId(group._id) === toId(groupId)
+      ? {
+          ...group,
+          lastMessage: getMessagePreview(message),
+          updatedAt: message.createdAt || new Date().toISOString(),
+          lastMessageAt: message.createdAt || new Date().toISOString(),
+        }
+      : group
+  );
 
 const getRelativeTime = (date) => {
+  if (!date) return "";
+
   const now = new Date();
   const messageDate = new Date(date);
   const diffInSeconds = Math.floor((now - messageDate) / 1000);
@@ -95,695 +148,1132 @@ const getRelativeTime = (date) => {
   const diffInHours = Math.floor(diffInMinutes / 60);
   const diffInDays = Math.floor(diffInHours / 24);
 
-  if (diffInSeconds < 60) return "Just now";
-  if (diffInMinutes < 60) return `${diffInMinutes} min ago`;
-  if (diffInHours < 24) return `${diffInHours}h ago`;
+  if (diffInSeconds < 60) return "now";
+  if (diffInMinutes < 60) return `${diffInMinutes}m`;
+  if (diffInHours < 24) return `${diffInHours}h`;
   if (diffInDays === 1) return "Yesterday";
-  if (diffInDays < 7) return `${diffInDays}d ago`;
-
+  if (diffInDays < 7) return `${diffInDays}d`;
   return messageDate.toLocaleDateString([], { month: "short", day: "numeric" });
 };
+
+const getInitials = (name) =>
+  name
+    ? name
+        .split(" ")
+        .map((part) => part[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
+    : "?";
+
+const getMemberName = (member) =>
+  member?.user?.name ||
+  member?.user?.email?.split("@")[0] ||
+  member?.name ||
+  member?.email?.split("@")[0] ||
+  null;
+
+const getMessageStatus = (message) => {
+  if ((message.seenBy || []).length > 0) return "seen";
+  if ((message.deliveredTo || []).length > 0) return "delivered";
+  return "sent";
+};
+
+const MessageSquareIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="48"
+    height="48"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </svg>
+);
+
+const SendIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <line x1="22" y1="2" x2="11" y2="13" />
+    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+  </svg>
+);
+
+const SearchIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="15"
+    height="15"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="11" cy="11" r="8" />
+    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+  </svg>
+);
+
+const UsersIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </svg>
+);
+
+const ChevronRightIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="9 18 15 12 9 6" />
+  </svg>
+);
+
+const XIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
+  </svg>
+);
+
+const MoreIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="12" cy="12" r="1" />
+    <circle cx="19" cy="12" r="1" />
+    <circle cx="5" cy="12" r="1" />
+  </svg>
+);
+
+const TrashIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6l-1 14H6L5 6" />
+    <path d="M10 11v6" />
+    <path d="M14 11v6" />
+    <path d="M9 6V4h6v2" />
+  </svg>
+);
+
+const Shimmer = ({ className }) => (
+  <div className={`bg-slate-100 rounded-lg animate-pulse ${className}`} />
+);
+
+const SidebarSkeleton = () => (
+  <div className="w-[300px] flex-shrink-0 border-r border-slate-100 bg-white flex flex-col">
+    <div className="p-5 border-b border-slate-100 space-y-3">
+      <Shimmer className="h-7 w-36" />
+      <Shimmer className="h-9 w-full rounded-xl" />
+    </div>
+    <div className="flex-1 p-3 space-y-1">
+      {[1, 2, 3, 4, 5].map((item) => (
+        <div key={item} className="p-3 rounded-xl space-y-2">
+          <div className="flex items-center space-x-3">
+            <Shimmer className="w-10 h-10 rounded-full flex-shrink-0" />
+            <div className="flex-1 space-y-1.5">
+              <Shimmer className="h-4 w-3/4" />
+              <Shimmer className="h-3 w-full" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const ChatAreaSkeleton = () => (
+  <div className="flex-1 flex flex-col bg-white">
+    <div className="px-6 py-4 border-b border-slate-100 flex items-center space-x-3">
+      <Shimmer className="w-10 h-10 rounded-full" />
+      <div className="space-y-1.5">
+        <Shimmer className="h-4 w-32" />
+        <Shimmer className="h-3 w-20" />
+      </div>
+    </div>
+    <div className="flex-1 p-6 space-y-5">
+      {[1, 2, 3, 4, 5].map((item) => (
+        <div
+          key={item}
+          className={`flex items-end space-x-2 ${item % 2 === 0 ? "justify-end" : ""}`}
+        >
+          {item % 2 !== 0 && (
+            <Shimmer className="w-8 h-8 rounded-full flex-shrink-0" />
+          )}
+          <Shimmer
+            className={`h-12 rounded-2xl ${
+              item % 2 === 0 ? "w-48" : "w-64"
+            }`}
+          />
+        </div>
+      ))}
+    </div>
+    <div className="p-4 border-t border-slate-100">
+      <Shimmer className="h-12 w-full rounded-xl" />
+    </div>
+  </div>
+);
+
+const Avatar = ({ name, size = "md", soft = false, className = "" }) => {
+  const sizes = {
+    sm: "w-7 h-7 text-xs",
+    md: "w-10 h-10 text-sm",
+    lg: "w-16 h-16 text-xl",
+  };
+  const color = soft
+    ? "bg-[#E6F0FF] text-primary"
+    : "bg-primary/10 text-primary";
+
+  return (
+    <div
+      className={`${sizes[size]} ${color} rounded-full flex items-center justify-center font-semibold flex-shrink-0 ${className}`}
+    >
+      {getInitials(name)}
+    </div>
+  );
+};
+
+const GroupListItem = ({ group, isActive, unreadCount, onClick }) => (
+  <button
+    onClick={onClick}
+    className={`w-full text-left px-3 py-3 rounded-2xl border transition-all duration-150 group relative ${
+      isActive
+        ? "bg-[#EAF2FF] border-[#D7E6FF] shadow-sm"
+        : "border-transparent hover:bg-[#F7FAFF] hover:border-[#E4EEFF]"
+    }`}
+  >
+    {isActive && (
+      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-full" />
+    )}
+    <div className="flex items-center space-x-3 pl-1">
+      <Avatar name={group.name} size="md" />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-baseline justify-between gap-1">
+          <span
+            className={`text-sm truncate ${
+              isActive
+                ? "font-semibold text-slate-900"
+                : "font-medium text-slate-800"
+            }`}
+          >
+            {group.name}
+          </span>
+          <span className="text-[10px] text-slate-400 flex-shrink-0">
+            {getRelativeTime(group.updatedAt || group.lastMessageAt)}
+          </span>
+        </div>
+        <div className="flex items-center justify-between mt-0.5">
+          <p
+            className={`text-xs truncate max-w-[160px] ${
+              unreadCount > 0 ? "font-medium text-slate-700" : "text-slate-400"
+            }`}
+          >
+            {group.lastMessage || "No messages yet"}
+          </p>
+          {unreadCount > 0 && (
+            <span className="ml-1 bg-primary text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 flex-shrink-0">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  </button>
+);
+
+const EmptyState = () => (
+  <div className="flex-1 flex flex-col items-center justify-center bg-[#F7FAFF] text-center px-8 select-none">
+    <div className="w-20 h-20 bg-[#E6F0FF] rounded-3xl flex items-center justify-center text-primary mb-6">
+      <MessageSquareIcon />
+    </div>
+    <h3 className="text-xl font-semibold text-slate-800 mb-2">
+      Select a conversation
+    </h3>
+    <p className="text-sm text-slate-400 max-w-xs leading-relaxed">
+      Choose a case group from the sidebar to start messaging your team.
+    </p>
+  </div>
+);
+
+const NoMessagesYet = () => (
+  <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
+    <div className="w-14 h-14 bg-[#E6F0FF] rounded-2xl flex items-center justify-center text-primary mb-4">
+      <MessageSquareIcon />
+    </div>
+    <p className="text-sm font-medium text-slate-600">No messages yet</p>
+    <p className="text-xs text-slate-400 mt-1">
+      Be the first to start the conversation.
+    </p>
+  </div>
+);
+
+const MessageStatusTicks = ({ status }) => {
+  const tickColor =
+    status === "seen"
+      ? "text-primary"
+      : status === "delivered"
+        ? "text-slate-400"
+        : "text-slate-500";
+
+  return (
+    <span className={`text-[11px] font-semibold tracking-[-0.1em] ${tickColor}`}>
+      {status === "sent" ? "✓" : "✓✓"}
+    </span>
+  );
+};
+
 export default function MessagesPage() {
   const router = useRouter();
   const [socket, setSocket] = useState(null);
-  const [notifications, setNotifications] = useState([]);
   const [groups, setGroups] = useState([]);
   const [activeGroup, setActiveGroup] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState("chat");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authChecking, setAuthChecking] = useState(true);
-  const messagesEndRef = useRef(null);
   const [socketConnected, setSocketConnected] = useState(false);
-  const activeGroupRef = useRef(activeGroup);
   const [unreadCounts, setUnreadCounts] = useState({});
-  const socketRef = useRef(null);
-
-  // New state for skeleton loading
   const [groupsLoading, setGroupsLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [currentUser, setCurrentUser] = useState({});
+  const [actionMenuMessageId, setActionMenuMessageId] = useState(null);
+  const [deleteLoadingId, setDeleteLoadingId] = useState(null);
+  const messagesEndRef = useRef(null);
+  const activeGroupRef = useRef(activeGroup);
+  const socketRef = useRef(null);
+  const inputRef = useRef(null);
+  const currentUserRef = useRef(currentUser);
+  const seenRequestRef = useRef({});
 
-  // Check authentication on mount
+  const currentUserId = toId(currentUser.id || currentUser._id);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const token = localStorage.getItem("auth_token");
-    const userDataStr = localStorage.getItem("user");
+    const storedUser = getStoredUser();
 
-    if (!token || !userDataStr) {
-      console.error("No auth token or user data found");
+    if (!token || !(storedUser?.id || storedUser?._id)) {
       router.push("/auth/login");
       return;
     }
 
-    try {
-      const userData = JSON.parse(userDataStr);
-      if (!userData || !userData.id) {
-        console.error("Invalid user data");
-        localStorage.removeItem("auth_token");
-        localStorage.removeItem("user");
-        router.push("/auth/login");
-        return;
-      }
-      setIsAuthenticated(true);
-    } catch (error) {
-      console.error("Error parsing user data:", error);
-      localStorage.removeItem("auth_token");
-      localStorage.removeItem("user");
-      router.push("/auth/login");
-      return;
-    } finally {
-      setAuthChecking(false);
-    }
+    setCurrentUser(storedUser);
+    setIsAuthenticated(true);
+    setAuthChecking(false);
   }, [router]);
 
-  // Keep activeGroupRef in sync
   useEffect(() => {
     activeGroupRef.current = activeGroup;
   }, [activeGroup]);
 
-  // Initialize socket and load data after authentication
   useEffect(() => {
-    if (!isAuthenticated || typeof window === "undefined") return;
-
-    const loadInitialData = async () => {
-      try {
-        setGroupsLoading(true);
-        await Promise.all([loadNotifications(), loadGroups()]);
-      } catch (error) {
-        console.error("Error loading initial data:", error);
-      } finally {
-        setGroupsLoading(false);
-        setInitialLoading(false);
-      }
-    };
-
-    const token = localStorage.getItem("auth_token");
-    const userDataStr = localStorage.getItem("user");
-
-    if (!token || !userDataStr) return;
-
-    let userData;
-    try {
-      userData = JSON.parse(userDataStr);
-    } catch (error) {
-      console.error("Error parsing user data:", error);
-      return;
-    }
-
-    const socketInstance = initSocket(token);
-    socketRef.current = socketInstance;
-    setSocket(socketInstance);
-
-    socketInstance.on("connect", () => {
-      console.log("✅ Socket connected");
-      setSocketConnected(true);
-
-      if (activeGroupRef.current) {
-        console.log(
-          "🔄 Rejoining group after reconnect:",
-          activeGroupRef.current
-        );
-        socketInstance.emit("join_group", { groupId: activeGroupRef.current });
-      }
-    });
-
-    socketInstance.on("disconnect", () => {
-      console.log("❌ Socket disconnected");
-      setSocketConnected(false);
-    });
-
-    loadInitialData();
-
-    // Socket event listeners
-    socketInstance.on("notification", (notification) => {
-      console.log("New notification received:", notification);
-      setNotifications((prev) => [notification, ...prev]);
-    });
-
-    socketInstance.on("added_to_group", ({ group }) => {
-      console.log("Added to new group:", group);
-      setGroups((prev) => [...prev, group]);
-    });
-
-    socketInstance.on("message", (message) => {
-      console.log("💬 New message received:", message);
-
-      const userDataStr = localStorage.getItem("user");
-      const currentUser = userDataStr ? JSON.parse(userDataStr) : {};
-
-      // Convert all IDs to strings for comparison
-      const currentUserId = String(currentUser.id);
-      const messageSenderId = String(message.sender?._id || message.sender);
-      const messageGroupId = String(message.group);
-      const currentActiveGroupId = String(activeGroupRef.current);
-
-      const isMyMessage = messageSenderId === currentUserId;
-      const isActiveGroup = messageGroupId === currentActiveGroupId;
-
-      console.log("🔍 Current User:", currentUserId);
-      console.log("🔍 Message Sender:", messageSenderId);
-      console.log("🔍 Is My Message:", isMyMessage);
-      console.log("🔍 Is Active Group:", isActiveGroup);
-
-      // Add to UI if it's the active group
-      if (isActiveGroup) {
-        console.log("✅ Adding to active chat");
-        setMessages((prev) => [...prev, message]);
-      }
-      // Increment unread ONLY if: not active group AND not my message
-      else if (!isMyMessage) {
-        console.log("📬 Incrementing unread for group:", messageGroupId);
-        setUnreadCounts((prev) => ({
-          ...prev,
-          [messageGroupId]: (prev[messageGroupId] || 0) + 1,
-        }));
-      } else {
-        console.log("⏭️ Skipping - my message in different group");
-      }
-
-      // Update group's last message
-      setGroups((prev) =>
-        prev.map((g) =>
-          String(g._id) === messageGroupId
-            ? { ...g, lastMessage: message.text, updatedAt: message.createdAt }
-            : g
-        )
-      );
-    });
-
-    socketInstance.on("joined_group", ({ groupId }) => {
-      console.log("✅ Successfully joined group:", groupId);
-    });
-
-    socketInstance.on("error", (error) => {
-      console.error("Socket error:", error);
-    });
-
-    socketInstance.emit("identify", { userId: userData.id });
-
-    return () => {
-      socketInstance.off("connect");
-      socketInstance.off("disconnect");
-      socketInstance.off("notification");
-      socketInstance.off("added_to_group");
-      socketInstance.off("message");
-      socketInstance.off("error");
-      socketInstance.disconnect();
-    };
-  }, [isAuthenticated]);
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
 
   useEffect(() => {
-    const totalUnread = Object.values(unreadCounts).reduce(
-      (sum, count) => sum + count,
-      0
-    );
-    localStorage.setItem("unread_messages_count", totalUnread.toString());
+    if (typeof window === "undefined") return;
+
+    const total = Object.values(unreadCounts).reduce((sum, count) => sum + count, 0);
+    localStorage.setItem("unread_messages_count", total.toString());
     window.dispatchEvent(new Event("unreadCountChanged"));
   }, [unreadCounts]);
 
-  const loadNotifications = async () => {
-    try {
-      const data = await api.notifications.getAll();
-      setNotifications(data);
-    } catch (error) {
-      console.error("Error loading notifications:", error);
-    }
-  };
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-  const loadGroups = async () => {
-    try {
-      const data = await api.chat.getGroups();
+  useEffect(() => {
+    if (!actionMenuMessageId) return undefined;
 
-      const groupsWithMessages = await Promise.all(
-        data.map(async (group) => {
-          try {
-            const messages = await api.chat.getMessages(group._id, 1);
-            if (messages.length > 0) {
-              return {
-                ...group,
-                lastMessage: messages[0].text,
-                updatedAt: messages[0].createdAt,
-              };
-            }
-            return group;
-          } catch (error) {
-            console.error(
-              `Error loading messages for group ${group._id}:`,
-              error
-            );
-            return group;
-          }
-        })
-      );
+    const handleWindowClick = () => setActionMenuMessageId(null);
+    window.addEventListener("click", handleWindowClick);
 
-      setGroups(groupsWithMessages);
-    } catch (error) {
-      console.error("Error loading groups:", error);
-    }
+    return () => window.removeEventListener("click", handleWindowClick);
+  }, [actionMenuMessageId]);
+
+  const refreshGroupsAndUnread = async () => {
+    const [groupData, unreadData] = await Promise.all([
+      api.chat.getGroups(),
+      api.chat.getUnreadCounts(),
+    ]);
+
+    setGroups(groupData);
+    setUnreadCounts(unreadData.groups || {});
   };
 
   const loadMessages = async (groupId) => {
     setLoading(true);
+    setShowGroupInfo(false);
+    setActionMenuMessageId(null);
+
     try {
       const data = await api.chat.getMessages(groupId, 100);
-      setMessages(data);
+      const visibleMessages = data
+        .map((message) => normalizeMessage(message))
+        .filter((message) => !isMessageHiddenForUser(message, currentUserId));
 
-      setUnreadCounts((prev) => {
-        const newCounts = { ...prev };
-        delete newCounts[groupId];
-        return newCounts;
+      setMessages(visibleMessages);
+      setActiveGroup(groupId);
+      setUnreadCounts((previousCounts) => {
+        const nextCounts = { ...previousCounts };
+        delete nextCounts[groupId];
+        return nextCounts;
       });
 
-      if (data.length > 0) {
-        const lastMsg = data[data.length - 1];
-        setGroups((prev) =>
-          prev.map((g) =>
-            g._id === groupId
-              ? {
-                ...g,
-                lastMessage: lastMsg.text,
-                updatedAt: lastMsg.createdAt,
-              }
-              : g
-          )
-        );
-      }
-      setActiveGroup(groupId);
-      if (socket?.connected) {
-        console.log("🔵 Joining group via socket:", groupId);
-        socket.emit("join_group", { groupId });
-      } else {
-        console.warn("⚠️ Socket not connected yet. Will join on connect.");
+      if (socketRef.current?.connected) {
+        socketRef.current.emit("join_group", { groupId });
       }
     } catch (error) {
       console.error("Error loading messages:", error);
     } finally {
       setLoading(false);
+      setTimeout(() => inputRef.current?.focus(), 100);
     }
   };
 
-  const sendMessage = async (e) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !activeGroup) return;
+  const markGroupAsSeen = async (groupId) => {
+    if (!groupId || seenRequestRef.current[groupId]) return;
 
-    const messageText = newMessage.trim();
-    setNewMessage("");
+    seenRequestRef.current[groupId] = true;
 
     try {
-      if (socket && socket.connected) {
-        const userDataStr = localStorage.getItem("user");
-        if (!userDataStr) return;
+      const response = await api.chat.markAsSeen(groupId);
 
-        let userData;
-        try {
-          userData = JSON.parse(userDataStr);
-        } catch (error) {
-          console.error("Error parsing user data:", error);
-          return;
-        }
-
-        console.log("Sending message via socket");
-        socket.emit("send_message", {
-          groupId: activeGroup,
-          text: messageText,
-          senderId: userData.id,
-        });
-      } else {
-        console.warn("Socket not connected, using HTTP fallback");
-        const sentMessage = await api.chat.sendMessage(activeGroup, {
-          text: messageText,
-        });
-        setMessages((prev) => [...prev, sentMessage]);
+      if (response?.updates?.length) {
+        setMessages((previousMessages) =>
+          applyStatusUpdates(previousMessages, response.updates, currentUserId)
+        );
       }
-    } catch (error) {
-      console.error("Error sending message:", error);
-      setNewMessage(messageText);
-    }
-  };
 
-  const markAsRead = async (notificationId) => {
-    try {
-      await api.notifications.markAsRead(notificationId);
-      setNotifications((prev) =>
-        prev.map((n) => (n._id === notificationId ? { ...n, read: true } : n))
-      );
+      setUnreadCounts((previousCounts) => {
+        const nextCounts = { ...previousCounts };
+        delete nextCounts[groupId];
+        return nextCounts;
+      });
     } catch (error) {
-      console.error("Error marking as read:", error);
-      if (error.message.includes("401")) {
-        localStorage.removeItem("auth_token");
-        localStorage.removeItem("user");
-        router.push("/auth/login");
-      }
+      console.error("Error marking messages as seen:", error);
+    } finally {
+      delete seenRequestRef.current[groupId];
     }
-  };
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (!activeGroup || !currentUserId) return;
 
-  // Show full page skeleton while checking authentication
-  if (authChecking) {
+    const hasUnseenIncomingMessage = messages.some(
+      (message) =>
+        message.senderId !== currentUserId && !message.seenBy.includes(currentUserId)
+    );
+
+    if (hasUnseenIncomingMessage) {
+      markGroupAsSeen(activeGroup);
+    }
+  }, [activeGroup, currentUserId, messages]);
+
+  useEffect(() => {
+    if (!isAuthenticated || typeof window === "undefined") return undefined;
+
+    let isMounted = true;
+
+    const loadInitialData = async () => {
+      try {
+        setGroupsLoading(true);
+        await refreshGroupsAndUnread();
+      } catch (error) {
+        console.error("Error loading initial chat data:", error);
+      } finally {
+        if (isMounted) {
+          setGroupsLoading(false);
+          setInitialLoading(false);
+        }
+      }
+    };
+
+    const token = localStorage.getItem("auth_token");
+    const storedUser = getStoredUser();
+    if (!token || !(storedUser?.id || storedUser?._id)) return undefined;
+
+    const socketInstance = initSocket(token);
+    socketRef.current = socketInstance;
+    setSocket(socketInstance);
+
+    const handleConnect = async () => {
+      setSocketConnected(true);
+      socketInstance.emit("identify", {
+        userId: storedUser.id || storedUser._id,
+      });
+
+      if (activeGroupRef.current) {
+        socketInstance.emit("join_group", { groupId: activeGroupRef.current });
+      }
+
+      try {
+        await refreshGroupsAndUnread();
+      } catch (error) {
+        console.error("Error refreshing chat state on reconnect:", error);
+      }
+    };
+
+    const handleDisconnect = () => setSocketConnected(false);
+
+    const handleIncomingMessage = (incomingMessage) => {
+      const message = normalizeMessage(incomingMessage);
+      const liveUserId = toId(
+        currentUserRef.current.id || currentUserRef.current._id
+      );
+      const isMyMessage = message.senderId === liveUserId;
+      const isActiveConversation =
+        message.groupId === toId(activeGroupRef.current);
+
+      setGroups((previousGroups) =>
+        updateGroupPreview(previousGroups, message.groupId, message)
+      );
+
+      if (isActiveConversation) {
+        setMessages((previousMessages) =>
+          mergeMessageIntoList(previousMessages, message, liveUserId)
+        );
+        return;
+      }
+
+      if (!isMyMessage) {
+        setUnreadCounts((previousCounts) => ({
+          ...previousCounts,
+          [message.groupId]: (previousCounts[message.groupId] || 0) + 1,
+        }));
+      }
+    };
+
+    const handleStatusEvent = (payload) => {
+      setMessages((previousMessages) =>
+        applyStatusUpdates(
+          previousMessages,
+          payload?.updates || [],
+          toId(currentUserRef.current.id || currentUserRef.current._id)
+        )
+      );
+    };
+
+    const handleDeleteEvent = async (payload) => {
+      if (payload?.scope === "everyone" && payload.message) {
+        const message = normalizeMessage(payload.message);
+
+        setMessages((previousMessages) =>
+          mergeMessageIntoList(
+            previousMessages,
+            message,
+            toId(currentUserRef.current.id || currentUserRef.current._id)
+          )
+        );
+        setGroups((previousGroups) =>
+          updateGroupPreview(previousGroups, message.groupId, message)
+        );
+        return;
+      }
+
+      if (payload?.scope === "me") {
+        setMessages((previousMessages) =>
+          removeMessageFromList(previousMessages, payload.messageId || payload.id)
+        );
+
+        try {
+          await refreshGroupsAndUnread();
+        } catch (error) {
+          console.error("Error refreshing groups after delete:", error);
+        }
+      }
+    };
+
+    const handleAddedToGroup = async () => {
+      try {
+        await refreshGroupsAndUnread();
+      } catch (error) {
+        console.error("Error refreshing group list:", error);
+      }
+    };
+
+    socketInstance.on("connect", handleConnect);
+    socketInstance.on("disconnect", handleDisconnect);
+    socketInstance.on("message_sent", handleIncomingMessage);
+    socketInstance.on("message_delivered", handleStatusEvent);
+    socketInstance.on("message_seen", handleStatusEvent);
+    socketInstance.on("message_deleted", handleDeleteEvent);
+    socketInstance.on("added_to_group", handleAddedToGroup);
+    socketInstance.on("error", (error) =>
+      console.error("Chat socket error:", error)
+    );
+
+    loadInitialData();
+
+    return () => {
+      isMounted = false;
+      socketInstance.off("connect", handleConnect);
+      socketInstance.off("disconnect", handleDisconnect);
+      socketInstance.off("message_sent", handleIncomingMessage);
+      socketInstance.off("message_delivered", handleStatusEvent);
+      socketInstance.off("message_seen", handleStatusEvent);
+      socketInstance.off("message_deleted", handleDeleteEvent);
+      socketInstance.off("added_to_group", handleAddedToGroup);
+      socketInstance.off("error");
+      socketInstance.disconnect();
+    };
+  }, [isAuthenticated]);
+
+  const sendMessage = async (event) => {
+    event.preventDefault();
+
+    if (!newMessage.trim() || !activeGroup) return;
+
+    const text = newMessage.trim();
+    setNewMessage("");
+    setActionMenuMessageId(null);
+
+    try {
+      if (socketRef.current?.connected) {
+        socketRef.current.emit("send_message", {
+          groupId: activeGroup,
+          text,
+        });
+        return;
+      }
+
+      const sentMessage = await api.chat.sendMessage(activeGroup, { text });
+      const normalizedMessage = normalizeMessage(sentMessage);
+
+      setMessages((previousMessages) =>
+        mergeMessageIntoList(previousMessages, normalizedMessage, currentUserId)
+      );
+      setGroups((previousGroups) =>
+        updateGroupPreview(previousGroups, activeGroup, normalizedMessage)
+      );
+    } catch (error) {
+      console.error("Error sending message:", error);
+      setNewMessage(text);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId, scope) => {
+    setDeleteLoadingId(messageId);
+    setActionMenuMessageId(null);
+
+    try {
+      const result = await api.chat.deleteMessage(messageId, scope);
+
+      if (result?.scope === "everyone" && result.message) {
+        const normalizedMessage = normalizeMessage(result.message);
+
+        setMessages((previousMessages) =>
+          mergeMessageIntoList(previousMessages, normalizedMessage, currentUserId)
+        );
+        setGroups((previousGroups) =>
+          updateGroupPreview(previousGroups, normalizedMessage.groupId, normalizedMessage)
+        );
+      } else {
+        setMessages((previousMessages) =>
+          removeMessageFromList(previousMessages, messageId)
+        );
+        await refreshGroupsAndUnread();
+      }
+    } catch (error) {
+      console.error("Error deleting message:", error);
+    } finally {
+      setDeleteLoadingId(null);
+    }
+  };
+
+  const filteredGroups = groups
+    .filter((group) => {
+      const matchesSearch = group.name
+        ?.toLowerCase()
+        .includes(searchQuery.toLowerCase());
+      const matchesFilter =
+        filter === "all" || (filter === "unread" && unreadCounts[group._id] > 0);
+
+      return matchesSearch && matchesFilter;
+    })
+    .sort(
+      (left, right) =>
+        new Date(right.updatedAt || right.lastMessageAt || 0) -
+        new Date(left.updatedAt || left.lastMessageAt || 0)
+    );
+
+  const activeGroupData = groups.find(
+    (group) => toId(group._id) === toId(activeGroup)
+  );
+
+  if (authChecking || initialLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="mb-6">
-            <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-2"></div>
-            <div className="h-4 w-64 bg-gray-200 rounded animate-pulse"></div>
-          </div>
-          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-            <div className="flex h-[600px]">
-              <SidebarSkeleton />
-              <ChatAreaSkeleton />
-            </div>
-          </div>
+      <div className="h-screen bg-slate-50 flex flex-col">
+        <div className="px-8 py-6 border-b border-slate-100 bg-white">
+          <Shimmer className="h-8 w-40 mb-1" />
+          <Shimmer className="h-4 w-56 mt-2" />
+        </div>
+        <div className="flex flex-1 overflow-hidden">
+          <SidebarSkeleton />
+          <ChatAreaSkeleton />
         </div>
       </div>
     );
   }
 
-  // Don't render if not authenticated
-  if (!isAuthenticated) {
-    return null;
-  }
-
-  // Show skeleton for initial data loading
-  if (initialLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="mb-6">
-            <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-2"></div>
-            <div className="h-4 w-64 bg-gray-200 rounded animate-pulse"></div>
-          </div>
-          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-            <div className="flex h-[600px]">
-              <SidebarSkeleton />
-              <EmptyChatSkeleton />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (!isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Messages</h1>
-          <p className="text-gray-600">Communicate with your case teams</p>
+    <div className="h-screen bg-white flex flex-col overflow-hidden">
+      <div className="px-8 py-5 border-b border-slate-100 bg-white flex-shrink-0">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+              Messages
+            </h1>
+            <p className="text-sm text-slate-400 mt-0.5">
+              Communicate with your case teams
+            </p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div
+              className={`flex items-center space-x-1.5 text-xs px-2.5 py-1 rounded-full border ${
+                socketConnected
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-600"
+                  : "border-slate-200 bg-slate-50 text-slate-400"
+              }`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  socketConnected ? "bg-emerald-500" : "bg-slate-400"
+                }`}
+              />
+              <span>{socketConnected ? "Live" : "Offline"}</span>
+            </div>
+          </div>
         </div>
+      </div>
 
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          <div className="flex h-[600px]">
-            {/* Groups Sidebar */}
-            {groupsLoading ? (
-              <SidebarSkeleton />
-            ) : (
-              <div className="w-1/3 border-r bg-gray-50">
-                <div className="p-4 border-b bg-white">
-                  <h2 className="text-lg font-semibold">Case Groups</h2>
-                  <p className="text-sm text-gray-600">
-                    {groups.length} group(s)
+      <div className="flex flex-1 overflow-hidden">
+        {groupsLoading ? (
+          <SidebarSkeleton />
+        ) : (
+          <aside className="w-[300px] flex-shrink-0 border-r border-slate-100 bg-white flex flex-col">
+            <div className="p-4 space-y-3 border-b border-slate-100">
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary/60">
+                  <SearchIcon />
+                </span>
+                <input
+                  type="text"
+                  placeholder="Search groups..."
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  className="w-full pl-9 pr-3 py-2 text-sm bg-[#F7FAFF] border border-[#D7E6FF] rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 placeholder-slate-400 transition"
+                />
+              </div>
+
+              <div className="flex space-x-1 bg-[#F4F8FF] p-1 rounded-xl">
+                {[
+                  ["all", "All"],
+                  ["unread", "Unread"],
+                ].map(([value, label]) => (
+                  <button
+                    key={value}
+                    onClick={() => setFilter(value)}
+                    className={`flex-1 text-xs font-medium py-1.5 rounded-lg transition-all ${
+                      filter === value
+                        ? "bg-white shadow-sm text-primary"
+                        : "text-slate-500 hover:text-slate-700"
+                    }`}
+                  >
+                    {label}
+                    {value === "unread" &&
+                      Object.keys(unreadCounts).length > 0 && (
+                        <span className="ml-1 text-primary">
+                          (
+                          {Object.values(unreadCounts).reduce(
+                            (sum, count) => sum + count,
+                            0
+                          )}
+                          )
+                        </span>
+                      )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+              {filteredGroups.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center px-4 py-12">
+                  <div className="w-12 h-12 bg-[#E6F0FF] rounded-2xl flex items-center justify-center text-primary mb-3">
+                    <MessageSquareIcon />
+                  </div>
+                  <p className="text-sm font-medium text-slate-500">
+                    {searchQuery ? "No groups found" : "No case groups yet"}
                   </p>
-                  {/* DEBUG - Remove after testing */}
-                  <div className="text-xs text-red-600 mt-2 font-mono">
-                    Unread: {JSON.stringify(unreadCounts)}
+                  <p className="text-xs text-slate-400 mt-1">
+                    {searchQuery
+                      ? "Try a different search term"
+                      : "Create a case to get started"}
+                  </p>
+                </div>
+              ) : (
+                filteredGroups.map((group) => (
+                  <GroupListItem
+                    key={group._id}
+                    group={group}
+                    isActive={toId(activeGroup) === toId(group._id)}
+                    unreadCount={unreadCounts[group._id] || 0}
+                    onClick={() => loadMessages(group._id)}
+                  />
+                ))
+              )}
+            </div>
+
+            <div className="px-4 py-3 border-t border-slate-100">
+              <p className="text-xs text-slate-400 text-center">
+                {groups.length} group{groups.length !== 1 ? "s" : ""}
+              </p>
+            </div>
+          </aside>
+        )}
+
+        <main className="flex-1 flex overflow-hidden bg-white">
+          {loading ? (
+            <ChatAreaSkeleton />
+          ) : activeGroup && activeGroupData ? (
+            <div className="flex-1 flex overflow-hidden">
+              <div className="flex-1 flex flex-col min-w-0">
+                <div
+                  className="px-6 py-4 border-b border-slate-100 bg-white flex items-center justify-between flex-shrink-0 cursor-pointer hover:bg-[#F8FBFF] transition-colors"
+                  onClick={() => setShowGroupInfo(!showGroupInfo)}
+                >
+                  <div className="flex items-center space-x-3">
+                    <Avatar name={activeGroupData.name} size="md" />
+                    <div>
+                      <h2 className="text-sm font-semibold text-slate-900 leading-tight">
+                        {activeGroupData.name}
+                      </h2>
+                      <div className="flex items-center space-x-1.5 mt-0.5 text-primary/70">
+                        <UsersIcon />
+                        <span className="text-xs text-slate-400">
+                          {activeGroupData.members?.length || 0} participants
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <span className="text-xs text-slate-400 hidden sm:block">
+                      {showGroupInfo ? "Hide info" : "View info"}
+                    </span>
+                    <span
+                      className={`text-primary/60 transition-transform ${
+                        showGroupInfo ? "rotate-90" : ""
+                      }`}
+                    >
+                      <ChevronRightIcon />
+                    </span>
                   </div>
                 </div>
 
-                <div className="overflow-y-auto h-full">
-                  {groups.length === 0 ? (
-                    <div className="p-4 text-center text-gray-500">
-                      No chat groups yet. Create a case to get started.
-                    </div>
+                <div className="flex-1 overflow-y-auto px-6 py-4 bg-gradient-to-b from-[#F7FAFF] to-white flex flex-col">
+                  {messages.length === 0 ? (
+                    <NoMessagesYet />
                   ) : (
-                    groups.map((group) => (
-                      <div
-                        key={group._id}
-                        className={`p-4 border-b cursor-pointer transition-colors ${activeGroup === group._id
-                          ? "bg-blue-50 border-blue-200"
-                          : "bg-white hover:bg-gray-50"
-                          }`}
-                        onClick={() => loadMessages(group._id)}
-                      >
-                        <h3 className="font-semibold text-gray-900">
-                          {group.name}
-                        </h3>
-                        <p
-                          className={`text-sm truncate mt-1 ${unreadCounts[group._id] > 0
-                            ? "font-black text-gray-900"
-                            : "text-gray-600"
+                    <div className="space-y-3 mt-auto">
+                      {messages.map((message) => {
+                        const isMe = message.senderId === currentUserId;
+                        const isDeleted = message.deletedForEveryone;
+                        const status = getMessageStatus(message);
+                        const isDeleteLoading =
+                          deleteLoadingId === toId(message._id);
+
+                        return (
+                          <div
+                            key={message._id}
+                            className={`flex items-end gap-2 ${
+                              isMe ? "flex-row-reverse" : ""
                             }`}
-                        >
-                          {group.lastMessage || "No messages yet"}
-                        </p>
-                        <div className="flex justify-between items-center mt-2">
-                          <span className="text-xs text-gray-500">
-                            {group.members?.length || 0} members
-                          </span>
-                          <div className="flex items-center space-x-2">
-                            {unreadCounts[group._id] > 0 && (
-                              <span className="bg-red-600 text-white text-xs font-bold rounded-full min-w-[22px] h-5 flex items-center justify-center px-2">
-                                {unreadCounts[group._id]}
-                              </span>
+                          >
+                            {!isMe && (
+                              <Avatar
+                                name={
+                                  getMemberName(message.sender) ||
+                                  message.sender?.name
+                                }
+                                size="sm"
+                                className="mb-1"
+                              />
                             )}
-                            <span
-                              className={`text-xs ${unreadCounts[group._id]
-                                ? "font-semibold text-blue-600"
-                                : "text-gray-400"
-                                }`}
+
+                            {isMe && !isDeleted && (
+                              <div
+                                className="relative self-start"
+                                onClick={(event) => event.stopPropagation()}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    setActionMenuMessageId((currentId) =>
+                                      currentId === message._id
+                                        ? null
+                                        : message._id
+                                    );
+                                  }}
+                                  className="w-8 h-8 flex items-center justify-center rounded-xl text-primary/70 hover:text-primary hover:bg-[#EAF2FF] transition"
+                                  disabled={isDeleteLoading}
+                                >
+                                  <MoreIcon />
+                                </button>
+
+                                {actionMenuMessageId === message._id && (
+                                  <div className="absolute top-9 right-0 z-10 w-44 rounded-2xl border border-[#D7E6FF] bg-white shadow-lg p-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleDeleteMessage(message._id, "me")
+                                      }
+                                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-[#F4F8FF] rounded-xl transition"
+                                    >
+                                      <TrashIcon />
+                                      <span>Delete for Me</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleDeleteMessage(
+                                          message._id,
+                                          "everyone"
+                                        )
+                                      }
+                                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-primary hover:bg-[#F4F8FF] rounded-xl transition"
+                                    >
+                                      <TrashIcon />
+                                      <span>Delete for Everyone</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            <div
+                              className={`max-w-[72%] flex flex-col ${
+                                isMe ? "items-end" : "items-start"
+                              }`}
                             >
-                              {getRelativeTime(group.updatedAt)}
-                            </span>
+                              {!isMe && (
+                                <span className="text-[10px] font-semibold text-slate-500 mb-1 ml-1">
+                                  {getMemberName(message.sender) ||
+                                    message.sender?.name ||
+                                    "Unknown"}
+                                </span>
+                              )}
+
+                              <div
+                                className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+                                  isDeleted
+                                    ? "bg-slate-100 border border-slate-200 text-slate-400 italic"
+                                    : isMe
+                                      ? "bg-[#E6F0FF] border border-[#CFE0FF] text-[#173C76]"
+                                      : "bg-white border border-slate-200 text-slate-800 shadow-sm"
+                                } ${isMe ? "rounded-tr-sm" : "rounded-tl-sm"}`}
+                              >
+                                <p className="whitespace-pre-wrap break-words">
+                                  {getRenderedMessageText(message)}
+                                </p>
+                                <div
+                                  className={`mt-2 flex items-center gap-1 justify-end text-[10px] ${
+                                    isDeleted
+                                      ? "text-slate-400"
+                                      : isMe
+                                        ? "text-[#597AAC]"
+                                        : "text-slate-400"
+                                  }`}
+                                >
+                                  <span>
+                                    {new Date(message.createdAt).toLocaleTimeString(
+                                      [],
+                                      {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      }
+                                    )}
+                                  </span>
+                                  {isMe && <MessageStatusTicks status={status} />}
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                    ))
+                        );
+                      })}
+                      <div ref={messagesEndRef} />
+                    </div>
                   )}
                 </div>
-              </div>
-            )}
 
-            {/* Chat Area */}
-            {loading ? (
-              <ChatAreaSkeleton />
-            ) : (
-              <div className="flex-1 flex flex-col">
-                {/* Chat Area */}
-                {loading ? (
-                  <ChatAreaSkeleton />
-                ) : activeGroup ? (
-                  <div className="flex-1 flex overflow-hidden">
-                    <div className="flex-1 flex flex-col min-w-0 bg-white border-r">
-                      {/* Chat Header */}
-                      <div
-                        className="p-4 border-b bg-white cursor-pointer hover:bg-gray-50 transition-colors z-10"
-                        onClick={() => setShowGroupInfo(!showGroupInfo)}
-                        title="Click to view group info"
-                      >
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
-                              {groups
-                                .find((g) => g._id === activeGroup)
-                                ?.name?.charAt(0)
-                                ?.toUpperCase()}
-                            </div>
-                            <div>
-                              <h3 className="font-semibold text-gray-900">
-                                {groups.find((g) => g._id === activeGroup)?.name}
-                              </h3>
-                              <p className="text-sm text-gray-500">
-                                Click for group info
+                <form
+                  onSubmit={sendMessage}
+                  className="px-4 py-4 border-t border-slate-100 bg-white flex-shrink-0"
+                >
+                  <div className="flex items-center gap-2 bg-[#F7FAFF] border border-[#D7E6FF] rounded-2xl px-4 py-2 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15 transition">
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={newMessage}
+                      onChange={(event) => setNewMessage(event.target.value)}
+                      placeholder={`Message ${activeGroupData.name}...`}
+                      className="flex-1 bg-transparent text-sm text-slate-800 placeholder-slate-400 focus:outline-none"
+                      disabled={loading}
+                    />
+                    <button
+                      type="submit"
+                      disabled={!newMessage.trim() || loading}
+                      className="w-8 h-8 bg-primary hover:bg-primary/90 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl flex items-center justify-center transition-colors flex-shrink-0"
+                    >
+                      <SendIcon />
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {showGroupInfo && (
+                <aside className="w-72 flex-shrink-0 border-l border-slate-100 bg-white flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
+                  <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
+                    <span className="text-sm font-semibold text-slate-800">
+                      Group Info
+                    </span>
+                    <button
+                      onClick={() => setShowGroupInfo(false)}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg text-primary/60 hover:text-primary hover:bg-[#EAF2FF] transition"
+                    >
+                      <XIcon />
+                    </button>
+                  </div>
+
+                  <div className="px-5 py-6 border-b border-slate-100 flex flex-col items-center text-center flex-shrink-0">
+                    <Avatar
+                      name={activeGroupData.name}
+                      size="lg"
+                      soft
+                      className="mb-3 shadow-sm"
+                    />
+                    <h3 className="text-base font-bold text-slate-900">
+                      {activeGroupData.name}
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1">
+                      {activeGroupData.members?.length || 0} participants
+                    </p>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto p-4">
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-3 px-1">
+                      Participants
+                    </p>
+                    <div className="space-y-1">
+                      {activeGroupData.members?.map((member, index) => {
+                        const displayName = getMemberName(member);
+                        const memberKey =
+                          member?._id ||
+                          member?.email ||
+                          member?.user?._id ||
+                          `${displayName || "member"}-${index}`;
+
+                        return (
+                          <div
+                            key={memberKey}
+                            className="flex items-center space-x-3 px-2 py-2 rounded-xl hover:bg-[#F7FAFF] transition"
+                          >
+                            <Avatar name={displayName || member.role} size="sm" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-800 truncate">
+                                {displayName || (
+                                  <span className="italic text-slate-400">
+                                    Unknown
+                                  </span>
+                                )}
+                              </p>
+                              <p className="text-xs text-slate-400 capitalize truncate">
+                                {member.role || "Member"}
                               </p>
                             </div>
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <div
-                              className={`w-2.5 h-2.5 rounded-full ${socketConnected ? "bg-green-500" : "bg-red-500"
-                                } ring-2 ring-white`}
-                            ></div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Messages */}
-                      <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
-                        {messages.length === 0 ? (
-                          <div className="text-center text-gray-500 mt-8">
-                            No messages yet. Start the conversation!
-                          </div>
-                        ) : (
-                          messages.map((message) => {
-                            const currentUser = JSON.parse(
-                              localStorage.getItem("user") || "{}"
-                            );
-                            const isCurrentUser =
-                              message.sender?._id === currentUser.id ||
-                              message.sender === currentUser.id;
-
-                            return (
-                              <div
-                                key={message._id}
-                                className={`mb-4 flex ${isCurrentUser ? "justify-end" : "justify-start"
-                                  }`}
-                              >
-                                <div
-                                  className={`flex items-end space-x-2 max-w-[80%] ${isCurrentUser
-                                    ? "flex-row-reverse space-x-reverse"
-                                    : ""
-                                    }`}
-                                >
-                                  {/* Avatar */}
-                                  <div
-                                    className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-sm mb-1 ${isCurrentUser ? "bg-blue-600" : "bg-gray-500"
-                                      }`}
-                                  >
-                                    {message.sender?.name?.charAt(0)?.toUpperCase() ||
-                                      "U"}
-                                  </div>
-
-                                  {/* Message Bubble */}
-                                  <div
-                                    className={`px-4 py-2 shadow-sm relative group min-w-[80px] ${isCurrentUser
-                                      ? "bg-blue-600 text-white rounded-2xl rounded-tr-sm"
-                                      : "bg-white border border-gray-100 text-gray-800 rounded-2xl rounded-tl-sm"
-                                      }`}
-                                  >
-                                    {!isCurrentUser && (
-                                      <div className="text-[10px] font-bold text-gray-500 mb-1 ml-1">
-                                        {message.sender?.name || "Unknown User"}
-                                      </div>
-                                    )}
-                                    <p className="whitespace-pre-wrap break-words text-sm leading-relaxed pb-3">
-                                      {message.text}
-                                    </p>
-
-                                    {/* Timestamp - Positioned absolutely in the bottom right */}
-                                    <div
-                                      className={`text-[10px] absolute bottom-1.5 right-3 ${isCurrentUser
-                                        ? "text-blue-100"
-                                        : "text-gray-400"
-                                        }`}
-                                    >
-                                      {new Date(message.createdAt).toLocaleTimeString(
-                                        [],
-                                        {
-                                          hour: "2-digit",
-                                          minute: "2-digit",
-                                        }
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })
-                        )}
-                        <div ref={messagesEndRef} />
-                      </div>
-
-                      {/* Message Input */}
-                      <form onSubmit={sendMessage} className="p-4 border-t bg-white">
-                        <div className="flex space-x-2">
-                          <input
-                            type="text"
-                            value={newMessage}
-                            onChange={(e) => setNewMessage(e.target.value)}
-                            placeholder="Type your message..."
-                            className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            disabled={loading}
-                          />
-                          <button
-                            type="submit"
-                            disabled={!newMessage.trim() || loading}
-                            className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                          >
-                            Send
-                          </button>
-                        </div>
-                      </form>
-                    </div>
-
-                    {/* Group Info Sidebar */}
-                    {showGroupInfo && (
-                      <div className="w-80 bg-white border-l h-full flex flex-col animate-in slide-in-from-right duration-300">
-                        <div className="p-6 border-b flex-shrink-0 bg-gray-50">
-                          <div className="w-24 h-24 mx-auto bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-3xl font-bold mb-4 shadow-inner">
-                            {groups
-                              .find((g) => g._id === activeGroup)
-                              ?.name?.charAt(0)
-                              ?.toUpperCase()}
-                          </div>
-                          <h2 className="text-xl font-bold text-center text-gray-900 mb-1">
-                            {groups.find((g) => g._id === activeGroup)?.name}
-                          </h2>
-                          <p className="text-sm text-center text-gray-500">
-                            Group • {groups.find((g) => g._id === activeGroup)?.members?.length || 0} participants
-                          </p>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto p-4">
-                          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
-                            Participants
-                          </h3>
-                          <div className="space-y-3">
-                            {groups
-                              .find((g) => g._id === activeGroup)
-                              ?.members?.map((member) => (
-                                <div
-                                  key={member._id}
-                                  className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-lg transition-colors"
-                                >
-                                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-medium">
-                                    {member.name?.charAt(0)?.toUpperCase()}
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-gray-900 truncate">
-                                      {member.name}
-                                    </p>
-                                    <p className="text-xs text-gray-500 truncate">
-                                      {member.role || "Member"}
-                                    </p>
-                                  </div>
-                                </div>
-                              ))}
-                          </div>
-                        </div>
-
-                        <div className="p-4 border-t bg-gray-50">
-                          <button
-                            onClick={() => setShowGroupInfo(false)}
-                            className="w-full py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
-                          >
-                            Close Sidebar
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex-1 flex items-center justify-center text-gray-500">
-                    <div className="text-center">
-                      <div className="text-6xl mb-4">💬</div>
-                      <h3 className="text-lg font-semibold mb-2">Select a group</h3>
-                      <p>Choose a case group from the sidebar to start chatting</p>
+                        );
+                      })}
                     </div>
                   </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
+                </aside>
+              )}
+            </div>
+          ) : (
+            <EmptyState />
+          )}
+        </main>
       </div>
     </div>
   );

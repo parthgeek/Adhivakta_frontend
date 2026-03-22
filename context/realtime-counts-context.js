@@ -74,14 +74,25 @@ export const RealTimeCountsProvider = ({ children }) => {
     });
 
     // Listen for new messages
-    socketInstance.on("message", (data) => {
+    const handleMessageEvent = (data) => {
+      const senderId = data?.senderId || data?.sender?._id || data?.sender;
+      const currentUserId = user?.id || user?._id;
+
+      // Own messages should not increase unread counts.
+      if (senderId && currentUserId && String(senderId) === String(currentUserId)) {
+        return;
+      }
+
       console.log("💬 New message received");
       setCounts((prev) => ({
         ...prev,
         messages: prev.messages + 1,
         total: prev.total + 1,
       }));
-    });
+    };
+
+    socketInstance.on("message_sent", handleMessageEvent);
+    socketInstance.on("message", handleMessageEvent);
     // Track processed notification IDs to prevent double-counting
     const processedNotificationIds = new Set();
 
@@ -167,18 +178,23 @@ export const RealTimeCountsProvider = ({ children }) => {
       socketInstance.emit("counts:request_update");
     });
 
-    // Listen for message read events to decrease count
-    socketInstance.on("message:read", () => {
-      setCounts((prev) => ({
-        ...prev,
-        messages: Math.max(0, prev.messages - 1),
-        total: Math.max(0, prev.total - 1),
-      }));
-    });
+    // Delivered/seen/delete updates are easier to keep correct with a fresh count sync.
+    const requestFreshMessageCounts = () => {
+      socketInstance.emit("counts:request_update");
+    };
+
+    socketInstance.on("message_seen", requestFreshMessageCounts);
+    socketInstance.on("message_deleted", requestFreshMessageCounts);
+    socketInstance.on("message:read", requestFreshMessageCounts);
 
     setSocket(socketInstance);
 
     return () => {
+      socketInstance.off("message_sent", handleMessageEvent);
+      socketInstance.off("message", handleMessageEvent);
+      socketInstance.off("message_seen", requestFreshMessageCounts);
+      socketInstance.off("message_deleted", requestFreshMessageCounts);
+      socketInstance.off("message:read", requestFreshMessageCounts);
       socketInstance.disconnect();
     };
   }, [user]);

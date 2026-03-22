@@ -128,7 +128,7 @@ export default function CaseDetailsPage() {
       active: "bg-green-100 text-green-800",
       pending: "bg-yellow-100 text-yellow-800",
       closed: "bg-gray-100 text-gray-800",
-      archived: "bg-blue-100 text-blue-800",
+      archived: "bg-[#03234b]/20 text-[#03234b]",
     }
     return statusMap[status?.toLowerCase()] || "bg-gray-100 text-gray-800"
   }
@@ -155,7 +155,7 @@ export default function CaseDetailsPage() {
 
   const getPriorityColor = (priority) => {
     const priorityMap = {
-      low: "bg-blue-100 text-blue-800",
+      low: "bg-[#03234b]/20 text-[#03234b]",
       normal: "bg-green-100 text-green-800",
       high: "bg-orange-100 text-orange-800",
       urgent: "bg-red-100 text-red-800",
@@ -533,17 +533,17 @@ export default function CaseDetailsPage() {
                         {caseData.advocates && caseData.advocates.length > 0 && (
                           <div className="space-y-4">
                             {caseData.advocates.map((advocate, idx) => (
-                              <div key={`advocate-${idx}`} className="mb-4 p-4 bg-blue-50 rounded-lg border-l-4 border-blue-500">
+                              <div key={`advocate-${idx}`} className="mb-4 p-4 bg-[#03234b]/10 rounded-lg border-l-4 border-[#03234b]">
                                 <div className="flex justify-between items-start">
                                   <div className="w-full">
                                     <div className="flex items-center flex-wrap gap-2 mb-2">
-                                      <User className="h-4 w-4 text-blue-600 mr-1 flex-shrink-0" />
-                                      <p className="font-medium text-blue-800">
+                                      <User className="h-4 w-4 text-[#03234b] mr-1 flex-shrink-0" />
+                                      <p className="font-medium text-[#03234b]">
                                         {advocate.name || 'Advocate'}
                                       </p>
-                                      {advocate.isLead && <Badge className="bg-blue-600 text-white text-xs">Lead Advocate</Badge>}
+                                      {advocate.isLead && <Badge className="bg-[#03234b] text-white text-xs">Lead Advocate</Badge>}
                                       {advocate.level && (
-                                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                                        <Badge variant="outline" className="text-xs bg-[#03234b]/10 text-[#03234b] border-[#03234b]/30">
                                           {advocate.level}
                                         </Badge>
                                       )}
@@ -611,7 +611,7 @@ export default function CaseDetailsPage() {
                                         )}
                                         {/* Level Badge */}
                                         {lawyer.level && (
-                                          <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                                          <Badge variant="outline" className="text-xs bg-[#03234b]/10 text-[#03234b] border-[#03234b]/30">
                                             {lawyer.level}
                                           </Badge>
                                         )}
@@ -623,7 +623,7 @@ export default function CaseDetailsPage() {
                                         )}
                                         {/* Primary Badge */}
                                         {lawyer.isPrimary && (
-                                          <Badge className="ml-1 bg-blue-100 text-blue-800 border-blue-200 text-xs">
+                                          <Badge className="ml-1 bg-[#03234b]/20 text-[#03234b] border-[#03234b]/30 text-xs">
                                             Primary
                                           </Badge>
                                         )}
@@ -817,9 +817,9 @@ export default function CaseDetailsPage() {
                           const filtered = caseData.stakeholders.filter(s => (s.roleInCase || '').toLowerCase().includes(role?.toLowerCase() || ''));
                           if (filtered.length === 0) return null;
                           return (
-                            <div key={role || 'other'} className={`p-4 border rounded-lg ${role === 'Witness' ? 'bg-amber-50' : role === 'Expert' ? 'bg-green-50' : 'bg-blue-50'} md:col-span-1`}>
+                            <div key={role || 'other'} className={`p-4 border rounded-lg ${role === 'Witness' ? 'bg-amber-50' : role === 'Expert' ? 'bg-green-50' : 'bg-[#03234b]/10'} md:col-span-1`}>
                               <div className="flex items-center gap-2 mb-2">
-                                <Users className={`h-4 w-4 ${role === 'Witness' ? 'text-amber-600' : role === 'Expert' ? 'text-green-600' : 'text-blue-600'}`} />
+                                <Users className={`h-4 w-4 ${role === 'Witness' ? 'text-amber-600' : role === 'Expert' ? 'text-green-600' : 'text-[#03234b]'}`} />
                                 <h4 className="font-medium">{role || 'Other Stakeholders'}</h4>
                               </div>
                               <div className="space-y-2">
@@ -995,7 +995,7 @@ export default function CaseDetailsPage() {
                           <li key={event._id || `hearing-${idx}`} className="p-3 border rounded-md flex flex-col md:flex-row md:items-center md:justify-between">
                             <div className="flex items-center gap-3">
                               <span className="font-bold mr-2">{idx + 1}.</span>
-                              <Calendar className="h-4 w-4 text-blue-500" />
+                              <Calendar className="h-4 w-4 text-[#03234b]" />
                               <span className="font-medium">{event.start ? formatDate(event.start) : 'Not set'}</span>
                               <span className="ml-2 text-xs text-gray-500">({getOrdinal(idx + 1)} Hearing)</span>
                         </div>

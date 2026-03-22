@@ -75,7 +75,7 @@ const normalizePriority = (priority) => {
 const getTypeColor = (type) => {
   switch (type) {
     case "hearing":
-      return "bg-blue-100 text-blue-800 border border-blue-200";
+      return "bg-[#03234b]/20 text-[#03234b] border border-[#03234b]/30";
     case "argument":
       return "bg-purple-100 text-purple-800 border border-purple-200";
     case "judgment":

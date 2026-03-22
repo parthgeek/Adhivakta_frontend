@@ -20,7 +20,7 @@ export default function Toaster() {
             transform transition-all duration-300 ease-out
             animate-in slide-in-from-top-5
             ${t.variant === 'destructive' ? 'border-l-4 border-l-red-500' : ''}
-            ${t.variant === 'default' ? 'border-l-4 border-l-blue-500' : ''}
+            ${t.variant === 'default' ? 'border-l-4 border-l-[#03234b]' : ''}
             hover:shadow-xl cursor-pointer
           `}
           onClick={() => {
@@ -49,7 +49,7 @@ export default function Toaster() {
                       if (t.action.onClick) t.action.onClick();
                       dismiss(t.id);
                     }}
-                    className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-[#03234b] rounded-md hover:bg-[#03234b] transition-colors focus:outline-none focus:ring-2 focus:ring-[#03234b] focus:ring-offset-2"
                   >
                     {t.action.label || "View"}
                   </button>
