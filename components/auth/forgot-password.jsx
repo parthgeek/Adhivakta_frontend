@@ -46,7 +46,7 @@ export default function ForgotPasswordPage() {
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-8">
-          <Image src="/adhi_logo_main.png" alt="Adhivakta Logo" width={120} height={120} style={{objectFit: 'contain'}} />
+          <Image src="/images/adhi_logo_main.png" alt="Adhivakta Logo" width={120} height={120} style={{objectFit: 'contain'}} />
         </div>
         
         <Card>

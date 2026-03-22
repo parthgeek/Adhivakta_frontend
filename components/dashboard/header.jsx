@@ -48,7 +48,7 @@ export default function Header({ onMenuClick }) {
         )}
       >
         <img
-          src="/adhi_logo_main.png"
+          src="/images/adhi_logo_main.png"
           alt="Adhivakta Logo"
           className="h-9 w-9 object-contain"
         />
@@ -68,7 +68,7 @@ export default function Header({ onMenuClick }) {
             </Button>
           )}
           <img
-            src="/adhi_logo_main.png"
+            src="/images/adhi_logo_main.png"
             alt="Adhivakta Logo"
             className="h-8 w-8 object-contain"
           />

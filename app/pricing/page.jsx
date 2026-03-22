@@ -133,7 +133,7 @@ export default function PricingPage() {
                 currency: orderResponse.data.currency,
                 name: "Adhivakta",
                 description: `${plan.name} - Yearly Subscription`,
-                image: "/adhi_logo_main.png",
+                image: "/images/adhi_logo_main.png",
                 order_id: orderResponse.data.orderId,
                 handler: async function (response) {
                     try {
@@ -319,7 +319,7 @@ export default function PricingPage() {
                 <div className="flex items-center gap-4">
                     <Link href="/">
                         <Image
-                            src="/adhi_logo_main.png"
+                            src="/images/adhi_logo_main.png"
                             alt="Adhivakta Logo"
                             width={80}
                             height={80}
@@ -615,7 +615,7 @@ export default function PricingPage() {
                 <div className="container px-4 md:px-8 max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                         <Image
-                            src="/adhi_logo_main.png"
+                            src="/images/adhi_logo_main.png"
                             alt="Adhivakta Logo"
                             width={60}
                             height={60}

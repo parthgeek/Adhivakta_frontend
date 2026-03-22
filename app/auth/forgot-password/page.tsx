@@ -59,7 +59,7 @@ export default function ForgotPasswordPage() {
         <div className="flex justify-center mb-8">
           <Link href="/">
             <Image 
-              src="/adhi_logo_main.png" 
+              src="/images/adhi_logo_main.png" 
               alt="Adhivakta Logo" 
               width={120} 
               height={120} 

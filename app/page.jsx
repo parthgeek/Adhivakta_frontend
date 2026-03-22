@@ -21,7 +21,7 @@ export default function Home() {
       <header className="sticky top-0 z-50 flex h-24 items-center border-b bg-transparent backdrop-blur-sm px-4 md:px-8 shadow-none">
         <div className="flex items-center gap-3">
           <Image
-            src="/adhi_logo_main.png"
+            src="/images/adhi_logo_main.png"
             alt="Adhivakta Logo"
             width={96}
             height={96}
@@ -360,7 +360,7 @@ export default function Home() {
         <div className="container px-4 md:px-8 max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Image
-              src="/adhi_logo_main.png"
+              src="/images/adhi_logo_main.png"
               alt="Adhivakta Logo"
               width={80}
               height={80}

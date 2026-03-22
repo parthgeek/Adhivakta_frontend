@@ -11,7 +11,7 @@ export default function LoginPage() {
           <div className="flex justify-center items-center mb-8">
             <Link href="/">
               <Image 
-                src="/adhi_logo_main.png" 
+                src="/images/adhi_logo_main.png" 
                 alt="Adhivakta Logo" 
                 width={160} 
                 height={160} 

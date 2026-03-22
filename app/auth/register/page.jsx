@@ -10,7 +10,7 @@ export default function RegisterPage() {
       <div className="grid w-full max-w-[1000px] grid-cols-1 md:grid-cols-2 gap-8 rounded-lg border bg-background shadow">
         <div className="flex flex-col justify-center p-8">
           <div className="flex justify-center items-center my-8">
-            <Image src="/adhi_logo_main.png" alt="Adhivakta Logo" width={160} height={160} style={{objectFit: 'contain'}} />
+            <Image src="/images/adhi_logo_main.png" alt="Adhivakta Logo" width={160} height={160} style={{objectFit: 'contain'}} />
           </div>
           <Card>
             <CardHeader>
