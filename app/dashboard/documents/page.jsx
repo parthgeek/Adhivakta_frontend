@@ -612,14 +612,14 @@ export default function DocumentsPage() {
                         {documentsByCase[caseNumber].length} document(s)
                       </p>
                     </div>
-                    <Button
+                    {/* <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setSelectedCaseForDocuments(caseNumber)}
                     >
                       <FileText className="h-4 w-4 mr-2" />
                       Manage Documents
-                    </Button>
+                    </Button> */}
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">

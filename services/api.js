@@ -817,6 +817,45 @@ const api = {
       return api.chat.markAsSeen(groupId);
     },
 
+    archiveGroup: async (groupId) => {
+      const response = await fetch(`${API_URL}/chat/groups/${groupId}/archive`, {
+        method: "PATCH",
+        headers: createHeaders(),
+      });
+      const data = await handleResponse(response);
+      return data.data;
+    },
+
+    unarchiveGroup: async (groupId) => {
+      const response = await fetch(
+        `${API_URL}/chat/groups/${groupId}/unarchive`,
+        {
+          method: "PATCH",
+          headers: createHeaders(),
+        }
+      );
+      const data = await handleResponse(response);
+      return data.data;
+    },
+
+    pinGroup: async (groupId) => {
+      const response = await fetch(`${API_URL}/chat/groups/${groupId}/pin`, {
+        method: "PATCH",
+        headers: createHeaders(),
+      });
+      const data = await handleResponse(response);
+      return data.data;
+    },
+
+    unpinGroup: async (groupId) => {
+      const response = await fetch(`${API_URL}/chat/groups/${groupId}/unpin`, {
+        method: "PATCH",
+        headers: createHeaders(),
+      });
+      const data = await handleResponse(response);
+      return data.data;
+    },
+
     getUnreadCounts: async () => {
       const response = await fetch(`${API_URL}/chat/unread-counts`, {
         method: "GET",

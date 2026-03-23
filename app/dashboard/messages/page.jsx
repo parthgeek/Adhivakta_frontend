@@ -58,15 +58,19 @@ const normalizeMessage = (message) => {
   };
 };
 
-const isMessageHiddenForUser = (message, userId) =>
-  normalizeMessage(message).deletedFor.includes(toId(userId));
+const isMessageHiddenForUser = (message, userId) => {
+  const normalizedMessage = normalizeMessage(message);
 
-const getRenderedMessageText = (message) =>
-  message.deletedForEveryone ? "This message was deleted" : message.text || "";
+  return (
+    normalizedMessage.deletedForEveryone ||
+    normalizedMessage.deletedFor.includes(toId(userId))
+  );
+};
+
+const getRenderedMessageText = (message) => message.text || "";
 
 const getMessagePreview = (message) => {
   if (!message) return "No messages yet";
-  if (message.deletedForEveryone) return "This message was deleted";
   if (message.text) return message.text;
   const attachmentCount = Array.isArray(message.attachments)
     ? message.attachments.length
@@ -412,15 +416,27 @@ const GroupListItem = ({ group, isActive, unreadCount, onClick }) => (
       <Avatar name={group.name} size="md" />
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline justify-between gap-1">
-          <span
-            className={`text-sm truncate ${
-              isActive
-                ? "font-semibold text-slate-900"
-                : "font-medium text-slate-800"
-            }`}
-          >
-            {group.name}
-          </span>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span
+              className={`text-sm truncate ${
+                isActive
+                  ? "font-semibold text-slate-900"
+                  : "font-medium text-slate-800"
+              }`}
+            >
+              {group.name}
+            </span>
+            {group.pinned && (
+              <span className="text-[9px] uppercase tracking-wide text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-1.5 py-0.5 flex-shrink-0">
+                Pinned
+              </span>
+            )}
+            {group.archived && (
+              <span className="text-[9px] uppercase tracking-wide text-slate-500 bg-slate-100 border border-slate-200 rounded-full px-1.5 py-0.5 flex-shrink-0">
+                Archived
+              </span>
+            )}
+          </div>
           <span className="text-[10px] text-slate-400 flex-shrink-0">
             {getRelativeTime(group.updatedAt || group.lastMessageAt)}
           </span>
@@ -505,12 +521,19 @@ export default function MessagesPage() {
   const [currentUser, setCurrentUser] = useState({});
   const [actionMenuMessageId, setActionMenuMessageId] = useState(null);
   const [deleteLoadingId, setDeleteLoadingId] = useState(null);
+  const [archiveLoading, setArchiveLoading] = useState(false);
+  const [pinLoading, setPinLoading] = useState(false);
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   const activeGroupRef = useRef(activeGroup);
   const socketRef = useRef(null);
   const inputRef = useRef(null);
   const currentUserRef = useRef(currentUser);
   const seenRequestRef = useRef({});
+  const conversationPollingRef = useRef(false);
+  const groupsPollingRef = useRef(false);
+  const shouldAutoScrollRef = useRef(true);
+  const pendingScrollBehaviorRef = useRef(null);
 
   const currentUserId = toId(currentUser.id || currentUser._id);
 
@@ -546,8 +569,35 @@ export default function MessagesPage() {
     window.dispatchEvent(new Event("unreadCountChanged"));
   }, [unreadCounts]);
 
+  const scrollToBottom = (behavior = "smooth") => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
+  };
+
+  const isNearBottom = () => {
+    const container = messagesContainerRef.current;
+
+    if (!container) {
+      return true;
+    }
+
+    const distanceFromBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
+
+    return distanceFromBottom <= 120;
+  };
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const nextBehavior = pendingScrollBehaviorRef.current;
+
+    if (nextBehavior) {
+      scrollToBottom(nextBehavior);
+      pendingScrollBehaviorRef.current = null;
+      return;
+    }
+
+    if (shouldAutoScrollRef.current) {
+      scrollToBottom("smooth");
+    }
   }, [messages]);
 
   useEffect(() => {
@@ -580,6 +630,8 @@ export default function MessagesPage() {
         .map((message) => normalizeMessage(message))
         .filter((message) => !isMessageHiddenForUser(message, currentUserId));
 
+      shouldAutoScrollRef.current = true;
+      pendingScrollBehaviorRef.current = "auto";
       setMessages(visibleMessages);
       setActiveGroup(groupId);
       setUnreadCounts((previousCounts) => {
@@ -596,6 +648,58 @@ export default function MessagesPage() {
     } finally {
       setLoading(false);
       setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  };
+
+  const refreshMessagesSilently = async (groupId) => {
+    if (!groupId || conversationPollingRef.current) return;
+
+    conversationPollingRef.current = true;
+
+    try {
+      shouldAutoScrollRef.current = isNearBottom();
+
+      const data = await api.chat.getMessages(groupId, 100);
+      const liveUserId = toId(
+        currentUserRef.current.id || currentUserRef.current._id
+      );
+
+      const visibleMessages = data
+        .map((message) => normalizeMessage(message))
+        .filter((message) => !isMessageHiddenForUser(message, liveUserId));
+
+      setMessages(visibleMessages);
+      setGroups((previousGroups) => {
+        const lastVisibleMessage = visibleMessages[visibleMessages.length - 1];
+
+        if (!lastVisibleMessage) {
+          return previousGroups;
+        }
+
+        return updateGroupPreview(
+          previousGroups,
+          groupId,
+          lastVisibleMessage
+        );
+      });
+    } catch (error) {
+      console.error("Error silently refreshing messages:", error);
+    } finally {
+      conversationPollingRef.current = false;
+    }
+  };
+
+  const refreshGroupsAndUnreadSilently = async () => {
+    if (groupsPollingRef.current) return;
+
+    groupsPollingRef.current = true;
+
+    try {
+      await refreshGroupsAndUnread();
+    } catch (error) {
+      console.error("Error silently refreshing groups:", error);
+    } finally {
+      groupsPollingRef.current = false;
     }
   };
 
@@ -637,6 +741,31 @@ export default function MessagesPage() {
       markGroupAsSeen(activeGroup);
     }
   }, [activeGroup, currentUserId, messages]);
+
+  useEffect(() => {
+    if (!isAuthenticated || typeof window === "undefined") return undefined;
+
+    const intervalId = window.setInterval(() => {
+      if (document.hidden) return;
+      refreshGroupsAndUnreadSilently();
+    }, 1000);
+
+    return () => window.clearInterval(intervalId);
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !activeGroup || typeof window === "undefined") {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      if (document.hidden) return;
+      refreshMessagesSilently(activeGroup);
+      refreshGroupsAndUnreadSilently();
+    }, 1000);
+
+    return () => window.clearInterval(intervalId);
+  }, [activeGroup, isAuthenticated]);
 
   useEffect(() => {
     if (!isAuthenticated || typeof window === "undefined") return undefined;
@@ -684,6 +813,11 @@ export default function MessagesPage() {
 
     const handleDisconnect = () => setSocketConnected(false);
 
+    const handleConnectError = (error) => {
+      setSocketConnected(false);
+      console.error("Chat socket connect_error:", error?.message || error);
+    };
+
     const handleIncomingMessage = (incomingMessage) => {
       const message = normalizeMessage(incomingMessage);
       const liveUserId = toId(
@@ -698,6 +832,12 @@ export default function MessagesPage() {
       );
 
       if (isActiveConversation) {
+        if (isMyMessage) {
+          pendingScrollBehaviorRef.current = "smooth";
+        } else {
+          shouldAutoScrollRef.current = isNearBottom();
+        }
+
         setMessages((previousMessages) =>
           mergeMessageIntoList(previousMessages, message, liveUserId)
         );
@@ -723,23 +863,7 @@ export default function MessagesPage() {
     };
 
     const handleDeleteEvent = async (payload) => {
-      if (payload?.scope === "everyone" && payload.message) {
-        const message = normalizeMessage(payload.message);
-
-        setMessages((previousMessages) =>
-          mergeMessageIntoList(
-            previousMessages,
-            message,
-            toId(currentUserRef.current.id || currentUserRef.current._id)
-          )
-        );
-        setGroups((previousGroups) =>
-          updateGroupPreview(previousGroups, message.groupId, message)
-        );
-        return;
-      }
-
-      if (payload?.scope === "me") {
+      if (payload?.scope === "everyone" || payload?.scope === "me") {
         setMessages((previousMessages) =>
           removeMessageFromList(previousMessages, payload.messageId || payload.id)
         );
@@ -762,6 +886,7 @@ export default function MessagesPage() {
 
     socketInstance.on("connect", handleConnect);
     socketInstance.on("disconnect", handleDisconnect);
+    socketInstance.on("connect_error", handleConnectError);
     socketInstance.on("message_sent", handleIncomingMessage);
     socketInstance.on("message_delivered", handleStatusEvent);
     socketInstance.on("message_seen", handleStatusEvent);
@@ -777,6 +902,7 @@ export default function MessagesPage() {
       isMounted = false;
       socketInstance.off("connect", handleConnect);
       socketInstance.off("disconnect", handleDisconnect);
+      socketInstance.off("connect_error", handleConnectError);
       socketInstance.off("message_sent", handleIncomingMessage);
       socketInstance.off("message_delivered", handleStatusEvent);
       socketInstance.off("message_seen", handleStatusEvent);
@@ -798,6 +924,7 @@ export default function MessagesPage() {
 
     try {
       if (socketRef.current?.connected) {
+        pendingScrollBehaviorRef.current = "smooth";
         socketRef.current.emit("send_message", {
           groupId: activeGroup,
           text,
@@ -808,6 +935,7 @@ export default function MessagesPage() {
       const sentMessage = await api.chat.sendMessage(activeGroup, { text });
       const normalizedMessage = normalizeMessage(sentMessage);
 
+      pendingScrollBehaviorRef.current = "smooth";
       setMessages((previousMessages) =>
         mergeMessageIntoList(previousMessages, normalizedMessage, currentUserId)
       );
@@ -827,25 +955,61 @@ export default function MessagesPage() {
     try {
       const result = await api.chat.deleteMessage(messageId, scope);
 
-      if (result?.scope === "everyone" && result.message) {
-        const normalizedMessage = normalizeMessage(result.message);
-
-        setMessages((previousMessages) =>
-          mergeMessageIntoList(previousMessages, normalizedMessage, currentUserId)
-        );
-        setGroups((previousGroups) =>
-          updateGroupPreview(previousGroups, normalizedMessage.groupId, normalizedMessage)
-        );
-      } else {
+      if (result?.scope === "everyone" || result?.scope === "me") {
         setMessages((previousMessages) =>
           removeMessageFromList(previousMessages, messageId)
         );
         await refreshGroupsAndUnread();
       }
+
+      await refreshMessagesSilently(activeGroupRef.current);
+      await refreshGroupsAndUnreadSilently();
     } catch (error) {
       console.error("Error deleting message:", error);
     } finally {
       setDeleteLoadingId(null);
+    }
+  };
+
+  const handleArchiveToggle = async () => {
+    if (!activeGroupData?._id) return;
+
+    setArchiveLoading(true);
+
+    try {
+      if (activeGroupData.archived) {
+        await api.chat.unarchiveGroup(activeGroupData._id);
+        setFilter("all");
+      } else {
+        await api.chat.archiveGroup(activeGroupData._id);
+        setFilter("archived");
+      }
+
+      await refreshGroupsAndUnread();
+    } catch (error) {
+      console.error("Error updating chat archive state:", error);
+    } finally {
+      setArchiveLoading(false);
+    }
+  };
+
+  const handlePinToggle = async () => {
+    if (!activeGroupData?._id) return;
+
+    setPinLoading(true);
+
+    try {
+      if (activeGroupData.pinned) {
+        await api.chat.unpinGroup(activeGroupData._id);
+      } else {
+        await api.chat.pinGroup(activeGroupData._id);
+      }
+
+      await refreshGroupsAndUnread();
+    } catch (error) {
+      console.error("Error updating chat pinned state:", error);
+    } finally {
+      setPinLoading(false);
     }
   };
 
@@ -854,15 +1018,25 @@ export default function MessagesPage() {
       const matchesSearch = group.name
         ?.toLowerCase()
         .includes(searchQuery.toLowerCase());
+      const isArchived = Boolean(group.archived);
       const matchesFilter =
-        filter === "all" || (filter === "unread" && unreadCounts[group._id] > 0);
+        (filter === "all" && !isArchived) ||
+        (filter === "unread" && !isArchived && unreadCounts[group._id] > 0) ||
+        (filter === "archived" && isArchived);
 
       return matchesSearch && matchesFilter;
     })
     .sort(
-      (left, right) =>
-        new Date(right.updatedAt || right.lastMessageAt || 0) -
-        new Date(left.updatedAt || left.lastMessageAt || 0)
+      (left, right) => {
+        if (Boolean(left.pinned) !== Boolean(right.pinned)) {
+          return left.pinned ? -1 : 1;
+        }
+
+        return (
+          new Date(right.updatedAt || right.lastMessageAt || 0) -
+          new Date(left.updatedAt || left.lastMessageAt || 0)
+        );
+      }
     );
 
   const activeGroupData = groups.find(
@@ -898,7 +1072,7 @@ export default function MessagesPage() {
               Communicate with your case teams
             </p>
           </div>
-          <div className="flex items-center space-x-2">
+          {/* <div className="flex items-center space-x-2">
             <div
               className={`flex items-center space-x-1.5 text-xs px-2.5 py-1 rounded-full border ${
                 socketConnected
@@ -913,7 +1087,7 @@ export default function MessagesPage() {
               />
               <span>{socketConnected ? "Live" : "Offline"}</span>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
 
@@ -940,6 +1114,7 @@ export default function MessagesPage() {
                 {[
                   ["all", "All"],
                   ["unread", "Unread"],
+                  ["archived", "Archived"],
                 ].map(([value, label]) => (
                   <button
                     key={value}
@@ -962,6 +1137,11 @@ export default function MessagesPage() {
                           )
                         </span>
                       )}
+                    {value === "archived" && (
+                      <span className="ml-1 text-primary">
+                        ({groups.filter((group) => group.archived).length})
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -1028,6 +1208,40 @@ export default function MessagesPage() {
                     </div>
                   </div>
                   <div className="flex items-center space-x-3">
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handlePinToggle();
+                      }}
+                      disabled={pinLoading}
+                      className={`text-xs px-3 py-1.5 rounded-full border transition disabled:opacity-60 ${
+                        activeGroupData.pinned
+                          ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                          : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      {pinLoading
+                        ? "Saving..."
+                        : activeGroupData.pinned
+                          ? "Unpin"
+                          : "Pin"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleArchiveToggle();
+                      }}
+                      disabled={archiveLoading}
+                      className="text-xs px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 transition disabled:opacity-60"
+                    >
+                      {archiveLoading
+                        ? "Saving..."
+                        : activeGroupData.archived
+                          ? "Unarchive"
+                          : "Archive"}
+                    </button>
                     <span className="text-xs text-slate-400 hidden sm:block">
                       {showGroupInfo ? "Hide info" : "View info"}
                     </span>
@@ -1041,7 +1255,13 @@ export default function MessagesPage() {
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto px-6 py-4 bg-gradient-to-b from-[#F7FAFF] to-white flex flex-col">
+                <div
+                  ref={messagesContainerRef}
+                  onScroll={() => {
+                    shouldAutoScrollRef.current = isNearBottom();
+                  }}
+                  className="flex-1 overflow-y-auto px-6 py-4 bg-gradient-to-b from-[#F7FAFF] to-white flex flex-col"
+                >
                   {messages.length === 0 ? (
                     <NoMessagesYet />
                   ) : (
