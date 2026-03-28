@@ -40,6 +40,10 @@ import {
 import api from "@/services/api";
 import { useToast } from "@/components/ui/use-toast";
 import {
+  formatCaseTypeLabel,
+  getDisplayCaseType,
+} from "@/lib/caseTypeUtils";
+import {
   getCaseLegalTeam,
   getLeadLegalTeamMember,
   formatLegalTeamSummary,
@@ -138,8 +142,10 @@ export default function CasesPage() {
     return {
       id: caseItem._id || caseItem.id,
       title: caseItem.title,
+      description: caseItem.description || "",
       number: caseItem.caseNumber || caseItem.number,
-      type: caseItem.caseType || caseItem.type,
+      type: caseItem.caseSubType || caseItem.caseType || caseItem.type,
+      category: caseItem.caseType || caseItem.type,
       client: caseItem.client?.name || caseItem.client,
       court: caseItem.court || caseItem.courtType || "Not specified",
       courtHall: caseItem.courtHall || "N/A",
@@ -162,6 +168,10 @@ export default function CasesPage() {
   const filteredCases = uniqueCases.map(mapCaseFields).filter((caseItem) => {
     const matchesSearch =
       (caseItem.title && caseItem.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (caseItem.description &&
+        caseItem.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (caseItem.type &&
+        caseItem.type.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (caseItem.number && caseItem.number.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (caseItem.court && caseItem.court.toLowerCase().includes(searchTerm.toLowerCase()));
 
@@ -172,8 +182,8 @@ export default function CasesPage() {
 
     const matchesType =
       categoryFilter === "All Categories" ||
-      (caseItem.type &&
-        caseItem.type.toLowerCase() === categoryFilter.toLowerCase());
+      (caseItem.category &&
+        caseItem.category.toLowerCase() === categoryFilter.toLowerCase());
 
     const matchesPriority =
       priorityFilter === "All Priority" ||
@@ -312,7 +322,7 @@ export default function CasesPage() {
                   <SelectItem key={type} value={type}>
                     {type === "All Categories"
                       ? "All Types"
-                      : type.charAt(0).toUpperCase() + type.slice(1)}
+                      : formatCaseTypeLabel(type)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -342,7 +352,7 @@ export default function CasesPage() {
               .join(", ");
             const nextHearing = rawCase.nextHearingDate || rawCase.hearingDate;
             const courtName = rawCase.court || "Not specified";
-            const caseType = rawCase.caseType || rawCase.type || "";
+            const caseType = getDisplayCaseType(rawCase);
             const priority = rawCase.priority || "medium";
 
             let clientName = rawCase.client?.name || rawCase.client;
@@ -372,11 +382,14 @@ export default function CasesPage() {
                           )}
                         </div>
                         <p className="text-base text-muted-foreground">{caseItem.title}</p>
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {caseItem.description || "No case description provided."}
+                        </p>
                         <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                           {caseType && (
                             <span>
                               <strong>Type:</strong>{" "}
-                              <span className="capitalize">{caseType.replace("_", " ")}</span>
+                              <span>{caseType}</span>
                             </span>
                           )}
                           <span>

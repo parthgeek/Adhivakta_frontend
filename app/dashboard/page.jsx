@@ -25,6 +25,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { getDisplayCaseType } from "@/lib/caseTypeUtils";
 import { cn } from "@/lib/utils";
 import { formatLegalTeamSummary } from "@/lib/legal-team";
 
@@ -208,8 +209,10 @@ const CasesList = ({ cases = [] }) => {
             safeText(caseItem.lawyer) ||
             safeText(caseItem.assignedTo);
           const courtName = safeText(caseItem.court);
-          const caseType = safeText(caseItem.caseType) || safeText(caseItem.type);
-          const title = safeText(caseItem.title) || safeText(caseItem.description) || "No description available";
+          const caseType = getDisplayCaseType(caseItem);
+          const caseTitle = safeText(caseItem.title) || "Untitled case";
+          const caseDescription =
+            safeText(caseItem.description) || "No case description provided.";
           const nextHearing = caseItem.nextHearingDate || caseItem.nextHearing || caseItem.hearingDate;
 
           return (
@@ -234,7 +237,10 @@ const CasesList = ({ cases = [] }) => {
                       {(caseItem.status || "Active").toUpperCase()}
                     </Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground">{title}</p>
+                  <p className="text-sm font-medium text-foreground">{caseTitle}</p>
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    {caseDescription}
+                  </p>
                 </div>
                 {(caseItem.priority === "high" || caseItem.priority === "urgent") && (
                   <AlertCircle className="h-5 w-5 text-red-500" />

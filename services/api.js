@@ -389,6 +389,88 @@ const api = {
     },
   },
 
+  courtDirectory: {
+    getStates: async () => {
+      const response = await fetch(`${API_URL}/court-directory/states`, {
+        method: "GET",
+        headers: createHeaders(),
+      });
+
+      const data = await handleResponse(response);
+      return data.data || [];
+    },
+
+    getDistricts: async (stateCode) => {
+      const response = await fetch(
+        `${API_URL}/court-directory/districts?stateCode=${encodeURIComponent(stateCode)}`,
+        {
+          method: "GET",
+          headers: createHeaders(),
+        }
+      );
+
+      const data = await handleResponse(response);
+      return data.data || [];
+    },
+
+    getComplexes: async (stateCode, districtCode) => {
+      const queryParams = new URLSearchParams({
+        stateCode,
+        districtCode,
+      });
+
+      const response = await fetch(
+        `${API_URL}/court-directory/complexes?${queryParams.toString()}`,
+        {
+          method: "GET",
+          headers: createHeaders(),
+        }
+      );
+
+      const data = await handleResponse(response);
+      return data.data || [];
+    },
+
+    getCourts: async (stateCode, districtCode, complexCode) => {
+      const queryParams = new URLSearchParams({
+        stateCode,
+        districtCode,
+        complexCode,
+      });
+
+      const response = await fetch(
+        `${API_URL}/court-directory/courts?${queryParams.toString()}`,
+        {
+          method: "GET",
+          headers: createHeaders(),
+        }
+      );
+
+      const data = await handleResponse(response);
+      return data.data || [];
+    },
+
+    getCaseTypes: async (stateCode, districtCode, complexCode, courtCode) => {
+      const queryParams = new URLSearchParams({
+        stateCode,
+        districtCode,
+        complexCode,
+        courtCode,
+      });
+
+      const response = await fetch(
+        `${API_URL}/court-directory/case-types?${queryParams.toString()}`,
+        {
+          method: "GET",
+          headers: createHeaders(),
+        }
+      );
+
+      const data = await handleResponse(response);
+      return data.data || { caseTypes: [] };
+    },
+  },
+
   documents: {
     getAll: async (filters = {}) => {
       // Convert filters object to query string
@@ -962,7 +1044,7 @@ export const normalizeCaseData = (caseData) => {
     id: caseData._id || caseData.id,
     title: caseData.title || "Untitled Case",
     number: caseData.caseNumber || caseData.number || "No Number",
-    type: caseData.caseType || caseData.type || "Other",
+    type: caseData.caseSubType || caseData.caseType || caseData.type || "Other",
     status: caseData.status || "active",
     court: caseData.court || caseData.courtType || "Not specified",
     courtHall: caseData.courtHall || "N/A",

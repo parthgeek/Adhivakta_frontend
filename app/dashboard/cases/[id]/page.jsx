@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Calendar as DatePicker } from "@/components/ui/calendar"
 import { Calendar as CalendarIcon } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
+import { formatCaseTypeLabel } from "@/lib/caseTypeUtils"
 import { getDocumentOpenUrl } from "@/lib/document-url"
 
 export default function CaseDetailsPage() {
@@ -406,7 +407,9 @@ export default function CaseDetailsPage() {
                     </div>
                     <div>
                       <h3 className="text-sm font-medium text-muted-foreground">Case Type</h3>
-                      <p className="text-base capitalize">{caseData.caseType}</p>
+                      <p className="text-base">
+                        {formatCaseTypeLabel(caseData.caseSubType || caseData.caseType)}
+                      </p>
                     </div>
                     <div>
                       <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
@@ -474,15 +477,15 @@ export default function CaseDetailsPage() {
                     </div>
                   </div>
 
-                  {caseData.description && (
-                    <>
-                      <Separator />
-                      <div>
-                        <h3 className="text-sm font-medium text-muted-foreground">Description</h3>
-                        <p className="mt-2 text-base">{caseData.description}</p>
-                      </div>
-                    </>
-                  )}
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground">Description</h3>
+                      <p className="mt-2 text-base">
+                        {caseData.description || "No case description provided yet."}
+                      </p>
+                    </div>
+                  </>
 
                   {caseData.actSections && (
                     <>
@@ -1056,7 +1059,9 @@ export default function CaseDetailsPage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <h3 className="text-sm font-medium">Case Type</h3>
-                  <span className="text-sm capitalize">{caseData.caseType}</span>
+                  <span className="text-sm">
+                    {formatCaseTypeLabel(caseData.caseSubType || caseData.caseType)}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <h3 className="text-sm font-medium">Filing Date</h3>

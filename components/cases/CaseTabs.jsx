@@ -10,6 +10,8 @@ import AssociatedPartiesTab from "./AssociatedPartiesTab";
 export default function CaseTabs({
   caseData,
   setCaseData,
+  courtDirectoryOptions,
+  courtDirectoryLoading,
   isSubmitting,
   isLawyer,
   selectedFiles,
@@ -34,7 +36,7 @@ export default function CaseTabs({
   handleBack,
   validationErrors = {}
 }) {
-  const tabOrder = ["details", "court", "party", "documents", "associatedParties"];
+  const tabOrder = ["court", "details", "party", "documents", "associatedParties"];
 
   // Helper function to get validation icon for each tab
   const getTabIcon = (tabKey) => {
@@ -73,17 +75,6 @@ export default function CaseTabs({
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
       <TabsList className="grid w-full grid-cols-5">
         <TabsTrigger 
-          value="details"
-          className="relative"
-        >
-          <span className="flex items-center">
-            Case Details
-            {getTabIcon('details')}
-            {getErrorBadge('details')}
-          </span>
-        </TabsTrigger>
-        
-        <TabsTrigger 
           value="court"
           className="relative"
         >
@@ -91,6 +82,17 @@ export default function CaseTabs({
             Court Info
             {getTabIcon('court')}
             {getErrorBadge('court')}
+          </span>
+        </TabsTrigger>
+
+        <TabsTrigger 
+          value="details"
+          className="relative"
+        >
+          <span className="flex items-center">
+            Case Details
+            {getTabIcon('details')}
+            {getErrorBadge('details')}
           </span>
         </TabsTrigger>
         
@@ -127,6 +129,23 @@ export default function CaseTabs({
         </TabsTrigger>
       </TabsList>
 
+      <TabsContent value="court">
+        <CourtInfoTab
+          caseData={caseData}
+          handleChange={handleChange}
+          handleSelectChange={handleSelectChange}
+          courtDirectoryOptions={courtDirectoryOptions}
+          courtDirectoryLoading={courtDirectoryLoading}
+          isSubmitting={isSubmitting}
+          handleSubmit={handleSubmit}
+          router={router}
+          handleNext={handleNext}
+          handleBack={handleBack}
+          isLastTab={false}
+          validationErrors={validationErrors.court}
+        />
+      </TabsContent>
+
       <TabsContent value="details">
         <CaseDetailsTab
           caseData={caseData}
@@ -141,21 +160,6 @@ export default function CaseTabs({
           handleBack={handleBack}
           isLastTab={false}
           validationErrors={validationErrors.details}
-        />
-      </TabsContent>
-
-      <TabsContent value="court">
-        <CourtInfoTab
-          caseData={caseData}
-          handleChange={handleChange}
-          handleSelectChange={handleSelectChange}
-          isSubmitting={isSubmitting}
-          handleSubmit={handleSubmit}
-          router={router}
-          handleNext={handleNext}
-          handleBack={handleBack}
-          isLastTab={false}
-          validationErrors={validationErrors.court}
         />
       </TabsContent>
 

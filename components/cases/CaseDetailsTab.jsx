@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DatePicker } from "@/components/ui/date-picker";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { CASE_TYPES } from "@/lib/constants/caseConstants";
+import { caseTypes } from "@/lib/caseTypes";
 
 export default function CaseDetailsTab({
   caseData,
@@ -53,33 +53,62 @@ export default function CaseDetailsTab({
                 name="caseNumber"
                 value={caseData.caseNumber}
                 onChange={handleChange}
-                placeholder="e.g., CRL/123/2023"
+                placeholder="e.g., AB1234"
                 required
+              />
+              <p className="text-xs text-muted-foreground">
+                Use letters and numbers only for the case number.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="category">
+                Case Category <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                value={caseData.category}
+                onValueChange={(value) => handleSelectChange("category", value)}
+              >
+                <SelectTrigger id="category">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.keys(caseTypes).map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="selectedEcourtCaseType">
+                eCourts Case Type <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="selectedEcourtCaseType"
+                value={caseData.eCourt?.caseTypeName || ""}
+                readOnly
+                placeholder="Select state, district, complex, court and case type first"
+                className="bg-muted text-muted-foreground cursor-default"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="caseType">
-                Case Type <span className="text-red-500">*</span>
-              </Label>
-              <Select
-                value={caseData.caseType}
-                onValueChange={(value) => handleSelectChange("caseType", value)}
-                required
-              >
-                <SelectTrigger id="caseType">
-                  <SelectValue placeholder="Select case type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CASE_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="caseCode">eCourts Case Code</Label>
+              <Input
+                id="caseCode"
+                name="caseCode"
+                value={caseData.eCourt?.caseTypeCode || ""}
+                readOnly
+                placeholder="Auto-filled from eCourts case type"
+                className="bg-muted text-muted-foreground cursor-default"
+              />
             </div>
 
             <div className="space-y-2">
@@ -175,13 +204,17 @@ export default function CaseDetailsTab({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Case Description</Label>
+            <Label htmlFor="description">
+              Case Description <span className="text-red-500">*</span>
+            </Label>
             <Textarea
               id="description"
               name="description"
               value={caseData.description}
               onChange={handleChange}
               rows={4}
+              required
+              placeholder="Enter a clear summary of the case"
             />
           </div>
 

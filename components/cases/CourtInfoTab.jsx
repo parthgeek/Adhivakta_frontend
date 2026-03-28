@@ -1,15 +1,16 @@
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { STATES } from "@/lib/constants/caseConstants";
 
 export default function CourtInfoTab({
   caseData,
   handleChange,
   handleSelectChange,
+  courtDirectoryOptions,
+  courtDirectoryLoading,
   isSubmitting,
   handleSubmit,
   router,
@@ -17,53 +18,42 @@ export default function CourtInfoTab({
   handleBack,
   isLastTab
 }) {
-  const districtOptions = [
-    { value: "bengaluru_urban", label: "Bengaluru Urban" },
-    { value: "bengaluru_rural", label: "Bengaluru Rural" },
-    { value: "mysuru", label: "Mysuru" },
-    { value: "mangaluru", label: "Mangaluru" },
-    { value: "belagavi", label: "Belagavi" },
-    { value: "kalaburagi", label: "Kalaburagi" },
-    { value: "dharwad", label: "Dharwad" },
-    { value: "tumakuru", label: "Tumakuru" },
-    { value: "shivamogga", label: "Shivamogga" },
-    { value: "vijayapura", label: "Vijayapura" },
-    { value: "davanagere", label: "Davanagere" },
-    { value: "ballari", label: "Ballari" },
-    { value: "udupi", label: "Udupi" },
-    { value: "raichur", label: "Raichur" },
-    { value: "hassan", label: "Hassan" },
-    { value: "mumbai", label: "Mumbai" },
-    { value: "pune", label: "Pune" },
-    { value: "nagpur", label: "Nagpur" },
-    { value: "chennai", label: "Chennai" },
-    { value: "coimbatore", label: "Coimbatore" },
-    { value: "madurai", label: "Madurai" },
-  ];
+  const { states = [], districts = [], complexes = [], courts = [], caseTypes = [] } =
+    courtDirectoryOptions || {};
+  const selectedEcourt = caseData.eCourt || {};
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Court Information</CardTitle>
-        <CardDescription>Enter details about the court where the case is filed</CardDescription>
+        <CardDescription>
+          Follow the eCourts flow: select state, district, court complex, court, and then case type
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="courtState">State</Label>
+                <Label htmlFor="courtState">
+                  State <span className="text-red-500">*</span>
+                </Label>
                 <Select
-                  value={caseData.courtState}
-                  onValueChange={(value) => handleSelectChange("courtState", value)}
+                  value={selectedEcourt.stateCode || ""}
+                  onValueChange={(value) => handleSelectChange("ecourtState", value)}
+                  disabled={courtDirectoryLoading?.states}
                 >
                   <SelectTrigger id="courtState">
-                    <SelectValue placeholder="Select state" />
+                    <SelectValue
+                      placeholder={
+                        courtDirectoryLoading?.states ? "Loading states..." : "Select state"
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent>
-                    {STATES.map((state) => (
-                      <SelectItem key={state.value} value={state.value}>
-                        {state.label}
+                    {states.map((state) => (
+                      <SelectItem key={state.code} value={state.code}>
+                        {state.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -71,18 +61,29 @@ export default function CourtInfoTab({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="district">District</Label>
+                <Label htmlFor="district">
+                  District <span className="text-red-500">*</span>
+                </Label>
                 <Select
-                  value={caseData.district}
-                  onValueChange={(value) => handleSelectChange("district", value)}
+                  value={selectedEcourt.districtCode || ""}
+                  onValueChange={(value) => handleSelectChange("ecourtDistrict", value)}
+                  disabled={!selectedEcourt.stateCode || courtDirectoryLoading?.districts}
                 >
                   <SelectTrigger id="district">
-                    <SelectValue placeholder="Select district" />
+                    <SelectValue
+                      placeholder={
+                        !selectedEcourt.stateCode
+                          ? "Select state first"
+                          : courtDirectoryLoading?.districts
+                            ? "Loading districts..."
+                            : "Select district"
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent>
-                    {districtOptions.map((district) => (
-                      <SelectItem key={district.value} value={district.value}>
-                        {district.label}
+                    {districts.map((district) => (
+                      <SelectItem key={district.code} value={district.code}>
+                        {district.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -92,18 +93,110 @@ export default function CourtInfoTab({
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="court">
-                  Court Name <span className="text-red-500">*</span>
+                <Label htmlFor="courtComplex">
+                  Court Complex <span className="text-red-500">*</span>
                 </Label>
-                <Input
-                  id="court"
-                  name="court"
-                  value={caseData.court}
-                  onChange={handleChange}
-                  required
-                />
+                <Select
+                  value={selectedEcourt.complexCode || ""}
+                  onValueChange={(value) => handleSelectChange("ecourtComplex", value)}
+                  disabled={!selectedEcourt.districtCode || courtDirectoryLoading?.complexes}
+                >
+                  <SelectTrigger id="courtComplex">
+                    <SelectValue
+                      placeholder={
+                        !selectedEcourt.districtCode
+                          ? "Select district first"
+                          : courtDirectoryLoading?.complexes
+                            ? "Loading court complexes..."
+                            : "Select court complex"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {complexes.map((complex) => (
+                      <SelectItem key={complex.code} value={complex.code}>
+                        {complex.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="courtSelection">
+                  Court / Establishment <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={selectedEcourt.courtCode || ""}
+                  onValueChange={(value) => handleSelectChange("ecourtCourt", value)}
+                  disabled={!selectedEcourt.complexCode || courtDirectoryLoading?.courts}
+                >
+                  <SelectTrigger id="courtSelection">
+                    <SelectValue
+                      placeholder={
+                        !selectedEcourt.complexCode
+                          ? "Select court complex first"
+                          : courtDirectoryLoading?.courts
+                            ? "Loading courts..."
+                            : "Select court"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {courts.map((court) => (
+                      <SelectItem key={court.code} value={court.code}>
+                        {court.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="ecourtCaseType">
+                  eCourts Case Type <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={selectedEcourt.caseTypeCode || ""}
+                  onValueChange={(value) => handleSelectChange("ecourtCaseType", value)}
+                  disabled={!selectedEcourt.courtCode || courtDirectoryLoading?.caseTypes}
+                >
+                  <SelectTrigger id="ecourtCaseType">
+                    <SelectValue
+                      placeholder={
+                        !selectedEcourt.courtCode
+                          ? "Select court first"
+                          : courtDirectoryLoading?.caseTypes
+                            ? "Loading case types..."
+                            : "Select eCourts case type"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {caseTypes.map((caseType) => (
+                      <SelectItem key={caseType.code} value={caseType.code}>
+                        {caseType.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="selectedCourtName">Selected Court</Label>
+                <Input
+                  id="selectedCourtName"
+                  value={selectedEcourt.court || ""}
+                  readOnly
+                  placeholder="Auto-filled from your court selection"
+                  className="bg-muted text-muted-foreground cursor-default"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="courtHall">Court Hall Number</Label>
                 <Input

@@ -15,11 +15,18 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/components/ui/use-toast";
 import api from "@/services/api";
 import { Badge } from "@/components/ui/badge";
+import {
+  formatCaseTypeLabel,
+  normalizeCaseNumber,
+} from "@/lib/caseTypeUtils";
 const CASE_TYPES = [
   { value: "civil", label: "Civil" },
   { value: "criminal", label: "Criminal" },
   { value: "family", label: "Family" },
+  { value: "consumer", label: "Consumer" },
   { value: "labour", label: "Labour" },
+  { value: "tribunal", label: "Tribunal" },
+  { value: "special", label: "Special" },
   { value: "revenue", label: "Revenue" },
   { value: "motor_accident", label: "Motor Accident Claims" },
   { value: "commercial", label: "Commercial" },
@@ -95,6 +102,9 @@ const DISTRICTS = {
 const normalizeEmail = (value = "") =>
   typeof value === "string" ? value.trim().toLowerCase() : "";
 
+const normalizeText = (value = "") =>
+  typeof value === "string" ? value.trim() : "";
+
 const getEntityId = (value) => {
   if (!value) return "";
   if (typeof value === "object") {
@@ -121,6 +131,7 @@ export default function EditCasePage() {
   const { id } = useParams();
   const router = useRouter();
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState("details");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLawyer, setIsLawyer] = useState(true);
   const [caseData, setCaseData] = useState(null);
@@ -157,6 +168,7 @@ export default function EditCasePage() {
         // Normalize data to match the new case form structure
         setCaseData({
           ...d,
+          caseNumber: normalizeCaseNumber(d.caseNumber || ""),
           courtState: d.courtState || "karnataka",
           district: d.district || "bengaluru_urban",
           bench: d.bench || "",
@@ -172,6 +184,7 @@ export default function EditCasePage() {
           respondentRole: d.respondentRole || "Defendant",
           respondents: d.parties?.respondent || [],
           description: d.description || "",
+          caseSubType: d.caseSubType || "",
           status: d.status || "active",
           priority: d.priority || "normal",
           isUrgent: d.isUrgent || false,
@@ -219,11 +232,18 @@ export default function EditCasePage() {
   };
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setCaseData((prev) => ({ ...prev, [name]: value }));
+    setCaseData((prev) => ({
+      ...prev,
+      [name]: name === "caseNumber" ? normalizeCaseNumber(value) : value,
+    }));
   };
 
   const handleSelectChange = (name, value) => {
-    setCaseData((prev) => ({ ...prev, [name]: value }));
+    setCaseData((prev) => ({
+      ...prev,
+      [name]: value,
+      ...(name === "caseType" ? { caseSubType: "" } : {}),
+    }));
   };
 
   const handleDateChange = (name, value) => {
@@ -308,6 +328,28 @@ export default function EditCasePage() {
     if (e && e.preventDefault) e.preventDefault();
     if (!caseData) return;
 
+    const normalizedDescription = normalizeText(caseData.description);
+    const normalizedCaseNumber = normalizeCaseNumber(caseData.caseNumber);
+    if (!normalizedDescription) {
+      setActiveTab("details");
+      toast({
+        title: "Error",
+        description: "Case description is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!normalizedCaseNumber) {
+      setActiveTab("details");
+      toast({
+        title: "Error",
+        description: "Case number must be alphanumeric only.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // When saving details/party/all -> validate petitioners/respondents (same rules as before)
     if (section === 'all' || section === 'details' || section === 'party') {
       if (!caseData.petitioners || caseData.petitioners.length === 0) {
@@ -382,8 +424,9 @@ export default function EditCasePage() {
         // Always include basic fields only when saving details/all
         ...(section === 'all' || section === 'details' ? {
           title: caseData.title,
-          caseNumber: caseData.caseNumber,
+          caseNumber: normalizedCaseNumber,
           caseType: caseData.caseType,
+          caseSubType: caseData.caseSubType || "",
           status: caseData.status || "active",
           courtState: caseData.courtState,
           district: caseData.district,
@@ -394,7 +437,7 @@ export default function EditCasePage() {
           courtComplex: caseData.courtComplex,
           filingDate: caseData.filingDate ? new Date(caseData.filingDate).toISOString() : null,
           nextHearingDate: caseData.nextHearingDate ? new Date(caseData.nextHearingDate).toISOString() : null,
-          description: caseData.description || "",
+          description: normalizedDescription,
           priority: caseData.priority || "normal",
           isUrgent: caseData.isUrgent || false,
           caseStage: caseData.caseStage || "filing",
@@ -506,7 +549,7 @@ export default function EditCasePage() {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2">
-          <Tabs defaultValue="details" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="details">Case Details</TabsTrigger>
               <TabsTrigger value="court">Court Information</TabsTrigger>
@@ -541,9 +584,12 @@ export default function EditCasePage() {
                           name="caseNumber"
                           value={caseData.caseNumber}
                           onChange={handleChange}
-                          placeholder="e.g., CRL/123/2023"
+                          placeholder="e.g., AB1234"
                           required
                         />
+                        <p className="text-xs text-muted-foreground">
+                          Use letters and numbers only for the case number.
+                        </p>
                       </div>
                     </div>
 
@@ -568,6 +614,11 @@ export default function EditCasePage() {
                             ))}
                           </SelectContent>
                         </Select>
+                        {caseData.caseSubType && (
+                          <p className="text-xs text-muted-foreground">
+                            Saved sub-type: {formatCaseTypeLabel(caseData.caseSubType)}
+                          </p>
+                        )}
                       </div>
 
                       <div className="space-y-2">
@@ -661,13 +712,17 @@ export default function EditCasePage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="description">Case Description</Label>
+                      <Label htmlFor="description">
+                        Case Description <span className="text-red-500">*</span>
+                      </Label>
                       <Textarea
                         id="description"
                         name="description"
                         value={caseData.description}
                         onChange={handleChange}
                         rows={4}
+                        required
+                        placeholder="Enter a clear summary of the case"
                       />
                     </div>
 
