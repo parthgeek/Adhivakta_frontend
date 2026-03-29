@@ -8,14 +8,12 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import {
   Plus,
   Search,
-  Filter,
   MoreVertical,
   Calendar,
   User,
@@ -38,7 +36,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import api from "@/services/api";
-import { useToast } from "@/components/ui/use-toast";
 import {
   formatCaseTypeLabel,
   formatDisplayCaseNumber,
@@ -50,21 +47,12 @@ import {
   getLeadLegalTeamMember,
   formatLegalTeamSummary,
 } from "@/lib/legal-team";
-
-const getPriorityColor = (priority) => {
-  switch ((priority || "medium").toLowerCase()) {
-    case "high":
-      return "bg-red-500 text-white border-transparent";
-    case "urgent":
-      return "bg-red-600 text-white border-transparent";
-    case "medium":
-      return "bg-orange-400 text-white border-transparent";
-    case "low":
-      return "bg-green-500 text-white border-transparent";
-    default:
-      return "bg-gray-200 text-gray-700";
-  }
-};
+import {
+  getCasePriority,
+  getCasePriorityColor,
+  getCasePriorityLabel,
+  isPriorityAlertCase,
+} from "@/lib/casePriority";
 
 const getStatusColor = (status) => {
   switch ((status || "active").toLowerCase()) {
@@ -82,14 +70,11 @@ const getStatusColor = (status) => {
 export default function CasesPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const { toast } = useToast();
   const [isLawyer, setIsLawyer] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [caseFilter, setCaseFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("All Categories");
   const [statusFilter, setStatusFilter] = useState("All Statuses");
   const [priorityFilter, setPriorityFilter] = useState("All Priority");
-  const [dateFilter, setDateFilter] = useState("all");
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -112,7 +97,6 @@ export default function CasesPage() {
               : undefined,
           type:
             categoryFilter !== "All Categories" ? categoryFilter : undefined,
-          date: dateFilter !== "all" ? dateFilter : undefined,
         };
 
         const response = await api.cases.getAll(filters);
@@ -137,7 +121,7 @@ export default function CasesPage() {
     };
 
     fetchCases();
-  }, [isLawyer, searchTerm, caseFilter, categoryFilter, statusFilter, dateFilter]);
+  }, [isLawyer, searchTerm, categoryFilter, statusFilter]);
 
   // Helper function to map API case fields to UI fields
   const mapCaseFields = (caseItem) => {
@@ -164,9 +148,10 @@ export default function CasesPage() {
       status: caseItem.status
         ? caseItem.status.charAt(0).toUpperCase() + caseItem.status.slice(1)
         : "Active",
-      nextHearing: caseItem.nextHearingDate,
+      nextHearing:
+        caseItem.nextHearingDate || caseItem.nextHearing || caseItem.hearingDate,
       filingDate: caseItem.filingDate || caseItem.filing_date || caseItem.dateOfFiling,
-      priority: caseItem.priority || "medium",
+      priority: getCasePriority(caseItem),
     };
   };
 
@@ -323,9 +308,9 @@ export default function CasesPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="All Priority">All Priority</SelectItem>
+                <SelectItem value="urgent">Urgent Priority</SelectItem>
                 <SelectItem value="high">High Priority</SelectItem>
-                <SelectItem value="medium">Medium Priority</SelectItem>
-                <SelectItem value="low">Low Priority</SelectItem>
+                <SelectItem value="normal">Normal Priority</SelectItem>
               </SelectContent>
             </Select>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
@@ -365,10 +350,11 @@ export default function CasesPage() {
               .filter((member) => member.level === "Senior" && member.name)
               .map((member) => `Sr. Adv. ${member.name}`)
               .join(", ");
-            const nextHearing = rawCase.nextHearingDate || rawCase.hearingDate;
+            const nextHearing =
+              rawCase.nextHearingDate || rawCase.nextHearing || rawCase.hearingDate;
             const courtName = rawCase.court || "Not specified";
             const caseType = getDisplayCaseType(rawCase);
-            const priority = rawCase.priority || "medium";
+            const priority = getCasePriority(rawCase);
 
             let clientName = rawCase.client?.name || rawCase.client;
             if (!clientName && Array.isArray(rawCase.clients) && rawCase.clients.length > 0) {
@@ -380,52 +366,63 @@ export default function CasesPage() {
                 <CardContent className="p-6">
                   <div className="space-y-4">
                     {/* Header */}
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <h3 className="text-lg font-semibold text-foreground">
-                            {caseItem.title || "Untitled case"}
-                          </h3>
-                          <Badge className={getPriorityColor(priority)}>
-                            {(priority || "MEDIUM").toUpperCase()}
-                          </Badge>
-                          <Badge variant="outline" className={getStatusColor(caseItem.status)}>
-                            {(caseItem.status || "Active").toUpperCase()}
-                          </Badge>
-                          {(priority === "high" || priority === "urgent") && (
-                            <AlertCircle className="h-5 w-5 text-red-500" />
-                          )}
-                        </div>
-                        <p className="text-sm font-medium text-muted-foreground">
-                          Case No. {caseItem.identifier || caseItem.number || "N/A"}
-                        </p>
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {caseItem.description || "No summary added yet."}
-                        </p>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="space-y-1 min-w-0 flex-1">
+                        {/* Row 1: Case Name (left) | Case No. + Status (right) */}
+                        <div className="flex items-start justify-between gap-4">
                           <div>
-                            <span className="text-xs text-muted-foreground block">Court</span>
-                            <span className="text-sm font-medium">{courtName}</span>
+                            <p className="text-xs text-muted-foreground">Case Name</p>
+                            <h3 className="text-lg font-semibold text-foreground leading-snug">
+                              {caseItem.title || "Untitled case"}
+                            </h3>
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <span className="text-xs text-muted-foreground">Priority:</span>
+                              <Badge className={getCasePriorityColor(priority)}>
+                                {getCasePriorityLabel(priority)}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-xs text-muted-foreground">Case No.</p>
+                            <p className="text-sm font-semibold text-foreground">{caseItem.number || "N/A"}</p>
+                            <div className="flex items-center justify-end gap-1.5 mt-1">
+                              <span className="text-xs text-muted-foreground">Status:</span>
+                              <Badge variant="outline" className={getStatusColor(caseItem.status)}>
+                                {(caseItem.status || "Active").toUpperCase()}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="pt-1">
+                          <p className="text-xs text-muted-foreground mb-0.5">Description</p>
+                          <p className="text-sm text-foreground/80 line-clamp-2">
+                            {caseItem.description || "No summary added yet."}
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2 pt-2">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Case Type</p>
+                            <p className="text-sm font-medium text-foreground">{caseType || "N/A"}</p>
                           </div>
                           <div>
-                            <span className="text-xs text-muted-foreground block">Filing Date</span>
-                            <span className="text-sm font-medium">
+                            <p className="text-xs text-muted-foreground">Court</p>
+                            <p className="text-sm font-medium text-foreground">{courtName}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Filing Date</p>
+                            <p className="text-sm font-medium text-foreground">
                               {caseItem.filingDate
                                 ? new Date(caseItem.filingDate).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" })
                                 : "N/A"}
-                            </span>
+                            </p>
                           </div>
                           <div>
-                            <span className="text-xs text-muted-foreground block">Next Hearing</span>
-                            <span className="text-sm font-medium">
+                            <p className="text-xs text-muted-foreground">Next Hearing</p>
+                            <p className="text-sm font-medium text-foreground">
                               {nextHearing
                                 ? new Date(nextHearing).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" })
                                 : "N/A"}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-xs text-muted-foreground block">District</span>
-                            <span className="text-sm font-medium">{caseItem.district}</span>
+                            </p>
                           </div>
                         </div>
                       </div>

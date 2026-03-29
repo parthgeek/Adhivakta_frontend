@@ -25,9 +25,15 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { getCaseIdentifier, getDisplayCaseType } from "@/lib/caseTypeUtils";
+import { getCaseIdentifier, getDisplayCaseType, formatDisplayCaseNumber } from "@/lib/caseTypeUtils";
 import { cn } from "@/lib/utils";
 import { formatLegalTeamSummary } from "@/lib/legal-team";
+import {
+  getCasePriority,
+  getCasePriorityColor,
+  getCasePriorityLabel,
+  isPriorityAlertCase,
+} from "@/lib/casePriority";
 
 // Helper function to format relative time
 const formatRelativeTime = (date) => {
@@ -148,17 +154,6 @@ const StatsCard = ({ title, value, change, changeType = 'neutral', icon: Icon, i
   return href ? <Link href={href}>{content}</Link> : content;
 };
 
-// Helper: get priority badge color
-const getPriorityColor = (priority) => {
-  switch ((priority || "medium").toLowerCase()) {
-    case "high": return "bg-red-500 text-white border-transparent";
-    case "urgent": return "bg-red-600 text-white border-transparent";
-    case "medium": return "bg-orange-400 text-white border-transparent";
-    case "low": return "bg-green-500 text-white border-transparent";
-    default: return "bg-muted text-foreground";
-  }
-};
-
 // Helper: get status badge color
 const getStatusColor = (status) => {
   switch ((status || "active").toLowerCase()) {
@@ -210,101 +205,102 @@ const CasesList = ({ cases = [] }) => {
             safeText(caseItem.assignedTo);
           const courtName = safeText(caseItem.court) || "N/A";
           const caseType = getDisplayCaseType(caseItem) || "N/A";
-          const caseIdentifier = getCaseIdentifier(caseItem) || "N/A";
           const caseTitle = safeText(caseItem.title) || "Untitled case";
-          const caseDescription =
-            safeText(caseItem.description) || "No summary added yet.";
+          const caseDescription = safeText(caseItem.description) || "No summary added yet.";
           const nextHearing = caseItem.nextHearingDate || caseItem.nextHearing || caseItem.hearingDate;
           const filingDate = caseItem.filingDate || caseItem.filing_date || caseItem.dateOfFiling;
           const petitioners = caseItem.parties?.petitioner || [];
           const respondents = caseItem.parties?.respondent || [];
+          const priority = getCasePriority(caseItem);
+          const caseNumber = formatDisplayCaseNumber({
+            caseNumber: caseItem.caseNumber || caseItem.number || "",
+            caseTypeName: caseItem.caseSubType || caseItem.eCourt?.caseTypeName || "",
+            caseTypeCode: caseItem.eCourt?.caseTypeCode || caseItem.caseCode || "",
+          }) || caseItem.caseNumber || caseItem.number || "N/A";
+          const fmt = (d) => d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }) : "N/A";
 
           return (
             <div
               key={caseItem._id || caseItem.id || index}
               className="p-4 border rounded-lg hover:shadow-sm transition-shadow space-y-3"
             >
-              {/* Header */}
-              <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs text-muted-foreground">Case Name</p>
-                    <h4 className="font-medium text-foreground">
-                      {caseTitle}
-                    </h4>
-                    <Badge className={cn("text-xs", getPriorityColor(caseItem.priority))}>
-                      {(caseItem.priority || "MEDIUM").toUpperCase()}
+              {/* Row 1: Case Name (left) | Case No. + Status (right) */}
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Case Name</p>
+                  <h4 className="text-base font-semibold text-foreground leading-snug">
+                    {caseTitle}
+                  </h4>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="text-xs text-muted-foreground">Priority:</span>
+                    <Badge className={cn("text-xs", getCasePriorityColor(priority))}>
+                      {getCasePriorityLabel(priority)}
                     </Badge>
-                    <Badge
-                      variant="outline"
-                      className={cn("text-xs", getStatusColor(caseItem.status))}
-                    >
+                  </div>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-xs text-muted-foreground">Case No.</p>
+                  <p className="text-sm font-semibold text-foreground">{caseNumber}</p>
+                  <div className="flex items-center justify-end gap-1.5 mt-1">
+                    <span className="text-xs text-muted-foreground">Status:</span>
+                    <Badge variant="outline" className={cn("text-xs", getStatusColor(caseItem.status))}>
                       {(caseItem.status || "Active").toUpperCase()}
                     </Badge>
                   </div>
-                  <p className="text-xs font-medium text-muted-foreground">
-                    Case No. {caseIdentifier}
-                  </p>
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    {caseDescription}
-                  </p>
-                </div>
-                {(caseItem.priority === "high" || caseItem.priority === "urgent") && (
-                  <AlertCircle className="h-5 w-5 text-red-500" />
-                )}
-              </div>
-
-              {/* Identifiers Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                <div>
-                  <span className="text-muted-foreground block text-xs">Case Type</span>
-                  <span className="font-medium">{caseType}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground block text-xs">Court</span>
-                  <span className="font-medium">{courtName}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground block text-xs">Filing Date</span>
-                  <span className="font-medium">
-                    {filingDate ? new Date(filingDate).toLocaleDateString() : "N/A"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground block text-xs">Next Hearing</span>
-                  <span className="font-medium">
-                    {nextHearing ? new Date(nextHearing).toLocaleDateString() : "N/A"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground block text-xs">Client</span>
-                  <span className="font-medium">{clientName || "N/A"}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground block text-xs">Petitioner</span>
-                  <span className="font-medium">
-                    {petitioners.length > 0 ? petitioners[0].name : "N/A"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground block text-xs">Other Side</span>
-                  <span className="font-medium">
-                    {respondents.length > 0 ? respondents[0].name : "N/A"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground block text-xs">Lead Lawyer</span>
-                  <span className="font-medium">{lawyerName || "N/A"}</span>
                 </div>
               </div>
 
-              {/* Actions */}
-              <div className="flex justify-end items-center pt-2 border-t">
-                <div className="flex gap-2">
-                  <Link href={`/dashboard/cases/${caseItem._id || caseItem.id}`}>
-                    <Button variant="outline" size="sm">View Details</Button>
-                  </Link>
+              {/* Description */}
+              <div>
+                <p className="text-xs text-muted-foreground mb-0.5">Description</p>
+                <p className="text-sm text-foreground/80 line-clamp-2">{caseDescription}</p>
+              </div>
+
+              {/* Details grids */}
+              <div className="border-t pt-3 space-y-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Case Type</p>
+                    <p className="text-sm font-medium text-foreground">{caseType}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Court</p>
+                    <p className="text-sm font-medium text-foreground">{courtName}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Filing Date</p>
+                    <p className="text-sm font-medium text-foreground">{fmt(filingDate)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Next Hearing</p>
+                    <p className="text-sm font-medium text-foreground">{fmt(nextHearing)}</p>
+                  </div>
                 </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Client</p>
+                    <p className="text-sm font-medium text-foreground">{clientName || "N/A"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Petitioner</p>
+                    <p className="text-sm font-medium text-foreground">{petitioners.length > 0 ? petitioners[0].name : "N/A"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Respondent</p>
+                    <p className="text-sm font-medium text-foreground">{respondents.length > 0 ? respondents[0].name : "N/A"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Lead Advocate</p>
+                    <p className="text-sm font-medium text-foreground">{lawyerName || "N/A"}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action */}
+              <div className="flex justify-end pt-1">
+                <Link href={`/dashboard/cases/${caseItem._id || caseItem.id}`}>
+                  <Button variant="outline" size="sm">View Details</Button>
+                </Link>
               </div>
             </div>
           );

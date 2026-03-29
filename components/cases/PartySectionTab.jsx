@@ -5,6 +5,163 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { UserPlus, Users, Trash2 } from "lucide-react";
+
+function PartyForm({ party, idx, partyList, fieldKey, setCaseData }) {
+  const update = (field, value) => {
+    const arr = [...partyList];
+    arr[idx] = { ...arr[idx], [field]: value };
+    setCaseData((prev) => ({ ...prev, [fieldKey]: arr }));
+  };
+
+  return (
+    <div className="border rounded-lg p-4 space-y-4 bg-background">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-foreground">
+          {party.label || (fieldKey === "petitioners" ? "Petitioner" : "Defendant")} {idx + 1}
+        </p>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 px-2"
+          onClick={() =>
+            setCaseData((prev) => ({
+              ...prev,
+              [fieldKey]: prev[fieldKey].filter((_, i) => i !== idx),
+            }))
+          }
+        >
+          <Trash2 className="h-3.5 w-3.5 mr-1" />
+          Remove
+        </Button>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label>Full Name <span className="text-destructive">*</span></Label>
+          <Input
+            value={party.name}
+            onChange={(e) => update("name", e.target.value)}
+            placeholder="e.g. Rajesh Kumar"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Party Type</Label>
+          <Select value={party.type} onValueChange={(val) => update("type", val)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Individual">Individual</SelectItem>
+              <SelectItem value="Corporation">Corporation</SelectItem>
+              <SelectItem value="Organization">Organization</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label>Email</Label>
+          <Input
+            type="email"
+            value={party.email}
+            onChange={(e) => update("email", e.target.value)}
+            placeholder="email@example.com"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Contact Number</Label>
+          <Input
+            type="tel"
+            value={party.contact}
+            onChange={(e) => update("contact", e.target.value)}
+            placeholder="+91 XXXXXXXXXX"
+          />
+        </div>
+        <div className="space-y-1.5 md:col-span-2">
+          <Label>Address</Label>
+          <Textarea
+            value={party.address}
+            onChange={(e) => update("address", e.target.value)}
+            placeholder="Full address"
+            rows={2}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PartyColumn({ title, description, borderColor, labelOptions, labelValue, labelKey, listKey, caseData, setCaseData }) {
+  const list = caseData[listKey] || [];
+  const currentLabel = caseData[labelKey] || labelOptions[0].value;
+
+  const addParty = () =>
+    setCaseData((prev) => ({
+      ...prev,
+      [listKey]: [
+        ...(prev[listKey] || []),
+        { label: prev[labelKey] || labelOptions[0].value, type: "Individual", name: "", email: "", contact: "", address: "" },
+      ],
+    }));
+
+  return (
+    <div className={`flex-1 border-l-4 ${borderColor} rounded-lg p-5 bg-muted/20 space-y-4`}>
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{description}</p>
+          <h3 className="text-base font-semibold text-foreground mt-0.5">{title}</h3>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Select
+            value={currentLabel}
+            onValueChange={(val) => setCaseData((prev) => ({ ...prev, [labelKey]: val }))}
+          >
+            <SelectTrigger className="w-36 h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {labelOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.value}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Party cards */}
+      {list.length > 0 ? (
+        <div className="space-y-3">
+          {list.map((party, idx) => (
+            <PartyForm
+              key={idx}
+              party={party}
+              idx={idx}
+              partyList={list}
+              fieldKey={listKey}
+              setCaseData={setCaseData}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-8 text-center border border-dashed rounded-lg bg-background">
+          <Users className="h-8 w-8 text-muted-foreground/40 mb-2" />
+          <p className="text-sm text-muted-foreground">No {currentLabel.toLowerCase()} added yet</p>
+          <p className="text-xs text-muted-foreground/70 mt-0.5">Click below to add one</p>
+        </div>
+      )}
+
+      {/* Add button */}
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full gap-2"
+        onClick={addParty}
+      >
+        <UserPlus className="h-4 w-4" />
+        Add {currentLabel}
+      </Button>
+    </div>
+  );
+}
 
 export default function PartySectionTab({
   caseData,
@@ -20,327 +177,55 @@ export default function PartySectionTab({
     <Card>
       <CardHeader>
         <CardTitle>Party Section</CardTitle>
-        <CardDescription>Enter details for both legal sides</CardDescription>
+        <CardDescription>
+          Add all parties involved in this case — the side filing the case and the opposing side.
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-6">
-          {/* Petitioner Section */}
-          <div className="space-y-4">
-            <div className="flex items-center space-x-4">
-              <Select
-                value={caseData.petitionerLabel || "Petitioner"}
-                onValueChange={(val) =>
-                  setCaseData((prev) => ({
-                    ...prev,
-                    petitionerLabel: val,
-                  }))
-                }
-              >
-                <SelectTrigger className="w-56">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Petitioner">Petitioner</SelectItem>
-                  <SelectItem value="Appellant">Appellant</SelectItem>
-                  <SelectItem value="Plaintiff">Plaintiff</SelectItem>
-                  <SelectItem value="Complainant">Complainant</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button
-                type="button"
-                onClick={() =>
-                  setCaseData((prev) => ({
-                    ...prev,
-                    petitioners: [
-                      ...(prev.petitioners || []),
-                      {
-                        label: prev.petitionerLabel || "Petitioner",
-                        type: "Individual",
-                        name: "",
-                        email: "",
-                        contact: "",
-                        address: "",
-                      },
-                    ],
-                  }))
-                }
-              >
-                Add {caseData.petitionerLabel || "Petitioner"}
-              </Button>
-            </div>
-            {caseData.petitioners && caseData.petitioners.length > 0 && (
-              <div className="space-y-4">
-                {caseData.petitioners.map((petitioner, idx) => (
-                  <div key={idx} className="border rounded-lg p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium">
-                        {petitioner.label || "Petitioner"} {idx + 1}
-                      </h4>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          setCaseData((prev) => ({
-                            ...prev,
-                            petitioners: prev.petitioners.filter((_, i) => i !== idx),
-                          }))
-                        }
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Name</Label>
-                        <Input
-                          value={petitioner.name}
-                          onChange={(e) => {
-                            const arr = [...caseData.petitioners];
-                            arr[idx].name = e.target.value;
-                            setCaseData((prev) => ({
-                              ...prev,
-                              petitioners: arr,
-                            }));
-                          }}
-                          placeholder="Full name"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Type</Label>
-                        <Select
-                          value={petitioner.type}
-                          onValueChange={(val) => {
-                            const arr = [...caseData.petitioners];
-                            arr[idx].type = val;
-                            setCaseData((prev) => ({
-                              ...prev,
-                              petitioners: arr,
-                            }));
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Individual">Individual</SelectItem>
-                            <SelectItem value="Corporation">Corporation</SelectItem>
-                            <SelectItem value="Organization">Organization</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Email</Label>
-                        <Input
-                          type="email"
-                          value={petitioner.email}
-                          onChange={(e) => {
-                            const arr = [...caseData.petitioners];
-                            arr[idx].email = e.target.value;
-                            setCaseData((prev) => ({
-                              ...prev,
-                              petitioners: arr,
-                            }));
-                          }}
-                          placeholder="email@example.com"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Contact Number</Label>
-                        <Input
-                          type="tel"
-                          value={petitioner.contact}
-                          onChange={(e) => {
-                            const arr = [...caseData.petitioners];
-                            arr[idx].contact = e.target.value;
-                            setCaseData((prev) => ({
-                              ...prev,
-                              petitioners: arr,
-                            }));
-                          }}
-                          placeholder="+91 XXXXXXXXXX"
-                        />
-                      </div>
-                      <div className="space-y-2 md:col-span-2">
-                        <Label>Address</Label>
-                        <Textarea
-                          value={petitioner.address}
-                          onChange={(e) => {
-                            const arr = [...caseData.petitioners];
-                            arr[idx].address = e.target.value;
-                            setCaseData((prev) => ({
-                              ...prev,
-                              petitioners: arr,
-                            }));
-                          }}
-                          placeholder="Full address"
-                          rows={2}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+        <div className="flex flex-col lg:flex-row gap-6">
+          <PartyColumn
+            title="Filing Side"
+            description="Party initiating the case"
+            borderColor="border-primary"
+            labelOptions={[
+              { value: "Petitioner" },
+              { value: "Appellant" },
+              { value: "Plaintiff" },
+              { value: "Complainant" },
+            ]}
+            labelKey="petitionerLabel"
+            listKey="petitioners"
+            caseData={caseData}
+            setCaseData={setCaseData}
+          />
+
+          {/* Divider */}
+          <div className="hidden lg:flex flex-col items-center justify-center gap-2">
+            <div className="w-px flex-1 bg-border" />
+            <span className="text-xs font-semibold text-muted-foreground bg-background border rounded-full px-2 py-0.5">VS</span>
+            <div className="w-px flex-1 bg-border" />
+          </div>
+          <div className="lg:hidden flex items-center gap-3">
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-xs font-semibold text-muted-foreground bg-background border rounded-full px-2 py-0.5">VS</span>
+            <div className="flex-1 h-px bg-border" />
           </div>
 
-          {/* Respondent Section */}
-          <div className="space-y-4">
-            <div className="flex items-center space-x-4">
-              <Select
-                value={caseData.respondentLabel || "Defendant"}
-                onValueChange={(val) =>
-                  setCaseData((prev) => ({
-                    ...prev,
-                    respondentLabel: val,
-                  }))
-                }
-              >
-                <SelectTrigger className="w-56">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Defendant">Defendant</SelectItem>
-                  <SelectItem value="Accused">Accused</SelectItem>
-                  <SelectItem value="Respondent">Respondent</SelectItem>
-                  <SelectItem value="Opponent">Opponent</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button
-                type="button"
-                onClick={() =>
-                  setCaseData((prev) => ({
-                    ...prev,
-                    respondents: [
-                      ...(prev.respondents || []),
-                      {
-                        label: prev.respondentLabel || "Defendant",
-                        type: "Individual",
-                        name: "",
-                        email: "",
-                        contact: "",
-                        address: "",
-                      },
-                    ],
-                  }))
-                }
-              >
-                Add {caseData.respondentLabel || "Defendant"}
-              </Button>
-            </div>
-            {caseData.respondents && caseData.respondents.length > 0 && (
-              <div className="space-y-4">
-                {caseData.respondents.map((respondent, idx) => (
-                  <div key={idx} className="border rounded-lg p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium">
-                        {respondent.label || "Defendant"} {idx + 1}
-                      </h4>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          setCaseData((prev) => ({
-                            ...prev,
-                            respondents: prev.respondents.filter((_, i) => i !== idx),
-                          }))
-                        }
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Name</Label>
-                        <Input
-                          value={respondent.name}
-                          onChange={(e) => {
-                            const arr = [...caseData.respondents];
-                            arr[idx].name = e.target.value;
-                            setCaseData((prev) => ({
-                              ...prev,
-                              respondents: arr,
-                            }));
-                          }}
-                          placeholder="Full name"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Type</Label>
-                        <Select
-                          value={respondent.type}
-                          onValueChange={(val) => {
-                            const arr = [...caseData.respondents];
-                            arr[idx].type = val;
-                            setCaseData((prev) => ({
-                              ...prev,
-                              respondents: arr,
-                            }));
-                          }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Individual">Individual</SelectItem>
-                            <SelectItem value="Corporation">Corporation</SelectItem>
-                            <SelectItem value="Organization">Organization</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Email</Label>
-                        <Input
-                          type="email"
-                          value={respondent.email}
-                          onChange={(e) => {
-                            const arr = [...caseData.respondents];
-                            arr[idx].email = e.target.value;
-                            setCaseData((prev) => ({
-                              ...prev,
-                              respondents: arr,
-                            }));
-                          }}
-                          placeholder="email@example.com"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Contact Number</Label>
-                        <Input
-                          type="tel"
-                          value={respondent.contact}
-                          onChange={(e) => {
-                            const arr = [...caseData.respondents];
-                            arr[idx].contact = e.target.value;
-                            setCaseData((prev) => ({
-                              ...prev,
-                              respondents: arr,
-                            }));
-                          }}
-                          placeholder="+91 XXXXXXXXXX"
-                        />
-                      </div>
-                      <div className="space-y-2 md:col-span-2">
-                        <Label>Address</Label>
-                        <Textarea
-                          value={respondent.address}
-                          onChange={(e) => {
-                            const arr = [...caseData.respondents];
-                            arr[idx].address = e.target.value;
-                            setCaseData((prev) => ({
-                              ...prev,
-                              respondents: arr,
-                            }));
-                          }}
-                          placeholder="Full address"
-                          rows={2}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <PartyColumn
+            title="Opposing Side"
+            description="Party responding to the case"
+            borderColor="border-destructive"
+            labelOptions={[
+              { value: "Defendant" },
+              { value: "Accused" },
+              { value: "Respondent" },
+              { value: "Opponent" },
+            ]}
+            labelKey="respondentLabel"
+            listKey="respondents"
+            caseData={caseData}
+            setCaseData={setCaseData}
+          />
         </div>
       </CardContent>
       <CardFooter className="flex justify-between">
@@ -348,17 +233,13 @@ export default function PartySectionTab({
           Cancel
         </Button>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleBack}>
-            Back
-          </Button>
+          <Button variant="outline" onClick={handleBack}>Back</Button>
           {isLastTab ? (
             <Button onClick={(e) => handleSubmit(e, "all")} disabled={isSubmitting}>
               {isSubmitting ? "Saving..." : "Save Case"}
             </Button>
           ) : (
-            <Button onClick={handleNext}>
-              Next
-            </Button>
+            <Button onClick={handleNext}>Next</Button>
           )}
         </div>
       </CardFooter>

@@ -266,7 +266,6 @@ export default function NewCasePage() {
       respondents: [],
       description: "",
       status: "active",
-      priority: "normal",
       isUrgent: false,
       caseStage: "filing",
       actSections: "",
@@ -842,7 +841,6 @@ export default function NewCasePage() {
         },
 
         // Case Management
-        priority: caseData.priority || "normal",
         isUrgent: caseData.isUrgent || false,
         caseStage: caseData.caseStage || "filing",
         actSections: normalizeValue(caseData.actSections),
