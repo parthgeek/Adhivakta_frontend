@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DatePicker } from "@/components/ui/date-picker";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { caseTypes } from "@/lib/caseTypes";
 
 export default function CaseDetailsTab({
   caseData,
@@ -22,113 +21,117 @@ export default function CaseDetailsTab({
   handleBack,
   isLastTab
 }) {
+  const currentYear = new Date().getFullYear();
+  const caseYearOptions = Array.from({ length: 21 }, (_, index) =>
+    String(currentYear - index)
+  );
+  const selectedCaseType = [
+    caseData.caseCode,
+    typeof caseData.eCourt?.caseTypeName === "string"
+      ? caseData.eCourt.caseTypeName.toUpperCase()
+      : "",
+  ]
+    .filter(Boolean)
+    .join(" - ");
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Case Information</CardTitle>
-        <CardDescription>Enter the basic details about the case</CardDescription>
+        <CardDescription>
+          Enter the basic details about the case. The selected eCourts case type
+          is used to build the final case number automatically.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form id="case-form" onSubmit={(e) => e.preventDefault()} className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="title">
-                Case Title <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="title"
-                name="title"
-                value={caseData.title}
-                onChange={handleChange}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="caseNumber">
-                Case Number <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="caseNumber"
-                name="caseNumber"
-                value={caseData.caseNumber}
-                onChange={handleChange}
-                placeholder="e.g., AB1234"
-                required
-              />
-              <p className="text-xs text-muted-foreground">
-                Use letters and numbers only for the case number.
-              </p>
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="title">
+              Case Title <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="title"
+              name="title"
+              value={caseData.title}
+              onChange={handleChange}
+              required
+            />
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="category">
-                Case Category <span className="text-red-500">*</span>
-              </Label>
-              <Select
-                value={caseData.category}
-                onValueChange={(value) => handleSelectChange("category", value)}
-              >
-                <SelectTrigger id="category">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.keys(caseTypes).map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_140px]">
+              <div className="space-y-2">
+                <Label htmlFor="selectedCaseType">
+                  Case Type <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="selectedCaseType"
+                  value={selectedCaseType}
+                  readOnly
+                  placeholder="Select eCourts case type on the previous tab"
+                  className="bg-muted text-muted-foreground cursor-default"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="selectedEcourtCaseType">
-                eCourts Case Type <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="selectedEcourtCaseType"
-                value={caseData.eCourt?.caseTypeName || ""}
-                readOnly
-                placeholder="Select state, district, complex, court and case type first"
-                className="bg-muted text-muted-foreground cursor-default"
-              />
+              <div className="space-y-2">
+                <Label htmlFor="caseNumberMiddle">
+                  Case Number <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="caseNumberMiddle"
+                  name="caseNumberMiddle"
+                  value={caseData.caseNumberMiddle || ""}
+                  onChange={handleChange}
+                  placeholder="Case Number"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="caseYear">
+                  Year <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={caseData.caseYear || caseYearOptions[0]}
+                  onValueChange={(value) => handleSelectChange("caseYear", value)}
+                >
+                  <SelectTrigger id="caseYear">
+                    <SelectValue placeholder="Select year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {caseYearOptions.map((year) => (
+                      <SelectItem key={year} value={year}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+            <p className="text-xs text-muted-foreground">
+              {selectedCaseType
+                ? `Final format: ${caseData.caseCode || "TYPE"}/CASE_NUMBER/${caseData.caseYear || "YEAR"}`
+                : "Select the eCourts case type on the previous tab first."}
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="caseCode">eCourts Case Code</Label>
-              <Input
-                id="caseCode"
-                name="caseCode"
-                value={caseData.eCourt?.caseTypeCode || ""}
-                readOnly
-                placeholder="Auto-filled from eCourts case type"
-                className="bg-muted text-muted-foreground cursor-default"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="status">
-                Status <span className="text-red-500">*</span>
-              </Label>
-              <Select
-                value={caseData.status}
-                onValueChange={(value) => handleSelectChange("status", value)}
-                required
-              >
-                <SelectTrigger id="status">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="status">
+              Status <span className="text-red-500">*</span>
+            </Label>
+            <Select
+              value={caseData.status}
+              onValueChange={(value) => handleSelectChange("status", value)}
+              required
+            >
+              <SelectTrigger id="status">
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="closed">Closed</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

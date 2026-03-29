@@ -153,47 +153,34 @@ export default function CourtInfoTab({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="ecourtCaseType">
-                  eCourts Case Type <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  value={selectedEcourt.caseTypeCode || ""}
-                  onValueChange={(value) => handleSelectChange("ecourtCaseType", value)}
-                  disabled={!selectedEcourt.courtCode || courtDirectoryLoading?.caseTypes}
-                >
-                  <SelectTrigger id="ecourtCaseType">
-                    <SelectValue
-                      placeholder={
-                        !selectedEcourt.courtCode
-                          ? "Select court first"
-                          : courtDirectoryLoading?.caseTypes
-                            ? "Loading case types..."
-                            : "Select eCourts case type"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {caseTypes.map((caseType) => (
-                      <SelectItem key={caseType.code} value={caseType.code}>
-                        {caseType.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="selectedCourtName">Selected Court</Label>
-                <Input
-                  id="selectedCourtName"
-                  value={selectedEcourt.court || ""}
-                  readOnly
-                  placeholder="Auto-filled from your court selection"
-                  className="bg-muted text-muted-foreground cursor-default"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="ecourtCaseType">
+                eCourts Case Type <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                value={selectedEcourt.caseTypeCode || ""}
+                onValueChange={(value) => handleSelectChange("ecourtCaseType", value)}
+                disabled={!selectedEcourt.courtCode || courtDirectoryLoading?.caseTypes}
+              >
+                <SelectTrigger id="ecourtCaseType">
+                  <SelectValue
+                    placeholder={
+                      !selectedEcourt.courtCode
+                        ? "Select court first"
+                        : courtDirectoryLoading?.caseTypes
+                          ? "Loading case types..."
+                          : "Select eCourts case type"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {caseTypes.map((caseType) => (
+                    <SelectItem key={caseType.code} value={caseType.code}>
+                      {caseType.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

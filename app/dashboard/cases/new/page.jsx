@@ -6,7 +6,10 @@ import { useAuth } from "@/context/auth-context";
 import CaseTabs from "@/components/cases/CaseTabs";
 import SidebarGuide from "@/components/cases/SidebarGuide";
 import {
+  buildCaseNumber,
   getBackendCaseType,
+  getEcourtCaseTypeReference,
+  normalizeFormattedCaseNumber,
   normalizeCaseNumber,
 } from "@/lib/caseTypeUtils";
 import { toast } from "@/components/ui/use-toast";
@@ -46,6 +49,30 @@ const EMPTY_COURT_DIRECTORY_LOADING = {
   complexes: false,
   courts: false,
   caseTypes: false,
+};
+
+const DEFAULT_CASE_YEAR = String(new Date().getFullYear());
+
+const syncDerivedCaseFields = (caseInfo = {}) => {
+  const caseYear = caseInfo.caseYear || DEFAULT_CASE_YEAR;
+  const caseTypeName = caseInfo.eCourt?.caseTypeName || "";
+  const ecourtTypeCode = caseInfo.eCourt?.caseTypeCode || "";
+  const caseTypeReference = getEcourtCaseTypeReference({
+    caseTypeName,
+    caseTypeCode: ecourtTypeCode,
+  });
+
+  return {
+    ...caseInfo,
+    caseYear,
+    caseCode: caseTypeReference.caseCode,
+    category: caseTypeReference.category,
+    caseNumber: buildCaseNumber({
+      caseCode: caseTypeReference.caseCode,
+      caseNumberMiddle: caseInfo.caseNumberMiddle,
+      caseYear,
+    }),
+  };
 };
 
 const getParticipantUserId = (participant) => {
@@ -210,43 +237,47 @@ export default function NewCasePage() {
   );
   const isLawyer = user?.role === "lawyer" || user?.role === "admin";
 
-  const [caseData, setCaseData] = useState({
-    title: "",
-    caseNumber: "",
-    category: "",
-    caseType: "",
-    caseCode: "",
-    courtState: "",
-    district: "",
-    bench: "",
-    courtLevel: "",
-    courtBench: "",
-    courtType: "district_court",
-    court: "",
-    courtHall: "",
-    courtComplex: "",
-    eCourt: DEFAULT_ECOURT_SELECTION,
-    filingDate: new Date(),
-    nextHearingDate: null,
-    petitionerRole: "Petitioner",
-    petitionerType: "Individual",
-    petitionerLabel: "Petitioner",
-    petitioners: [],
-    respondentRole: "Defendant",
-    respondents: [],
-    description: "",
-    status: "active",
-    priority: "normal",
-    isUrgent: false,
-    caseStage: "filing",
-    actSections: "",
-    reliefSought: "",
-    notes: "",
-    advocates: [],
-    clients: [],
-    stakeholders: [],
-    lawyers: [],
-  });
+  const [caseData, setCaseData] = useState(
+    syncDerivedCaseFields({
+      title: "",
+      caseNumber: "",
+      caseNumberMiddle: "",
+      caseYear: DEFAULT_CASE_YEAR,
+      category: "",
+      caseType: "",
+      caseCode: "",
+      courtState: "",
+      district: "",
+      bench: "",
+      courtLevel: "",
+      courtBench: "",
+      courtType: "district_court",
+      court: "",
+      courtHall: "",
+      courtComplex: "",
+      eCourt: DEFAULT_ECOURT_SELECTION,
+      filingDate: new Date(),
+      nextHearingDate: null,
+      petitionerRole: "Petitioner",
+      petitionerType: "Individual",
+      petitionerLabel: "Petitioner",
+      petitioners: [],
+      respondentRole: "Defendant",
+      respondents: [],
+      description: "",
+      status: "active",
+      priority: "normal",
+      isUrgent: false,
+      caseStage: "filing",
+      actSections: "",
+      reliefSought: "",
+      notes: "",
+      advocates: [],
+      clients: [],
+      stakeholders: [],
+      lawyers: [],
+    })
+  );
 
   useEffect(() => {
     if (!user) return;
@@ -466,14 +497,19 @@ export default function NewCasePage() {
       errors.push({ tab: 'details', message: 'Case title must be at least 3 characters' });
     }
 
-    if (!caseData.caseNumber || caseData.caseNumber.trim() === '') {
+    if (!normalizeValue(caseData.caseNumberMiddle)) {
       errors.push({ tab: 'details', message: 'Case number is required' });
-    } else if (normalizeCaseNumber(caseData.caseNumber) !== caseData.caseNumber) {
-      errors.push({ tab: 'details', message: 'Case number must be alphanumeric only' });
+    }
+
+    if (!normalizeValue(caseData.caseYear)) {
+      errors.push({ tab: 'details', message: 'Case year is required' });
     }
 
     if (!caseData.category) {
-      errors.push({ tab: 'details', message: 'Case category is required' });
+      errors.push({
+        tab: 'details',
+        message: 'Case category could not be derived from the selected eCourts case type'
+      });
     }
 
     if (!caseData.status) {
@@ -648,7 +684,7 @@ export default function NewCasePage() {
       formData.append("file", file);
       formData.append("name", file.name);
       formData.append("description", `Document for case ${caseData.title || "Case"}`);
-      formData.append("category", caseData.caseType || "other");
+      formData.append("category", getBackendCaseType(caseData.category));
 
       try {
         const response = await api.documents.uploadToCaseId(
@@ -751,7 +787,7 @@ export default function NewCasePage() {
       const formattedData = {
         // Basic case info
         title: normalizeValue(caseData.title),
-        caseNumber: normalizeCaseNumber(caseData.caseNumber),
+        caseNumber: normalizeFormattedCaseNumber(caseData.caseNumber),
         caseType: getBackendCaseType(caseData.category),
         caseSubType: normalizeValue(caseData.eCourt?.caseTypeName),
         status: caseData.status || "active",
@@ -995,9 +1031,20 @@ export default function NewCasePage() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
+    if (name === "caseNumberMiddle") {
+      setCaseData((prev) =>
+        syncDerivedCaseFields({
+          ...prev,
+          caseNumberMiddle: normalizeCaseNumber(value),
+        })
+      );
+      return;
+    }
+
     setCaseData((prev) => ({
       ...prev,
-      [name]: name === "caseNumber" ? normalizeCaseNumber(value) : value,
+      [name]: value,
     }));
   };
 
@@ -1010,23 +1057,35 @@ export default function NewCasePage() {
       return;
     }
 
+    if (name === "caseYear") {
+      setCaseData((prev) =>
+        syncDerivedCaseFields({
+          ...prev,
+          caseYear: value,
+        })
+      );
+      return;
+    }
+
     if (name === "ecourtState") {
       const selectedState = courtDirectoryOptions.states.find(
         (state) => state.code === value
       );
 
-      setCaseData((prev) => ({
-        ...prev,
-        courtState: selectedState?.name || "",
-        district: "",
-        courtComplex: "",
-        court: "",
-        eCourt: {
-          ...DEFAULT_ECOURT_SELECTION,
-          stateCode: value,
-          state: selectedState?.name || "",
-        },
-      }));
+      setCaseData((prev) =>
+        syncDerivedCaseFields({
+          ...prev,
+          courtState: selectedState?.name || "",
+          district: "",
+          courtComplex: "",
+          court: "",
+          eCourt: {
+            ...DEFAULT_ECOURT_SELECTION,
+            stateCode: value,
+            state: selectedState?.name || "",
+          },
+        })
+      );
 
       setCourtDirectoryOptions((prev) => ({
         ...prev,
@@ -1046,24 +1105,26 @@ export default function NewCasePage() {
       );
       const stateCode = caseData.eCourt?.stateCode || "";
 
-      setCaseData((prev) => ({
-        ...prev,
-        district: selectedDistrict?.name || "",
-        courtComplex: "",
-        court: "",
-        eCourt: {
-          ...prev.eCourt,
-          districtCode: value,
+      setCaseData((prev) =>
+        syncDerivedCaseFields({
+          ...prev,
           district: selectedDistrict?.name || "",
-          complexCode: "",
-          complex: "",
-          courtCode: "",
+          courtComplex: "",
           court: "",
-          caseTypeCode: "",
-          caseTypeName: "",
-          requiresEstablishment: false,
-        },
-      }));
+          eCourt: {
+            ...prev.eCourt,
+            districtCode: value,
+            district: selectedDistrict?.name || "",
+            complexCode: "",
+            complex: "",
+            courtCode: "",
+            court: "",
+            caseTypeCode: "",
+            caseTypeName: "",
+            requiresEstablishment: false,
+          },
+        })
+      );
 
       setCourtDirectoryOptions((prev) => ({
         ...prev,
@@ -1083,21 +1144,23 @@ export default function NewCasePage() {
       const stateCode = caseData.eCourt?.stateCode || "";
       const districtCode = caseData.eCourt?.districtCode || "";
 
-      setCaseData((prev) => ({
-        ...prev,
-        courtComplex: selectedComplex?.name || "",
-        court: "",
-        eCourt: {
-          ...prev.eCourt,
-          complexCode: value,
-          complex: selectedComplex?.name || "",
-          courtCode: "",
+      setCaseData((prev) =>
+        syncDerivedCaseFields({
+          ...prev,
+          courtComplex: selectedComplex?.name || "",
           court: "",
-          caseTypeCode: "",
-          caseTypeName: "",
-          requiresEstablishment: false,
-        },
-      }));
+          eCourt: {
+            ...prev.eCourt,
+            complexCode: value,
+            complex: selectedComplex?.name || "",
+            courtCode: "",
+            court: "",
+            caseTypeCode: "",
+            caseTypeName: "",
+            requiresEstablishment: false,
+          },
+        })
+      );
 
       setCourtDirectoryOptions((prev) => ({
         ...prev,
@@ -1108,7 +1171,43 @@ export default function NewCasePage() {
       const courts = await loadCourts(stateCode, districtCode, value);
 
       if (courts.length === 1) {
-        await handleSelectChange("ecourtCourt", courts[0].code);
+        const selectedCourt = courts[0];
+
+        setCaseData((prev) =>
+          syncDerivedCaseFields({
+            ...prev,
+            court: selectedCourt.name,
+            eCourt: {
+              ...prev.eCourt,
+              courtCode: selectedCourt.code,
+              court: selectedCourt.name,
+              caseTypeCode: "",
+              caseTypeName: "",
+            },
+          })
+        );
+
+        const caseTypes = await loadCaseTypes(
+          stateCode,
+          districtCode,
+          value,
+          selectedCourt.code
+        );
+
+        if (caseTypes.length === 1) {
+          setCaseData((prev) =>
+            syncDerivedCaseFields({
+              ...prev,
+              eCourt: {
+                ...prev.eCourt,
+                courtCode: selectedCourt.code,
+                court: selectedCourt.name,
+                caseTypeCode: caseTypes[0].code,
+                caseTypeName: caseTypes[0].name,
+              },
+            })
+          );
+        }
       }
       return;
     }
@@ -1121,17 +1220,19 @@ export default function NewCasePage() {
       const districtCode = caseData.eCourt?.districtCode || "";
       const complexCode = caseData.eCourt?.complexCode || "";
 
-      setCaseData((prev) => ({
-        ...prev,
-        court: selectedCourt?.name || "",
-        eCourt: {
-          ...prev.eCourt,
-          courtCode: value,
+      setCaseData((prev) =>
+        syncDerivedCaseFields({
+          ...prev,
           court: selectedCourt?.name || "",
-          caseTypeCode: "",
-          caseTypeName: "",
-        },
-      }));
+          eCourt: {
+            ...prev.eCourt,
+            courtCode: value,
+            court: selectedCourt?.name || "",
+            caseTypeCode: "",
+            caseTypeName: "",
+          },
+        })
+      );
 
       setCourtDirectoryOptions((prev) => ({
         ...prev,
@@ -1146,7 +1247,18 @@ export default function NewCasePage() {
       );
 
       if (caseTypes.length === 1) {
-        await handleSelectChange("ecourtCaseType", caseTypes[0].code);
+        setCaseData((prev) =>
+          syncDerivedCaseFields({
+            ...prev,
+            eCourt: {
+              ...prev.eCourt,
+              courtCode: value,
+              court: selectedCourt?.name || prev.eCourt?.court || "",
+              caseTypeCode: caseTypes[0].code,
+              caseTypeName: caseTypes[0].name,
+            },
+          })
+        );
       }
       return;
     }
@@ -1156,15 +1268,16 @@ export default function NewCasePage() {
         (caseType) => caseType.code === value
       );
 
-      setCaseData((prev) => ({
-        ...prev,
-        caseCode: selectedCaseType?.code || "",
-        eCourt: {
-          ...prev.eCourt,
-          caseTypeCode: value,
-          caseTypeName: selectedCaseType?.name || "",
-        },
-      }));
+      setCaseData((prev) =>
+        syncDerivedCaseFields({
+          ...prev,
+          eCourt: {
+            ...prev.eCourt,
+            caseTypeCode: value,
+            caseTypeName: selectedCaseType?.name || "",
+          },
+        })
+      );
       return;
     }
 
@@ -1293,6 +1406,8 @@ export default function NewCasePage() {
           <CaseTabs
             caseData={caseData}
             setCaseData={setCaseData}
+            courtDirectoryOptions={courtDirectoryOptions}
+            courtDirectoryLoading={courtDirectoryLoading}
             isSubmitting={isSubmitting}
             isLawyer={isLawyer}
             selectedFiles={selectedFiles}

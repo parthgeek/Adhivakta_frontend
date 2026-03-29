@@ -41,6 +41,8 @@ import api from "@/services/api";
 import { useToast } from "@/components/ui/use-toast";
 import {
   formatCaseTypeLabel,
+  formatDisplayCaseNumber,
+  getCaseIdentifier,
   getDisplayCaseType,
 } from "@/lib/caseTypeUtils";
 import {
@@ -143,17 +145,27 @@ export default function CasesPage() {
       id: caseItem._id || caseItem.id,
       title: caseItem.title,
       description: caseItem.description || "",
-      number: caseItem.caseNumber || caseItem.number,
+      number: formatDisplayCaseNumber({
+        caseNumber: caseItem.caseNumber || caseItem.number,
+        caseTypeName:
+          caseItem.caseSubType ||
+          caseItem.eCourt?.caseTypeName ||
+          caseItem.type ||
+          "",
+        caseTypeCode: caseItem.eCourt?.caseTypeCode || caseItem.caseCode || "",
+      }),
+      identifier: getCaseIdentifier(caseItem),
       type: caseItem.caseSubType || caseItem.caseType || caseItem.type,
       category: caseItem.caseType || caseItem.type,
       client: caseItem.client?.name || caseItem.client,
-      court: caseItem.court || caseItem.courtType || "Not specified",
+      court: caseItem.court || caseItem.courtType || "N/A",
       courtHall: caseItem.courtHall || "N/A",
-      district: caseItem.district || "Not specified",
+      district: caseItem.district || "N/A",
       status: caseItem.status
         ? caseItem.status.charAt(0).toUpperCase() + caseItem.status.slice(1)
         : "Active",
       nextHearing: caseItem.nextHearingDate,
+      filingDate: caseItem.filingDate || caseItem.filing_date || caseItem.dateOfFiling,
       priority: caseItem.priority || "medium",
     };
   };
@@ -165,7 +177,8 @@ export default function CasesPage() {
     ).values()
   );
 
-  const filteredCases = uniqueCases.map(mapCaseFields).filter((caseItem) => {
+  const filteredCases = uniqueCases.filter((rawCase) => {
+    const caseItem = mapCaseFields(rawCase);
     const matchesSearch =
       (caseItem.title && caseItem.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (caseItem.description &&
@@ -173,6 +186,8 @@ export default function CasesPage() {
       (caseItem.type &&
         caseItem.type.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (caseItem.number && caseItem.number.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (caseItem.identifier &&
+        caseItem.identifier.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (caseItem.court && caseItem.court.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesStatus =
@@ -334,7 +349,7 @@ export default function CasesPage() {
       {/* Cases Grid */}
       <div className="grid gap-6">
         {filteredCases.length > 0 ? (
-          uniqueCases.map((rawCase) => {
+          filteredCases.map((rawCase) => {
             const caseItem = mapCaseFields(rawCase);
             const petitioners = rawCase.parties?.petitioner || [];
             const respondents = rawCase.parties?.respondent || [];
@@ -367,9 +382,9 @@ export default function CasesPage() {
                     {/* Header */}
                     <div className="flex items-start justify-between">
                       <div className="space-y-2">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 flex-wrap">
                           <h3 className="text-lg font-semibold text-foreground">
-                            {caseItem.number || "N/A"}
+                            {caseItem.title || "Untitled case"}
                           </h3>
                           <Badge className={getPriorityColor(priority)}>
                             {(priority || "MEDIUM").toUpperCase()}
@@ -381,20 +396,37 @@ export default function CasesPage() {
                             <AlertCircle className="h-5 w-5 text-red-500" />
                           )}
                         </div>
-                        <p className="text-base text-muted-foreground">{caseItem.title}</p>
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {caseItem.description || "No case description provided."}
+                        <p className="text-sm font-medium text-muted-foreground">
+                          Case No. {caseItem.identifier || caseItem.number || "N/A"}
                         </p>
-                        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                          {caseType && (
-                            <span>
-                              <strong>Type:</strong>{" "}
-                              <span>{caseType}</span>
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {caseItem.description || "No summary added yet."}
+                        </p>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-2">
+                          <div>
+                            <span className="text-xs text-muted-foreground block">Court</span>
+                            <span className="text-sm font-medium">{courtName}</span>
+                          </div>
+                          <div>
+                            <span className="text-xs text-muted-foreground block">Filing Date</span>
+                            <span className="text-sm font-medium">
+                              {caseItem.filingDate
+                                ? new Date(caseItem.filingDate).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" })
+                                : "N/A"}
                             </span>
-                          )}
-                          <span>
-                            <strong>Court:</strong> {courtName}
-                          </span>
+                          </div>
+                          <div>
+                            <span className="text-xs text-muted-foreground block">Next Hearing</span>
+                            <span className="text-sm font-medium">
+                              {nextHearing
+                                ? new Date(nextHearing).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" })
+                                : "N/A"}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-xs text-muted-foreground block">District</span>
+                            <span className="text-sm font-medium">{caseItem.district}</span>
+                          </div>
                         </div>
                       </div>
                       <DropdownMenu>
@@ -418,7 +450,9 @@ export default function CasesPage() {
                     {(petitioners.length > 0 || respondents.length > 0) && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
                         <div className="space-y-1">
-                          <p className="text-sm font-medium text-foreground">Plaintiff/Petitioner</p>
+                          <p className="text-sm font-medium text-foreground">
+                            Petitioner
+                          </p>
                           {petitioners.length > 0 ? (
                             petitioners.map((p, i) => (
                               <div key={i} className="flex items-center gap-2">
@@ -431,7 +465,7 @@ export default function CasesPage() {
                           )}
                         </div>
                         <div className="space-y-1">
-                          <p className="text-sm font-medium text-foreground">Defendant/Respondent</p>
+                          <p className="text-sm font-medium text-foreground">Respondent</p>
                           {respondents.length > 0 ? (
                             respondents.map((r, i) => (
                               <div key={i} className="flex items-center gap-2">
@@ -449,28 +483,30 @@ export default function CasesPage() {
                     {/* Legal Representation - Side by Side Comparison */}
                     {legalTeam.length > 0 && (
                       <div className="space-y-4">
-                        <h4 className="text-base font-semibold text-foreground border-b pb-2">Legal Representation Comparison</h4>
+                        <h4 className="text-base font-semibold text-foreground border-b pb-2">
+                          Legal Representation
+                        </h4>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                           <div className="space-y-3 p-4 bg-muted/30 rounded-lg border-l-4 border-primary">
                             <h5 className="text-sm font-semibold text-foreground flex items-center gap-2">
                               <span className="w-3 h-3 rounded-full bg-primary"></span>
-                              Legal Representation (Plaintiff/Petitioner)
+                              Petitioner's Counsel
                             </h5>
                             <div className="space-y-3 text-sm">
                               {officeNames && (
                                 <div>
-                                  <span className="text-muted-foreground">Office Name: <span className="text-destructive">*</span></span>
+                                  <span className="text-muted-foreground">Law Firm / Office:</span>
                                   <div className="font-medium">{officeNames}</div>
                                 </div>
                               )}
                               <div>
-                                <span className="text-muted-foreground">Advocate on Record: <span className="text-destructive">*</span></span>
+                                <span className="text-muted-foreground">Advocate on Record:</span>
                                 <div className="font-medium">
                                   {leadCounsel?.name ? `Adv. ${leadCounsel.name}` : "Not assigned"}
                                 </div>
                               </div>
                               <div>
-                                <span className="text-muted-foreground">Handled by: <span className="text-destructive">*</span></span>
+                                <span className="text-muted-foreground">Handling Advocate:</span>
                                 <div className="font-medium">{handledBy || "Not assigned"}</div>
                               </div>
                               <div>
@@ -483,7 +519,7 @@ export default function CasesPage() {
                           <div className="space-y-3 p-4 bg-muted/30 rounded-lg border-l-4 border-destructive opacity-40">
                             <h5 className="text-sm font-semibold text-foreground flex items-center gap-2">
                               <span className="w-3 h-3 rounded-full bg-destructive"></span>
-                              Defendant Legal Representation
+                              Respondent's Counsel
                             </h5>
                             <p className="text-xs text-muted-foreground italic">Not assigned</p>
                           </div>
@@ -497,7 +533,7 @@ export default function CasesPage() {
                         {nextHearing && (
                           <div className="flex items-center gap-2">
                             <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-muted-foreground">Next Hearing:</span>
+                            <span className="text-muted-foreground">Next Court Date:</span>
                             <span className="font-medium">
                               {new Date(nextHearing).toLocaleDateString("en-IN", {
                                 day: "2-digit",

@@ -16,27 +16,14 @@ import { toast } from "@/components/ui/use-toast";
 import api from "@/services/api";
 import { Badge } from "@/components/ui/badge";
 import {
-  formatCaseTypeLabel,
+  buildCaseNumber,
+  getEcourtCaseTypeReference,
+  normalizeFormattedCaseNumber,
   normalizeCaseNumber,
+  parseCaseNumberParts,
 } from "@/lib/caseTypeUtils";
-const CASE_TYPES = [
-  { value: "civil", label: "Civil" },
-  { value: "criminal", label: "Criminal" },
-  { value: "family", label: "Family" },
-  { value: "consumer", label: "Consumer" },
-  { value: "labour", label: "Labour" },
-  { value: "tribunal", label: "Tribunal" },
-  { value: "special", label: "Special" },
-  { value: "revenue", label: "Revenue" },
-  { value: "motor_accident", label: "Motor Accident Claims" },
-  { value: "commercial", label: "Commercial" },
-  { value: "writ", label: "Writ Petition" },
-  { value: "appeal", label: "Appeal" },
-  { value: "revision", label: "Revision" },
-  { value: "execution", label: "Execution" },
-  { value: "arbitration", label: "Arbitration" },
-  { value: "other", label: "Other" },
-];
+
+const DEFAULT_CASE_YEAR = String(new Date().getFullYear());
 
 const STATES = [
   { value: "karnataka", label: "Karnataka" },
@@ -148,7 +135,7 @@ export default function EditCasePage() {
     const fetchCase = async () => {
       try {
         const response = await api.cases.getById(id);
-        const d = response.data;
+        const d = response?.data || response;
 
         // Check if user has edit access
         const canEdit = checkEditAccess(d, user);
@@ -166,9 +153,34 @@ export default function EditCasePage() {
 
 
         // Normalize data to match the new case form structure
+        const ecourtCaseTypeName = d.eCourt?.caseTypeName || d.caseSubType || "";
+        const ecourtCaseTypeCode = d.eCourt?.caseTypeCode || d.caseCode || "";
+        const caseTypeReference = getEcourtCaseTypeReference({
+          caseTypeName: ecourtCaseTypeName,
+          caseTypeCode: ecourtCaseTypeCode,
+        });
+        const parsedCaseNumber = parseCaseNumberParts({
+          caseNumber: d.caseNumber || d.number || "",
+          caseTypeName: ecourtCaseTypeName,
+          caseTypeCode: ecourtCaseTypeCode,
+        });
+        const caseYear = parsedCaseNumber.caseYear || DEFAULT_CASE_YEAR;
+        const caseCode = parsedCaseNumber.caseCode || caseTypeReference.caseCode;
+
         setCaseData({
           ...d,
-          caseNumber: normalizeCaseNumber(d.caseNumber || ""),
+          caseNumber: buildCaseNumber({
+            caseCode,
+            caseNumberMiddle: parsedCaseNumber.caseNumberMiddle,
+            caseYear,
+          }) || normalizeFormattedCaseNumber(d.caseNumber || d.number || ""),
+          caseNumberMiddle: parsedCaseNumber.caseNumberMiddle,
+          caseYear,
+          caseCode,
+          caseTypeDisplay:
+            [caseCode, caseTypeReference.caseTypeLabel || ecourtCaseTypeName.toUpperCase()]
+              .filter(Boolean)
+              .join(" - "),
           courtState: d.courtState || "karnataka",
           district: d.district || "bengaluru_urban",
           bench: d.bench || "",
@@ -184,7 +196,7 @@ export default function EditCasePage() {
           respondentRole: d.respondentRole || "Defendant",
           respondents: d.parties?.respondent || [],
           description: d.description || "",
-          caseSubType: d.caseSubType || "",
+          caseSubType: d.caseSubType || ecourtCaseTypeName || "",
           status: d.status || "active",
           priority: d.priority || "normal",
           isUrgent: d.isUrgent || false,
@@ -212,19 +224,24 @@ export default function EditCasePage() {
   // Check if user has edit access to this case
   const checkEditAccess = (caseData, user) => {
     if (!user || !caseData) return false;
-    if (user.role === "admin") return true;
+    const role = (user.role || "").toLowerCase();
+    if (role === "admin") return true;
 
-    if (user.role === 'lawyer') {
+    if (role === 'lawyer') {
       const caseLawyers = caseData.lawyers || [];
       return (
         getEntityId(caseData.lawyer) === getEntityId(user) ||
         caseLawyers.some((lawyer) => personMatchesUser(lawyer, user))
       );
-    } else if (user.role === 'client') {
+    } else if (role === 'client') {
       const caseClients = caseData.clients || [];
+      const partyPetitioners = caseData.parties?.petitioner || [];
+      const partyRespondents = caseData.parties?.respondent || [];
       return (
         getEntityId(caseData.client) === getEntityId(user) ||
-        caseClients.some((client) => personMatchesUser(client, user))
+        caseClients.some((client) => personMatchesUser(client, user)) ||
+        partyPetitioners.some((p) => personMatchesUser(p, user)) ||
+        partyRespondents.some((r) => personMatchesUser(r, user))
       );
     }
 
@@ -232,13 +249,40 @@ export default function EditCasePage() {
   };
   const handleChange = (e) => {
     const { name, value } = e.target;
+
+    if (name === "caseNumberMiddle") {
+      setCaseData((prev) => ({
+        ...prev,
+        caseNumberMiddle: normalizeCaseNumber(value),
+        caseNumber: buildCaseNumber({
+          caseCode: prev.caseCode,
+          caseNumberMiddle: normalizeCaseNumber(value),
+          caseYear: prev.caseYear,
+        }),
+      }));
+      return;
+    }
+
     setCaseData((prev) => ({
       ...prev,
-      [name]: name === "caseNumber" ? normalizeCaseNumber(value) : value,
+      [name]: name === "caseNumber" ? normalizeFormattedCaseNumber(value) : value,
     }));
   };
 
   const handleSelectChange = (name, value) => {
+    if (name === "caseYear") {
+      setCaseData((prev) => ({
+        ...prev,
+        caseYear: value,
+        caseNumber: buildCaseNumber({
+          caseCode: prev.caseCode,
+          caseNumberMiddle: prev.caseNumberMiddle,
+          caseYear: value,
+        }),
+      }));
+      return;
+    }
+
     setCaseData((prev) => ({
       ...prev,
       [name]: value,
@@ -329,7 +373,7 @@ export default function EditCasePage() {
     if (!caseData) return;
 
     const normalizedDescription = normalizeText(caseData.description);
-    const normalizedCaseNumber = normalizeCaseNumber(caseData.caseNumber);
+    const normalizedCaseNumber = normalizeFormattedCaseNumber(caseData.caseNumber);
     if (!normalizedDescription) {
       setActiveTab("details");
       toast({
@@ -344,7 +388,7 @@ export default function EditCasePage() {
       setActiveTab("details");
       toast({
         title: "Error",
-        description: "Case number must be alphanumeric only.",
+        description: "Case number must use the format TYPE/NUMBER/YEAR.",
         variant: "destructive",
       });
       return;
@@ -563,64 +607,86 @@ export default function EditCasePage() {
               <Card>
                 <CardHeader>
                   <CardTitle>Case Information</CardTitle>
-                  <CardDescription>Enter the basic details about the case</CardDescription>
+                  <CardDescription>
+                    Update the case details. Case type is shown in plain language,
+                    and the final case ID is built automatically.
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form id="case-form" onSubmit={handleSubmit} className="space-y-4">
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="title">
-                          Case Title <span className="text-red-500">*</span>
-                        </Label>
-                        <Input id="title" name="title" value={caseData.title} onChange={handleChange} required />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="caseNumber">
-                          Case Number <span className="text-red-500">*</span>
-                        </Label>
-                        <Input
-                          id="caseNumber"
-                          name="caseNumber"
-                          value={caseData.caseNumber}
-                          onChange={handleChange}
-                          placeholder="e.g., AB1234"
-                          required
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Use letters and numbers only for the case number.
-                        </p>
-                      </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="title">
+                        Case Title <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="title"
+                        name="title"
+                        value={caseData.title}
+                        onChange={handleChange}
+                        required
+                      />
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="caseType">
-                          Case Type <span className="text-red-500">*</span>
-                        </Label>
-                        <Select
-                          value={caseData.caseType}
-                          onValueChange={(value) => handleSelectChange("caseType", value)}
-                          required
-                        >
-                          <SelectTrigger id="caseType">
-                            <SelectValue placeholder="Select case type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {CASE_TYPES.map((type) => (
-                              <SelectItem key={type.value} value={type.value}>
-                                {type.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {caseData.caseSubType && (
-                          <p className="text-xs text-muted-foreground">
-                            Saved sub-type: {formatCaseTypeLabel(caseData.caseSubType)}
-                          </p>
-                        )}
-                      </div>
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_140px]">
+                        <div className="space-y-2">
+                          <Label htmlFor="caseTypeDisplay">
+                            Case Type <span className="text-red-500">*</span>
+                          </Label>
+                          <Input
+                            id="caseTypeDisplay"
+                            value={caseData.caseTypeDisplay || ""}
+                            readOnly
+                            placeholder="Case type"
+                            className="bg-muted text-muted-foreground cursor-default"
+                          />
+                        </div>
 
+                        <div className="space-y-2">
+                          <Label htmlFor="caseNumberMiddle">
+                            Case Number <span className="text-red-500">*</span>
+                          </Label>
+                          <Input
+                            id="caseNumberMiddle"
+                            name="caseNumberMiddle"
+                            value={caseData.caseNumberMiddle || ""}
+                            onChange={handleChange}
+                            placeholder="Case Number"
+                            required
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="caseYear">
+                            Year <span className="text-red-500">*</span>
+                          </Label>
+                          <Select
+                            value={caseData.caseYear || DEFAULT_CASE_YEAR}
+                            onValueChange={(value) => handleSelectChange("caseYear", value)}
+                          >
+                            <SelectTrigger id="caseYear">
+                              <SelectValue placeholder="Select year" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Array.from({ length: 21 }, (_, index) =>
+                                String(new Date().getFullYear() - index)
+                              ).map((year) => (
+                                <SelectItem key={year} value={year}>
+                                  {year}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {caseData.caseCode
+                          ? `Final format: ${caseData.caseCode}/CASE_NUMBER/${caseData.caseYear || "YEAR"}`
+                          : "Case type code will appear here once loaded."}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-1">
                       <div className="space-y-2">
                         <Label htmlFor="status">
                           Status <span className="text-red-500">*</span>

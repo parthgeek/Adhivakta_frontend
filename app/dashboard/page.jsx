@@ -25,7 +25,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { getDisplayCaseType } from "@/lib/caseTypeUtils";
+import { getCaseIdentifier, getDisplayCaseType } from "@/lib/caseTypeUtils";
 import { cn } from "@/lib/utils";
 import { formatLegalTeamSummary } from "@/lib/legal-team";
 
@@ -208,12 +208,16 @@ const CasesList = ({ cases = [] }) => {
             formatLegalTeamSummary(caseItem) ||
             safeText(caseItem.lawyer) ||
             safeText(caseItem.assignedTo);
-          const courtName = safeText(caseItem.court);
-          const caseType = getDisplayCaseType(caseItem);
+          const courtName = safeText(caseItem.court) || "N/A";
+          const caseType = getDisplayCaseType(caseItem) || "N/A";
+          const caseIdentifier = getCaseIdentifier(caseItem) || "N/A";
           const caseTitle = safeText(caseItem.title) || "Untitled case";
           const caseDescription =
-            safeText(caseItem.description) || "No case description provided.";
+            safeText(caseItem.description) || "No summary added yet.";
           const nextHearing = caseItem.nextHearingDate || caseItem.nextHearing || caseItem.hearingDate;
+          const filingDate = caseItem.filingDate || caseItem.filing_date || caseItem.dateOfFiling;
+          const petitioners = caseItem.parties?.petitioner || [];
+          const respondents = caseItem.parties?.respondent || [];
 
           return (
             <div
@@ -224,8 +228,9 @@ const CasesList = ({ cases = [] }) => {
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
+                    <p className="text-xs text-muted-foreground">Case Name</p>
                     <h4 className="font-medium text-foreground">
-                      {caseItem.caseNumber || caseItem.number || "N/A"}
+                      {caseTitle}
                     </h4>
                     <Badge className={cn("text-xs", getPriorityColor(caseItem.priority))}>
                       {(caseItem.priority || "MEDIUM").toUpperCase()}
@@ -237,7 +242,9 @@ const CasesList = ({ cases = [] }) => {
                       {(caseItem.status || "Active").toUpperCase()}
                     </Badge>
                   </div>
-                  <p className="text-sm font-medium text-foreground">{caseTitle}</p>
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Case No. {caseIdentifier}
+                  </p>
                   <p className="text-sm text-muted-foreground line-clamp-2">
                     {caseDescription}
                   </p>
@@ -247,46 +254,52 @@ const CasesList = ({ cases = [] }) => {
                 )}
               </div>
 
-              {/* Details */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                {clientName && (
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Client:</span>
-                    <span className="font-medium">{clientName}</span>
-                  </div>
-                )}
-                {nextHearing && (
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4  text-muted-foreground" />
-                    <span className="text-muted-foreground">Next Hearing:</span>
-                    <span className="font-medium">{new Date(nextHearing).toLocaleDateString()}</span>
-                  </div>
-                )}
-                {caseType && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">Type:</span>
-                    <span className="font-medium">{caseType}</span>
-                  </div>
-                )}
-                {courtName && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">Court:</span>
-                    <span className="font-medium">{courtName}</span>
-                  </div>
-                )}
+              {/* Identifiers Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                <div>
+                  <span className="text-muted-foreground block text-xs">Case Type</span>
+                  <span className="font-medium">{caseType}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs">Court</span>
+                  <span className="font-medium">{courtName}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs">Filing Date</span>
+                  <span className="font-medium">
+                    {filingDate ? new Date(filingDate).toLocaleDateString() : "N/A"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs">Next Hearing</span>
+                  <span className="font-medium">
+                    {nextHearing ? new Date(nextHearing).toLocaleDateString() : "N/A"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs">Client</span>
+                  <span className="font-medium">{clientName || "N/A"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs">Petitioner</span>
+                  <span className="font-medium">
+                    {petitioners.length > 0 ? petitioners[0].name : "N/A"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs">Other Side</span>
+                  <span className="font-medium">
+                    {respondents.length > 0 ? respondents[0].name : "N/A"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-xs">Lead Lawyer</span>
+                  <span className="font-medium">{lawyerName || "N/A"}</span>
+                </div>
               </div>
 
               {/* Actions */}
-              <div className="flex justify-between items-center pt-2 border-t">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  {lawyerName && (
-                    <>
-                      <Clock className="h-4 w-4" />
-                      <span>Handled by Adv. {lawyerName}</span>
-                    </>
-                  )}
-                </div>
+              <div className="flex justify-end items-center pt-2 border-t">
                 <div className="flex gap-2">
                   <Link href={`/dashboard/cases/${caseItem._id || caseItem.id}`}>
                     <Button variant="outline" size="sm">View Details</Button>

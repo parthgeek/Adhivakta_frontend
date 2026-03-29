@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/auth-context';
-import { 
+import {
   FileText, 
   Users, 
   Calendar, 
@@ -14,6 +14,7 @@ import {
   Filter
 } from 'lucide-react';
 import api from '@/services/api';
+import { getCaseIdentifier } from '@/lib/caseTypeUtils';
 
 // Stats Card Component
 const StatsCard = ({ title, value, change, changeType, icon: Icon, iconColor }) => {
@@ -55,8 +56,10 @@ const CasesList = ({ cases = [] }) => {
         {cases.slice(0, 5).map((caseItem, index) => (
           <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
             <div>
-              <p className="font-medium text-gray-900">{caseItem.title || caseItem.caseNumber}</p>
-              <p className="text-sm text-gray-600">{caseItem.caseNumber || caseItem.number}</p>
+              <p className="font-medium text-gray-900">{caseItem.title || 'Untitled case'}</p>
+              <p className="text-xs font-medium text-gray-500">
+                Case ID: {getCaseIdentifier(caseItem) || caseItem.caseNumber || caseItem.number || 'N/A'}
+              </p>
             </div>
             <span className={`px-2 py-1 text-xs rounded-full ${
               caseItem.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
