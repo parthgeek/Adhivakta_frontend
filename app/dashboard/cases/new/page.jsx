@@ -1399,8 +1399,8 @@ export default function NewCasePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2">
+      <div className={`grid grid-cols-1 gap-6 ${activeTab === "party" ? "" : "md:grid-cols-3"}`}>
+        <div className={activeTab === "party" ? "" : "md:col-span-2"}>
           <CaseTabs
             caseData={caseData}
             setCaseData={setCaseData}
@@ -1431,9 +1431,11 @@ export default function NewCasePage() {
           />
         </div>
 
-        <div className="hidden md:block">
-          <SidebarGuide />
-        </div>
+        {activeTab !== "party" && (
+          <div className="hidden md:block">
+            <SidebarGuide />
+          </div>
+        )}
       </div>
     </div>
   );
