@@ -6,7 +6,7 @@ export default function SidebarGuide() {
     <Card>
       <CardHeader>
         <CardTitle>Case Filing Guide</CardTitle>
-        <CardDescription>Tips for filing a new case</CardDescription>
+        <CardDescription>Follow the tabs from left to right to create a case correctly</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="relative h-40 w-full">
@@ -18,21 +18,31 @@ export default function SidebarGuide() {
           />
         </div>
         <div className="space-y-2">
-          <h3 className="font-medium">Required Information</h3>
+          <h3 className="font-medium">Steps</h3>
           <ul className="text-sm space-y-1 list-disc pl-4">
-            <li>Complete case title</li>
-            <li>Court details including hall number</li>
-            <li>Client (Petitioner) information</li>
-            <li>Filing date</li>
+            <li>Start in <strong>Court Info</strong>: select State, District, Court Complex, Court, and Case Type.</li>
+            <li>Then fill <strong>Case Details</strong>: case title, case number, year, status, first hearing date, description, act & sections, and relief sought.</li>
+            <li>In <strong>Party Section</strong>, add at least one filing-side party and one opposing-side party.</li>
+            <li><strong>Documents</strong> can be uploaded now or later if you want to finish the case entry first.</li>
+            <li>In <strong>People</strong>, complete the lawyer/client details required for your role before saving.</li>
           </ul>
         </div>
         <div className="space-y-2">
-          <h3 className="font-medium">Document Checklist</h3>
+          <h3 className="font-medium">Important Notes</h3>
           <ul className="text-sm space-y-1 list-disc pl-4">
-            <li>Petition/Complaint</li>
-            <li>Supporting affidavits</li>
-            <li>Evidence documents</li>
-            <li>Court fee receipts</li>
+            <li>Fields marked with <span className="text-red-500">*</span> are mandatory for case creation.</li>
+            <li>The first hearing date must be after the filing date and cannot be in the past.</li>
+            <li>Case priority is assigned automatically from the next hearing date.</li>
+            <li>The final case number is generated from the selected Case type, case number, and year.</li>
+          </ul>
+        </div>
+        <div className="space-y-2">
+          <h3 className="font-medium">Suggested Uploads</h3>
+          <ul className="text-sm space-y-1 list-disc pl-4">
+            <li>Petition, complaint, or appeal memo</li>
+            <li>Supporting affidavits and annexures</li>
+            <li>Evidence documents and court receipts</li>
+            <li>Any previous orders relevant to the matter</li>
           </ul>
         </div>
       </CardContent>

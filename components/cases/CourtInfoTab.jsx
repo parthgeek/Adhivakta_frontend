@@ -155,7 +155,7 @@ export default function CourtInfoTab({
 
             <div className="space-y-2">
               <Label htmlFor="ecourtCaseType">
-                eCourts Case Type <span className="text-red-500">*</span>
+                 Case Type <span className="text-red-500">*</span>
               </Label>
               <Select
                 value={selectedEcourt.caseTypeCode || ""}
@@ -169,7 +169,7 @@ export default function CourtInfoTab({
                         ? "Select court first"
                         : courtDirectoryLoading?.caseTypes
                           ? "Loading case types..."
-                          : "Select eCourts case type"
+                          : "Select case type"
                     }
                   />
                 </SelectTrigger>

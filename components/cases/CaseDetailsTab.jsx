@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DatePicker } from "@/components/ui/date-picker";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export default function CaseDetailsTab({
   caseData,
@@ -19,12 +20,18 @@ export default function CaseDetailsTab({
   router,
   handleNext,
   handleBack,
-  isLastTab
+  isLastTab,
+  validationErrors,
 }) {
   const currentYear = new Date().getFullYear();
   const caseYearOptions = Array.from({ length: 21 }, (_, index) =>
     String(currentYear - index)
   );
+  const fieldErrors = validationErrors?.fieldErrors || {};
+  const errorMessages = validationErrors?.messages || [];
+  const getFieldError = (field) => fieldErrors[field];
+  const getInputClassName = (field) =>
+    getFieldError(field) ? "border-destructive focus-visible:ring-destructive" : "";
   const selectedCaseType = [
     caseData.caseCode,
     typeof caseData.eCourt?.caseTypeName === "string"
@@ -39,12 +46,22 @@ export default function CaseDetailsTab({
       <CardHeader>
         <CardTitle>Case Information</CardTitle>
         <CardDescription>
-          Enter the basic details about the case. The selected eCourts case type
-          is used to build the final case number automatically.
+          Enter the basic details about the case.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form id="case-form" onSubmit={(e) => e.preventDefault()} className="space-y-4">
+          {validationErrors?.hasErrors && errorMessages.length > 0 && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              <p className="font-medium">Please fix the highlighted case details.</p>
+              <ul className="mt-2 list-disc space-y-1 pl-5">
+                {errorMessages.map((message) => (
+                  <li key={message}>{message}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="title">
               Case Title <span className="text-red-500">*</span>
@@ -54,8 +71,12 @@ export default function CaseDetailsTab({
               name="title"
               value={caseData.title}
               onChange={handleChange}
+              className={getInputClassName("title")}
               required
             />
+            {getFieldError("title") && (
+              <p className="text-sm text-destructive">{getFieldError("title")}</p>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -68,9 +89,15 @@ export default function CaseDetailsTab({
                   id="selectedCaseType"
                   value={selectedCaseType}
                   readOnly
-                  placeholder="Select eCourts case type on the previous tab"
-                  className="bg-muted text-muted-foreground cursor-default"
+                  placeholder=""
+                  className={cn(
+                    "bg-muted text-muted-foreground cursor-default",
+                    getInputClassName("selectedCaseType")
+                  )}
                 />
+                {getFieldError("selectedCaseType") && (
+                  <p className="text-sm text-destructive">{getFieldError("selectedCaseType")}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -83,8 +110,12 @@ export default function CaseDetailsTab({
                   value={caseData.caseNumberMiddle || ""}
                   onChange={handleChange}
                   placeholder="Case Number"
+                  className={getInputClassName("caseNumberMiddle")}
                   required
                 />
+                {getFieldError("caseNumberMiddle") && (
+                  <p className="text-sm text-destructive">{getFieldError("caseNumberMiddle")}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -95,7 +126,7 @@ export default function CaseDetailsTab({
                   value={caseData.caseYear || caseYearOptions[0]}
                   onValueChange={(value) => handleSelectChange("caseYear", value)}
                 >
-                  <SelectTrigger id="caseYear">
+                  <SelectTrigger id="caseYear" className={getInputClassName("caseYear")}>
                     <SelectValue placeholder="Select year" />
                   </SelectTrigger>
                   <SelectContent>
@@ -106,12 +137,15 @@ export default function CaseDetailsTab({
                     ))}
                   </SelectContent>
                 </Select>
+                {getFieldError("caseYear") && (
+                  <p className="text-sm text-destructive">{getFieldError("caseYear")}</p>
+                )}
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
               {selectedCaseType
                 ? `Final format: ${caseData.caseCode || "TYPE"}/CASE_NUMBER/${caseData.caseYear || "YEAR"}`
-                : "Select the eCourts case type on the previous tab first."}
+                : ""}
             </p>
           </div>
 
@@ -124,7 +158,7 @@ export default function CaseDetailsTab({
               onValueChange={(value) => handleSelectChange("status", value)}
               required
             >
-              <SelectTrigger id="status">
+              <SelectTrigger id="status" className={getInputClassName("status")}>
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
               <SelectContent>
@@ -132,6 +166,9 @@ export default function CaseDetailsTab({
                 <SelectItem value="closed">Closed</SelectItem>
               </SelectContent>
             </Select>
+            {getFieldError("status") && (
+              <p className="text-sm text-destructive">{getFieldError("status")}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -141,7 +178,11 @@ export default function CaseDetailsTab({
                 id="filingDate"
                 selected={caseData.filingDate}
                 onSelect={(date) => handleDateChange("filingDate", date)}
+                className={getInputClassName("filingDate")}
               />
+              {getFieldError("filingDate") && (
+                <p className="text-sm text-destructive">{getFieldError("filingDate")}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -152,7 +193,11 @@ export default function CaseDetailsTab({
                 id="nextHearingDate"
                 selected={caseData.nextHearingDate}
                 onSelect={(date) => handleDateChange("nextHearingDate", date)}
+                className={getInputClassName("nextHearingDate")}
               />
+              {getFieldError("nextHearingDate") && (
+                <p className="text-sm text-destructive">{getFieldError("nextHearingDate")}</p>
+              )}
             </div>
           </div>
 
@@ -168,7 +213,7 @@ export default function CaseDetailsTab({
                 value={caseData.caseStage}
                 onValueChange={(value) => handleSelectChange("caseStage", value)}
               >
-                <SelectTrigger id="caseStage">
+                <SelectTrigger id="caseStage" className={getInputClassName("caseStage")}>
                   <SelectValue placeholder="Select case stage" />
                 </SelectTrigger>
                 <SelectContent>
@@ -205,11 +250,17 @@ export default function CaseDetailsTab({
               rows={4}
               required
               placeholder="Enter a clear summary of the case"
+              className={getInputClassName("description")}
             />
+            {getFieldError("description") && (
+              <p className="text-sm text-destructive">{getFieldError("description")}</p>
+            )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="actSections">Act & Sections</Label>
+            <Label htmlFor="actSections">
+              Act & Sections <span className="text-red-500">*</span>
+            </Label>
             <Textarea
               id="actSections"
               name="actSections"
@@ -217,11 +268,17 @@ export default function CaseDetailsTab({
               onChange={handleChange}
               rows={2}
               placeholder="e.g., IPC Section 302, CrPC Section 161"
+              className={getInputClassName("actSections")}
             />
+            {getFieldError("actSections") && (
+              <p className="text-sm text-destructive">{getFieldError("actSections")}</p>
+            )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="reliefSought">Relief Sought</Label>
+            <Label htmlFor="reliefSought">
+              Relief Sought <span className="text-red-500">*</span>
+            </Label>
             <Textarea
               id="reliefSought"
               name="reliefSought"
@@ -229,7 +286,11 @@ export default function CaseDetailsTab({
               onChange={handleChange}
               rows={2}
               placeholder="Describe the relief sought in this case"
+              className={getInputClassName("reliefSought")}
             />
+            {getFieldError("reliefSought") && (
+              <p className="text-sm text-destructive">{getFieldError("reliefSought")}</p>
+            )}
           </div>
         </form>
       </CardContent>

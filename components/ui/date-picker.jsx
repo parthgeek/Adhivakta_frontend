@@ -7,14 +7,18 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 
-export function DatePicker({ selected, onSelect, ...props }) {
+export function DatePicker({ selected, onSelect, className, ...props }) {
   const [open, setOpen] = useState(false)
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           variant={"outline"}
-          className={cn("w-full justify-start text-left font-normal", !selected && "text-muted-foreground")}
+          className={cn(
+            "w-full justify-start text-left font-normal",
+            !selected && "text-muted-foreground",
+            className
+          )}
           {...props}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />

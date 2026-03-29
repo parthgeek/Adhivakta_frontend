@@ -466,7 +466,7 @@ export default function NewCasePage() {
       return caseTypes;
     } catch (error) {
       toast({
-        title: "Unable to load eCourts case types",
+        title: "Unable to load Case types",
         description:
           error.message || "Failed to load case types for the selected court.",
         variant: "destructive",
@@ -507,7 +507,7 @@ export default function NewCasePage() {
     if (!caseData.category) {
       errors.push({
         tab: 'details',
-        message: 'Case category could not be derived from the selected eCourts case type'
+        message: 'Case category could not be derived from the selected Case type'
       });
     }
 
@@ -533,7 +533,7 @@ export default function NewCasePage() {
       errors.push({ tab: 'court', message: 'Court selection is required' });
     }
     if (!caseData.eCourt?.caseTypeCode) {
-      errors.push({ tab: 'court', message: 'eCourts case type is required' });
+      errors.push({ tab: 'court', message: 'Case type is required' });
     }
 
     // First Hearing Date validation (MANDATORY)
@@ -1431,11 +1431,9 @@ export default function NewCasePage() {
           />
         </div>
 
-        {activeTab !== "party" && (
-          <div className="hidden md:block">
-            <SidebarGuide />
-          </div>
-        )}
+        <div className="hidden md:block">
+          <SidebarGuide />
+        </div>
       </div>
     </div>
   );

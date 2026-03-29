@@ -6,8 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { UserPlus, Users, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-function PartyForm({ party, idx, partyList, fieldKey, setCaseData }) {
+function PartyForm({ party, idx, partyList, fieldKey, setCaseData, nameError }) {
   const update = (field, value) => {
     const arr = [...partyList];
     arr[idx] = { ...arr[idx], [field]: value };
@@ -42,7 +43,9 @@ function PartyForm({ party, idx, partyList, fieldKey, setCaseData }) {
             value={party.name}
             onChange={(e) => update("name", e.target.value)}
             placeholder="e.g. Rajesh Kumar"
+            className={nameError ? "border-destructive focus-visible:ring-destructive" : ""}
           />
+          {nameError && <p className="text-sm text-destructive">{nameError}</p>}
         </div>
         <div className="space-y-1.5">
           <Label>Party Type</Label>
@@ -89,9 +92,22 @@ function PartyForm({ party, idx, partyList, fieldKey, setCaseData }) {
   );
 }
 
-function PartyColumn({ title, description, borderColor, labelOptions, labelValue, labelKey, listKey, caseData, setCaseData }) {
+function PartyColumn({
+  title,
+  description,
+  borderColor,
+  labelOptions,
+  labelValue,
+  labelKey,
+  listKey,
+  caseData,
+  setCaseData,
+  validationErrors,
+}) {
   const list = caseData[listKey] || [];
   const currentLabel = caseData[labelKey] || labelOptions[0].value;
+  const fieldErrors = validationErrors?.fieldErrors || {};
+  const listError = fieldErrors[listKey];
 
   const addParty = () =>
     setCaseData((prev) => ({
@@ -103,7 +119,12 @@ function PartyColumn({ title, description, borderColor, labelOptions, labelValue
     }));
 
   return (
-    <div className={`flex-1 border-l-4 ${borderColor} rounded-lg p-5 bg-muted/20 space-y-4`}>
+    <div
+      className={cn(
+        `flex-1 border-l-4 ${borderColor} rounded-lg p-5 bg-muted/20 space-y-4`,
+        listError && "border border-destructive/30 bg-destructive/5"
+      )}
+    >
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -127,6 +148,10 @@ function PartyColumn({ title, description, borderColor, labelOptions, labelValue
         </div>
       </div>
 
+      {listError && (
+        <p className="text-sm text-destructive">{listError}</p>
+      )}
+
       {/* Party cards */}
       {list.length > 0 ? (
         <div className="space-y-3">
@@ -138,11 +163,17 @@ function PartyColumn({ title, description, borderColor, labelOptions, labelValue
               partyList={list}
               fieldKey={listKey}
               setCaseData={setCaseData}
+              nameError={fieldErrors[`${listKey}.${idx}.name`]}
             />
           ))}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center py-8 text-center border border-dashed rounded-lg bg-background">
+        <div
+          className={cn(
+            "flex flex-col items-center justify-center py-8 text-center border border-dashed rounded-lg bg-background",
+            listError && "border-destructive/40"
+          )}
+        >
           <Users className="h-8 w-8 text-muted-foreground/40 mb-2" />
           <p className="text-sm text-muted-foreground">No {currentLabel.toLowerCase()} added yet</p>
           <p className="text-xs text-muted-foreground/70 mt-0.5">Click below to add one</p>
@@ -171,7 +202,8 @@ export default function PartySectionTab({
   router,
   handleNext,
   handleBack,
-  isLastTab
+  isLastTab,
+  validationErrors,
 }) {
   return (
     <Card>
@@ -182,6 +214,17 @@ export default function PartySectionTab({
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {validationErrors?.hasErrors && (validationErrors?.messages || []).length > 0 && (
+          <div className="mb-4 rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+            <p className="font-medium">Please complete the required party details.</p>
+            <ul className="mt-2 list-disc space-y-1 pl-5">
+              {validationErrors.messages.map((message) => (
+                <li key={message}>{message}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="flex flex-col lg:flex-row gap-6">
           <PartyColumn
             title="Filing Side"
@@ -197,6 +240,7 @@ export default function PartySectionTab({
             listKey="petitioners"
             caseData={caseData}
             setCaseData={setCaseData}
+            validationErrors={validationErrors}
           />
 
           {/* Divider */}
@@ -225,6 +269,7 @@ export default function PartySectionTab({
             listKey="respondents"
             caseData={caseData}
             setCaseData={setCaseData}
+            validationErrors={validationErrors}
           />
         </div>
       </CardContent>
