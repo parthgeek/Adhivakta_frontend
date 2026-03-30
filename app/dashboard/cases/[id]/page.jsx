@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Calendar as DatePicker } from "@/components/ui/calendar"
 import { Calendar as CalendarIcon } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
-import { formatCaseTypeLabel } from "@/lib/caseTypeUtils"
+import { formatCaseTypeLabel, formatDisplayCaseNumber } from "@/lib/caseTypeUtils"
 import { getDocumentOpenUrl } from "@/lib/document-url"
 
 export default function CaseDetailsPage() {
@@ -403,7 +403,7 @@ export default function CaseDetailsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <h3 className="text-sm font-medium text-muted-foreground">Case Number</h3>
-                      <p className="text-base">{caseData.caseNumber}</p>
+                      <p className="text-base">{formatDisplayCaseNumber({ caseNumber: caseData.caseNumber, caseTypeName: caseData.caseSubType || caseData.caseType || "", caseTypeCode: caseData.eCourt?.caseTypeCode || caseData.caseCode || "" }) || caseData.caseNumber}</p>
                     </div>
                     <div>
                       <h3 className="text-sm font-medium text-muted-foreground">Case Type</h3>

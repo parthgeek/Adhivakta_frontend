@@ -471,6 +471,26 @@ const api = {
     },
   },
 
+  causeList: {
+    getDaily: async (date) => {
+      const queryParams = new URLSearchParams();
+
+      if (date) {
+        queryParams.set("date", date);
+      }
+
+      const response = await fetch(
+        `${API_URL}/cause-list${queryParams.toString() ? `?${queryParams.toString()}` : ""}`,
+        {
+          method: "GET",
+          headers: createHeaders(),
+        }
+      );
+
+      return handleResponse(response);
+    },
+  },
+
   documents: {
     getAll: async (filters = {}) => {
       // Convert filters object to query string

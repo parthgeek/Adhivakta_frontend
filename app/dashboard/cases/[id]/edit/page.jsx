@@ -181,8 +181,8 @@ export default function EditCasePage() {
             [caseCode, caseTypeReference.caseTypeLabel || ecourtCaseTypeName.toUpperCase()]
               .filter(Boolean)
               .join(" - "),
-          courtState: d.courtState || "karnataka",
-          district: d.district || "bengaluru_urban",
+          courtState: d.courtState || "",
+          district: d.district || "",
           bench: d.bench || "",
           courtType: d.courtType || "district_court",
           court: d.court || "",
@@ -839,39 +839,23 @@ export default function EditCasePage() {
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div className="space-y-2">
                           <Label htmlFor="courtState">State</Label>
-                          <Select
-                            value={caseData.courtState}
-                            onValueChange={(value) => handleSelectChange("courtState", value)}
-                          >
-                            <SelectTrigger id="courtState">
-                              <SelectValue placeholder="Select state" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {STATES.map((state) => (
-                                <SelectItem key={state.value} value={state.value}>
-                                  {state.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <Input
+                            id="courtState"
+                            name="courtState"
+                            value={caseData.courtState || ""}
+                            onChange={handleChange}
+                            placeholder="e.g. Uttarakhand"
+                          />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="district">District</Label>
-                          <Select
-                            value={caseData.district}
-                            onValueChange={(value) => handleSelectChange("district", value)}
-                          >
-                            <SelectTrigger id="district">
-                              <SelectValue placeholder="Select district" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {DISTRICTS[caseData.courtState].map((district) => (
-                                <SelectItem key={district.value} value={district.value}>
-                                  {district.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <Input
+                            id="district"
+                            name="district"
+                            value={caseData.district || ""}
+                            onChange={handleChange}
+                            placeholder="e.g. Dehradun"
+                          />
                         </div>
                       </div>
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
