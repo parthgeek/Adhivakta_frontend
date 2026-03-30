@@ -87,6 +87,16 @@ function PartyForm({ party, idx, partyList, fieldKey, setCaseData, nameError }) 
             rows={2}
           />
         </div>
+        {fieldKey === "respondents" && (
+          <div className="space-y-1.5 md:col-span-2">
+            <Label>Defending Lawyer</Label>
+            <Input
+              value={party.opposingCounsel || ""}
+              onChange={(e) => update("opposingCounsel", e.target.value)}
+              placeholder="e.g. Adv. Neha Sharma"
+            />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -114,7 +124,15 @@ function PartyColumn({
       ...prev,
       [listKey]: [
         ...(prev[listKey] || []),
-        { label: prev[labelKey] || labelOptions[0].value, type: "Individual", name: "", email: "", contact: "", address: "" },
+        {
+          label: prev[labelKey] || labelOptions[0].value,
+          type: "Individual",
+          name: "",
+          email: "",
+          contact: "",
+          address: "",
+          ...(listKey === "respondents" ? { opposingCounsel: "" } : {}),
+        },
       ],
     }));
 
