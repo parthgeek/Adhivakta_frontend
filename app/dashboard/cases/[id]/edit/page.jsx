@@ -1070,7 +1070,8 @@ export default function EditCasePage() {
                                 name: '',
                                 email: '',
                                 contact: '',
-                                address: ''
+                                address: '',
+                                opposingCounsel: '',
                               }
                             ]
                           }))}
@@ -1165,6 +1166,18 @@ export default function EditCasePage() {
                                     }}
                                     placeholder="Full address"
                                     rows={2}
+                                  />
+                                </div>
+                                <div className="space-y-2 md:col-span-2">
+                                  <Label>Defending Lawyer</Label>
+                                  <Input
+                                    value={respondent.opposingCounsel || ""}
+                                    onChange={e => {
+                                      const arr = [...caseData.respondents];
+                                      arr[idx].opposingCounsel = e.target.value;
+                                      setCaseData(prev => ({ ...prev, respondents: arr }));
+                                    }}
+                                    placeholder="e.g. Adv. Neha Sharma"
                                   />
                                 </div>
                               </div>

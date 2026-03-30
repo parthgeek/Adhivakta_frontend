@@ -369,7 +369,55 @@ export default function CaseDetailsPage() {
       (caseData?.client?._id === userId ||
         caseData?.client === userId ||
         (caseData?.clients || []).some((client) => personMatchesUser(client, user))))
-  
+  const allClients = Array.from(
+    new Map(
+      [caseData?.client, ...(caseData?.clients || [])]
+        .filter(Boolean)
+        .map((client, index) => {
+          const uniqueKey =
+            client?._id ||
+            client?.id ||
+            client?.user?._id ||
+            client?.user?.id ||
+            client?.email ||
+            `${client?.name || "client"}-${index}`;
+          return [String(uniqueKey), client];
+        })
+    ).values()
+  )
+  const stakeholderGroups = [
+    {
+      key: "witness",
+      label: "Witness",
+      className: "bg-amber-50",
+      iconClassName: "text-amber-600",
+      matches: (stakeholder) => (stakeholder?.roleInCase || "").trim().toLowerCase() === "witness",
+    },
+    {
+      key: "expert",
+      label: "Expert",
+      className: "bg-green-50",
+      iconClassName: "text-green-600",
+      matches: (stakeholder) => (stakeholder?.roleInCase || "").trim().toLowerCase() === "expert",
+    },
+    {
+      key: "beneficiary",
+      label: "Beneficiary",
+      className: "bg-[#03234b]/10",
+      iconClassName: "text-[#03234b]",
+      matches: (stakeholder) => (stakeholder?.roleInCase || "").trim().toLowerCase() === "beneficiary",
+    },
+    {
+      key: "other",
+      label: "Other Stakeholders",
+      className: "bg-[#03234b]/10",
+      iconClassName: "text-[#03234b]",
+      matches: (stakeholder) => {
+        const normalizedRole = (stakeholder?.roleInCase || "").trim().toLowerCase();
+        return !["witness", "expert", "beneficiary"].includes(normalizedRole);
+      },
+    },
+  ]
 
 
   return (
@@ -673,29 +721,9 @@ export default function CaseDetailsPage() {
                   {/* Clients Section */}
                   <div className="mb-4 pb-4 border-b">
                     <h3 className="text-md font-semibold mb-3 text-gray-700">Clients</h3>
-                    
-                    {/* Primary Client */}
-                    {caseData.client && (
-                      <div className="mb-4 p-3 bg-green-50 rounded-lg border-l-4 border-green-500">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <div className="flex items-center">
-                              <User className="h-4 w-4 text-green-600 mr-2" />
-                              <p className="font-medium">{caseData.client.name}</p>
-                              <Badge variant="default" className="ml-2 bg-green-600">Primary</Badge>
-                            </div>
-                            {caseData.client.email && (
-                              <p className="text-sm text-gray-600 ml-6 mt-1">{caseData.client.email}</p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Additional Clients */}
-                    {caseData.clients && caseData.clients.length > 0 && (
+                    {allClients.length > 0 && (
                       <div className="space-y-3 mt-4">
-                        {caseData.clients.map((client, index) => (
+                        {allClients.map((client, index) => (
                           <div key={`client-${index}`} className="p-3 border rounded-lg bg-white shadow-sm">
                             <p className="font-medium text-sm flex items-center">
                               <User className="h-4 w-4 text-gray-500 mr-2" />
@@ -726,8 +754,8 @@ export default function CaseDetailsPage() {
                       </div>
                     )}
 
-                    {(!caseData.clients || caseData.clients.length === 0) && (
-                      <p className="text-sm text-muted-foreground">No additional clients have been added to this case.</p>
+                    {allClients.length === 0 && (
+                      <p className="text-sm text-muted-foreground">No clients have been added to this case.</p>
                     )}
                   </div>
 
@@ -815,15 +843,14 @@ export default function CaseDetailsPage() {
                     <h3 className="text-md font-semibold mb-3 text-gray-700">Stakeholders</h3>
                     {caseData.stakeholders && caseData.stakeholders.length > 0 ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Group stakeholders by roleInCase */}
-                        {['Witness', 'Expert', 'Beneficiary', 'Other', undefined, ''].map((role) => {
-                          const filtered = caseData.stakeholders.filter(s => (s.roleInCase || '').toLowerCase().includes(role?.toLowerCase() || ''));
+                        {stakeholderGroups.map((group) => {
+                          const filtered = caseData.stakeholders.filter(group.matches);
                           if (filtered.length === 0) return null;
                           return (
-                            <div key={role || 'other'} className={`p-4 border rounded-lg ${role === 'Witness' ? 'bg-amber-50' : role === 'Expert' ? 'bg-green-50' : 'bg-[#03234b]/10'} md:col-span-1`}>
+                            <div key={group.key} className={`p-4 border rounded-lg ${group.className} md:col-span-1`}>
                               <div className="flex items-center gap-2 mb-2">
-                                <Users className={`h-4 w-4 ${role === 'Witness' ? 'text-amber-600' : role === 'Expert' ? 'text-green-600' : 'text-[#03234b]'}`} />
-                                <h4 className="font-medium">{role || 'Other Stakeholders'}</h4>
+                                <Users className={`h-4 w-4 ${group.iconClassName}`} />
+                                <h4 className="font-medium">{group.label}</h4>
                               </div>
                               <div className="space-y-2">
                                 {filtered.map((stakeholder, idx) => (

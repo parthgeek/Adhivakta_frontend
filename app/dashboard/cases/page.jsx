@@ -338,6 +338,13 @@ export default function CasesPage() {
             const caseItem = mapCaseFields(rawCase);
             const petitioners = rawCase.parties?.petitioner || [];
             const respondents = rawCase.parties?.respondent || [];
+            const respondentCounsels = Array.from(
+              new Set(
+                respondents
+                  .map((respondent) => respondent?.opposingCounsel?.trim())
+                  .filter(Boolean)
+              )
+            );
             const legalTeam = getCaseLegalTeam(rawCase);
             const leadCounsel = getLeadLegalTeamMember(legalTeam);
             const handledBy = formatLegalTeamSummary(legalTeam, {
@@ -478,7 +485,7 @@ export default function CasesPage() {
                     )}
 
                     {/* Legal Representation - Side by Side Comparison */}
-                    {legalTeam.length > 0 && (
+                    {(legalTeam.length > 0 || respondentCounsels.length > 0) && (
                       <div className="space-y-4">
                         <h4 className="text-base font-semibold text-foreground border-b pb-2">
                           Legal Representation
@@ -513,12 +520,23 @@ export default function CasesPage() {
                             </div>
                           </div>
 
-                          <div className="space-y-3 p-4 bg-muted/30 rounded-lg border-l-4 border-destructive opacity-40">
+                          <div className="space-y-3 p-4 bg-muted/30 rounded-lg border-l-4 border-destructive">
                             <h5 className="text-sm font-semibold text-foreground flex items-center gap-2">
                               <span className="w-3 h-3 rounded-full bg-destructive"></span>
                               Respondent's Counsel
                             </h5>
-                            <p className="text-xs text-muted-foreground italic">Not assigned</p>
+                            {respondentCounsels.length > 0 ? (
+                              <div className="space-y-2 text-sm">
+                                {respondentCounsels.map((counselName) => (
+                                  <div key={counselName}>
+                                    <span className="text-muted-foreground">Defending Lawyer:</span>
+                                    <div className="font-medium">{counselName}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-muted-foreground italic">Not assigned</p>
+                            )}
                           </div>
                         </div>
                       </div>

@@ -327,20 +327,14 @@ const QuickActions = () => {
       variant: "default",
       href: "/dashboard/cases/new",
     },
-    {
-      icon: FileText,
-      label: "Draft Document",
-      description: "Create legal document",
-      variant: "outline",
-      href: "/dashboard/documents",
-    },
-    {
-      icon: UserPlus,
-      label: "Add Client",
-      description: "Register new client",
-      variant: "outline",
-      href: "/dashboard/clients-parties",
-    },
+  
+    // {
+    //   icon: UserPlus,
+    //   label: "Add Client",
+    //   description: "Register new client",
+    //   variant: "outline",
+    //   href: "/dashboard/clients-parties",
+    // },
     {
       icon: Calendar,
       label: "Schedule Hearing",
