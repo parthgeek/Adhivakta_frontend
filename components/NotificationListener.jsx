@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Bell, CheckCircle } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
+import { getNotificationTarget } from "@/lib/notification-link";
 
 export default function NotificationListener() {
   const processedNotificationIdsRef = useRef(new Set());
@@ -31,6 +32,7 @@ export default function NotificationListener() {
       const isPriority = payload.meta?.priority === "high";
       const title = payload.title || getDefaultTitle(payload.type, payload.meta);
       const actionLabel = payload.type === "document_review_request" ? "Review" : "View";
+      const target = getNotificationTarget(payload);
 
       toast({
         title: (
@@ -57,12 +59,10 @@ export default function NotificationListener() {
           : payload.type === "document_reviewed"
             ? "border-l-4 border-l-emerald-500"
             : "border-l-4 border-l-[#03234b]",
-        action: payload.link
-          ? {
-              label: actionLabel,
-              onClick: () => router.push(payload.link),
-            }
-          : undefined,
+        action: payload.link ? {
+          label: actionLabel,
+          onClick: () => router.push(target)
+        } : undefined,
       });
 
       try {

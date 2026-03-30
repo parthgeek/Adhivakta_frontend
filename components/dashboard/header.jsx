@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, Search, User, LogOut, Settings, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,13 +16,107 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/auth-context";
 import { useRealTimeCounts } from "@/context/realtime-counts-context";
 import { useSidebar } from "@/context/sidebar-context";
+import api from "@/services/api";
+import {
+  formatDisplayCaseNumber,
+  getCaseIdentifier,
+} from "@/lib/caseTypeUtils";
 import { cn } from "@/lib/utils";
+
+const safeText = (value) => {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "object") {
+    return value.name || value.title || value.email || value.caseNumber || "";
+  }
+  return String(value);
+};
+
+const normalizeText = (value) => safeText(value).trim().toLowerCase();
+
+const buildSearchData = (cases = []) => {
+  const clientsMap = new Map();
+
+  const caseResults = cases
+    .filter(Boolean)
+    .map((caseItem) => {
+      const id = caseItem._id || caseItem.id;
+      const caseNumber =
+        formatDisplayCaseNumber({
+          caseNumber: caseItem.caseNumber || caseItem.number || "",
+          caseTypeName: caseItem.caseSubType || caseItem.eCourt?.caseTypeName || "",
+          caseTypeCode: caseItem.eCourt?.caseTypeCode || caseItem.caseCode || "",
+        }) ||
+        safeText(caseItem.caseNumber || caseItem.number);
+      const clientName =
+        safeText(caseItem.clientName) ||
+        safeText(caseItem.client) ||
+        safeText(caseItem.clients?.[0]?.user) ||
+        safeText(caseItem.clients?.[0]?.name);
+
+      if (caseItem.client && typeof caseItem.client === "object" && caseItem.client._id) {
+        clientsMap.set(caseItem.client._id, {
+          id: caseItem.client._id,
+          name: safeText(caseItem.client.name),
+          email: safeText(caseItem.client.email),
+          contact: safeText(caseItem.client.contact),
+          relatedCaseId: id,
+        });
+      }
+
+      (caseItem.clients || []).forEach((client) => {
+        const personId =
+          client?.user?._id ||
+          client?.user?.id ||
+          client?._id ||
+          client?.email;
+
+        if (!personId) return;
+
+        const existingClient = clientsMap.get(personId);
+        clientsMap.set(personId, {
+          id: personId,
+          name: safeText(client?.user?.name || client?.name),
+          email: safeText(client?.user?.email || client?.email),
+          contact: safeText(client?.user?.contact || client?.contact),
+          relatedCaseId: existingClient?.relatedCaseId || id,
+        });
+      });
+
+      return {
+        id,
+        title: safeText(caseItem.title) || "Untitled case",
+        description: safeText(caseItem.description),
+        caseNumber,
+        identifier: safeText(getCaseIdentifier(caseItem)),
+        clientName,
+        courtName: safeText(caseItem.court || caseItem.courtName || caseItem.courtType),
+        type: "case",
+      };
+    })
+    .filter((caseItem) => caseItem.id);
+
+  const clientResults = Array.from(clientsMap.values())
+    .filter((client) => client.name || client.email)
+    .map((client) => ({
+      ...client,
+      type: "client",
+    }));
+
+  return { cases: caseResults, clients: clientResults };
+};
 
 export default function Header({ onMenuClick }) {
   const router = useRouter();
   const { user, logout } = useAuth();
   const { counts } = useRealTimeCounts();
   const { collapsed } = useSidebar();
+  const searchRef = useRef(null);
+  const [query, setQuery] = useState("");
+  const [searchData, setSearchData] = useState({ cases: [], clients: [] });
+  const [isLoadingSearch, setIsLoadingSearch] = useState(true);
+  const [searchError, setSearchError] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const displayName = user?.name || "User";
   const displayRole = user?.role || "member";
@@ -38,6 +132,96 @@ export default function Header({ onMenuClick }) {
   }, [displayName]);
 
   const unreadNotifications = counts?.notifications || 0;
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const loadSearchData = async () => {
+      setIsLoadingSearch(true);
+      setSearchError("");
+      try {
+        const cases = await api.cases.getAll();
+        if (!isCancelled) {
+          setSearchData(buildSearchData(cases));
+        }
+      } catch (error) {
+        console.error("Failed to load header search data:", error);
+        if (!isCancelled) {
+          setSearchError("Unable to load search results.");
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoadingSearch(false);
+        }
+      }
+    };
+
+    loadSearchData();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const handlePointerDown = (event) => {
+      if (!searchRef.current?.contains(event.target)) {
+        setIsSearchOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+    };
+  }, []);
+
+  const searchResults = useMemo(() => {
+    const normalizedQuery = normalizeText(query);
+    if (!normalizedQuery) {
+      return { cases: [], clients: [] };
+    }
+
+    const matchesQuery = (...values) =>
+      values.some((value) => normalizeText(value).includes(normalizedQuery));
+
+    const cases = searchData.cases
+      .filter((caseItem) =>
+        matchesQuery(
+          caseItem.title,
+          caseItem.description,
+          caseItem.caseNumber,
+          caseItem.identifier,
+          caseItem.clientName,
+          caseItem.courtName
+        )
+      )
+      .slice(0, 5);
+
+    const clients = searchData.clients
+      .filter((client) =>
+        matchesQuery(client.name, client.email, client.contact)
+      )
+      .slice(0, 5);
+
+    return { cases, clients };
+  }, [query, searchData]);
+
+  const handleResultSelect = (result) => {
+    setIsSearchOpen(false);
+    setQuery("");
+
+    if (result.type === "case") {
+      router.push(`/dashboard/cases/${result.id}`);
+      return;
+    }
+
+    const params = new URLSearchParams({
+      q: result.name || result.email || "",
+      tab: "clients",
+    });
+    router.push(`/dashboard/clients-parties?${params.toString()}`);
+  };
 
   return (
     <header className="h-24 border-b bg-card shadow-sm flex items-center">
@@ -84,12 +268,100 @@ export default function Header({ onMenuClick }) {
         </div>
 
         <div className="hidden md:block w-full max-w-[450px] ml-20">
-          <div className="relative w-full">
+          <div ref={searchRef} className="relative w-full">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground h-5 w-5" />
             <Input
-              placeholder="Search cases, clients, advocates..."
+              placeholder="Search cases and clients..."
               className="pl-12"
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setIsSearchOpen(true);
+              }}
+              onFocus={() => setIsSearchOpen(true)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  event.stopPropagation();
+                }
+              }}
             />
+            {isSearchOpen && query.trim() ? (
+              <div className="absolute top-full mt-2 w-full rounded-md border bg-popover shadow-md z-50">
+                {isLoadingSearch ? (
+                  <div className="px-4 py-3 text-sm text-muted-foreground">
+                    Searching...
+                  </div>
+                ) : searchError ? (
+                  <div className="px-4 py-3 text-sm text-destructive">
+                    {searchError}
+                  </div>
+                ) : searchResults.cases.length === 0 &&
+                  searchResults.clients.length === 0 ? (
+                  <div className="px-4 py-3 text-sm text-muted-foreground">
+                    No results found for "{query.trim()}".
+                  </div>
+                ) : (
+                  <div className="py-2">
+                    {searchResults.cases.length > 0 ? (
+                      <div>
+                        <p className="px-4 pb-1 text-xs font-medium text-muted-foreground">
+                          Cases
+                        </p>
+                        {searchResults.cases.map((caseItem) => (
+                          <button
+                            key={caseItem.id}
+                            type="button"
+                            className="flex w-full flex-col px-4 py-2 text-left hover:bg-accent"
+                            onMouseDown={() =>
+                              handleResultSelect({ ...caseItem, type: "case" })
+                            }
+                          >
+                            <span className="text-sm font-medium">
+                              {caseItem.title}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {[caseItem.caseNumber, caseItem.clientName]
+                                .filter(Boolean)
+                                .join(" • ")}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    {searchResults.clients.length > 0 ? (
+                      <div className={cn(searchResults.cases.length > 0 && "pt-2")}>
+                        <p className="px-4 pb-1 text-xs font-medium text-muted-foreground">
+                          Clients
+                        </p>
+                        {searchResults.clients.map((client) => (
+                          <button
+                            key={client.id}
+                            type="button"
+                            className="flex w-full flex-col px-4 py-2 text-left hover:bg-accent"
+                            onMouseDown={() => handleResultSelect(client)}
+                          >
+                            <span className="text-sm font-medium">
+                              {client.name || client.email}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {[
+                                "Client",
+                                client.email,
+                                client.contact,
+                              ]
+                                .filter(Boolean)
+                                .join(" • ")}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            ) : null}
           </div>
         </div>
 

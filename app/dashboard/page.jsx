@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import api from "@/services/api";
 import Link from "next/link";
+import { getNotificationTarget } from "@/lib/notification-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -411,7 +412,7 @@ const PriorityAlerts = ({ notifications = [] }) => {
       <CardContent className="space-y-3">
         {priorityAlerts.length > 0 ? (
           priorityAlerts.map((notification) => {
-            const href = notification.link || "/dashboard/notifications";
+            const href = getNotificationTarget(notification);
 
             return (
               <Link

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
@@ -41,6 +42,10 @@ import {
 } from "lucide-react";
 import api from "@/services/api";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  formatDisplayCaseNumber,
+  getCaseIdentifier,
+} from "@/lib/caseTypeUtils";
 import { getDocumentOpenUrl } from "@/lib/document-url";
 
 const CATEGORY_OPTIONS = [
@@ -141,6 +146,57 @@ const extractArray = (payload) => {
 const toTitleCase = (value = "") =>
   value.length > 0 ? value.charAt(0).toUpperCase() + value.slice(1) : "Other";
 
+const getPersonName = (person) => {
+  if (!person) return "";
+  if (typeof person === "string") return person;
+  return person.name || person.title || person.fullName || "";
+};
+
+const buildVersusLabel = (caseItem = {}) => {
+  const petitioners = Array.isArray(caseItem.parties?.petitioner)
+    ? caseItem.parties.petitioner.map((party) => getPersonName(party)).filter(Boolean)
+    : [];
+  const respondents = Array.isArray(caseItem.parties?.respondent)
+    ? caseItem.parties.respondent.map((party) => getPersonName(party)).filter(Boolean)
+    : [];
+
+  if (petitioners.length === 0 || respondents.length === 0) {
+    return "";
+  }
+
+  return `${petitioners.join(", ")} vs. ${respondents.join(", ")}`;
+};
+
+const personMatchesUser = (person, user) => {
+  if (!person || !user) return false;
+
+  const userId = user._id || user.id;
+  const personId =
+    person._id ||
+    person.id ||
+    person.user?._id ||
+    person.user?.id ||
+    person.user;
+
+  return Boolean(userId && personId && personId === userId);
+};
+
+const canReviewCaseDocuments = (caseItem, user) => {
+  if (!caseItem || !user) return false;
+  if (user.role === "admin") return true;
+  if (user.role !== "lawyer") return false;
+
+  const userId = user._id || user.id;
+
+  return (
+    caseItem.lawyer?._id === userId ||
+    caseItem.lawyer?.id === userId ||
+    caseItem.lawyer === userId ||
+    (Array.isArray(caseItem.lawyers) &&
+      caseItem.lawyers.some((lawyer) => personMatchesUser(lawyer, user)))
+  );
+};
+
 export default function DocumentsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -159,6 +215,7 @@ export default function DocumentsPage() {
 
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [reviewingDocumentId, setReviewingDocumentId] = useState(null);
   const [uploadForm, setUploadForm] = useState({
     file: null,
     caseId: caseFromQuery,
@@ -186,7 +243,7 @@ export default function DocumentsPage() {
       const allCases = extractArray(casesResponse);
       const allDocuments = extractArray(documentsResponse);
 
-      const userId = user?._id;
+      const userId = user?._id || user?.id;
       const visibleCases = userId
         ? allCases.filter((caseItem) => {
             const creator = caseItem.createdBy || caseItem.creator;
@@ -239,12 +296,28 @@ export default function DocumentsPage() {
           "unassigned";
 
         const mappedCase = caseMap.get(caseId);
+        const resolvedCase = mappedCase || caseObject || {};
+        const caseTitle =
+          resolvedCase?.title || resolvedCase?.name || caseObject?.title || "Untitled case";
         const caseNumber =
-          caseObject?.caseNumber ||
-          mappedCase?.caseNumber ||
-          caseObject?.title ||
-          mappedCase?.title ||
+          formatDisplayCaseNumber({
+            caseNumber:
+              resolvedCase?.caseNumber ||
+              caseObject?.caseNumber ||
+              mappedCase?.caseNumber ||
+              "",
+            caseTypeName:
+              resolvedCase?.caseSubType ||
+              resolvedCase?.eCourt?.caseTypeName ||
+              resolvedCase?.type ||
+              "",
+            caseTypeCode:
+              resolvedCase?.eCourt?.caseTypeCode || resolvedCase?.caseCode || "",
+          }) ||
+          caseTitle ||
           "Unassigned";
+        const caseIdentifier = getCaseIdentifier(resolvedCase) || caseNumber;
+        const caseVersus = buildVersusLabel(resolvedCase);
 
         const createdAt = doc.createdAt || doc.uploadDate || doc.updatedAt;
 
@@ -254,6 +327,10 @@ export default function DocumentsPage() {
           type: (doc.type || doc.extension || "file").toString().toUpperCase(),
           caseId,
           caseNumber,
+          caseTitle,
+          caseIdentifier,
+          caseVersus,
+          canReview: canReviewCaseDocuments(resolvedCase, user),
           uploadDate: createdAt,
           size: formatFileSize(doc.size || doc.fileSize),
           uploadedBy:
@@ -290,6 +367,9 @@ export default function DocumentsPage() {
       const matchesSearch =
         doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         doc.caseNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        doc.caseTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        doc.caseIdentifier.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        doc.caseVersus.toLowerCase().includes(searchTerm.toLowerCase()) ||
         doc.uploadedBy.toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesCategory = filterCategory === "all" || doc.category === filterCategory;
@@ -301,16 +381,30 @@ export default function DocumentsPage() {
 
   const documentsByCase = useMemo(() => {
     return filteredDocuments.reduce((acc, doc) => {
-      if (!acc[doc.caseNumber]) {
-        acc[doc.caseNumber] = [];
+      const key = doc.caseId || doc.caseNumber;
+
+      if (!acc[key]) {
+        acc[key] = {
+          caseId: doc.caseId,
+          caseNumber: doc.caseNumber,
+          caseTitle: doc.caseTitle,
+          caseIdentifier: doc.caseIdentifier,
+          caseVersus: doc.caseVersus,
+          documents: [],
+        };
       }
-      acc[doc.caseNumber].push(doc);
+      acc[key].documents.push(doc);
       return acc;
     }, {});
   }, [filteredDocuments]);
 
-  const caseNumbers = useMemo(
-    () => Object.keys(documentsByCase).sort((a, b) => a.localeCompare(b)),
+  const caseGroups = useMemo(
+    () =>
+      Object.values(documentsByCase).sort((a, b) =>
+        (a.caseIdentifier || a.caseNumber || "").localeCompare(
+          b.caseIdentifier || b.caseNumber || ""
+        )
+      ),
     [documentsByCase]
   );
 
@@ -325,7 +419,7 @@ export default function DocumentsPage() {
   );
 
   const caseModalDocuments = selectedCaseForDocuments
-    ? documentsByCase[selectedCaseForDocuments] || []
+    ? documentsByCase[selectedCaseForDocuments]?.documents || []
     : [];
 
   const handleUpload = () => {
@@ -384,6 +478,42 @@ export default function DocumentsPage() {
         description: "Could not delete this document.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleReviewDocument = async (doc, decision) => {
+    const reviewNotes =
+      decision === "rejected"
+        ? window.prompt("Add rejection reason (optional):", "") ?? ""
+        : "";
+
+    try {
+      setReviewingDocumentId(doc.id);
+
+      const result = await api.documents.review(doc.id, {
+        decision,
+        reviewNotes,
+      });
+
+      await fetchData();
+
+      toast({
+        title: decision === "approved" ? "Document approved" : "Document rejected",
+        description:
+          result?.message ||
+          (decision === "approved"
+            ? `${doc.name} was approved successfully.`
+            : `${doc.name} was rejected successfully.`),
+      });
+    } catch (error) {
+      console.error("Error reviewing document:", error);
+      toast({
+        title: "Review failed",
+        description: error.message || "Failed to review document.",
+        variant: "destructive",
+      });
+    } finally {
+      setReviewingDocumentId(null);
     }
   };
 
@@ -602,69 +732,244 @@ export default function DocumentsPage() {
           </div>
         ) : groupByCase ? (
           <div className="space-y-6">
-            {caseNumbers.map((caseNumber) => (
-              <Card key={caseNumber}>
+            {caseGroups.map((caseGroup) => (
+              <Card key={caseGroup.caseId || caseGroup.caseNumber}>
                 <CardHeader>
                   <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <CardTitle className="text-lg">{caseNumber}</CardTitle>
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Case Name</p>
+                        <CardTitle className="text-lg">{caseGroup.caseTitle}</CardTitle>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Case No.</p>
+                        <p className="text-sm font-semibold text-foreground">
+                          {caseGroup.caseNumber}
+                        </p>
+                      </div>
+                  
+                      {caseGroup.caseVersus && (
+                        <p className="text-sm text-muted-foreground">
+                          {caseGroup.caseVersus}
+                        </p>
+                      )}
                       <p className="text-sm text-muted-foreground">
-                        {documentsByCase[caseNumber].length} document(s)
+                        {caseGroup.documents.length} document(s)
                       </p>
                     </div>
-                    {/* <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedCaseForDocuments(caseNumber)}
-                    >
-                      <FileText className="h-4 w-4 mr-2" />
-                      Manage Documents
-                    </Button> */}
+                    {caseGroup.caseId && caseGroup.caseId !== "unassigned" && (
+                      <Link href={`/dashboard/cases/${caseGroup.caseId}?tab=documents`}>
+                        <Button variant="outline" size="sm">
+                          <FileText className="h-4 w-4 mr-2" />
+                          Open Case
+                        </Button>
+                      </Link>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {documentsByCase[caseNumber].map((document) => (
-                    <div
-                      key={document.id}
-                      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg gap-3"
-                    >
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <FileText className="h-5 w-5 text-muted-foreground" />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-medium text-foreground truncate">
+                  {caseGroup.documents.map((document) => {
+                    const isPending = document.status === "pending";
+                    const isReviewing = reviewingDocumentId === document.id;
+
+                    return (
+                      <div
+                        key={document.id}
+                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg gap-3"
+                      >
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <FileText className="h-5 w-5 text-muted-foreground" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-foreground truncate">
+                                {document.name}
+                              </span>
+                              <Badge className={getCategoryColor(document.category)} variant="secondary">
+                                {toTitleCase(document.category)}
+                              </Badge>
+                              <Badge variant="outline" className={getStatusColor(document.status)}>
+                                {document.status.toUpperCase()}
+                              </Badge>
+                            </div>
+                            <div className="flex gap-4 text-xs text-muted-foreground mt-1 flex-wrap">
+                              <span>Size: {document.size}</span>
+                              <span>Uploaded: {formatDate(document.uploadDate)}</span>
+                              <span>By: {document.uploadedBy}</span>
+                            </div>
+                            {document.raw?.reviewNotes && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Review note: {document.raw.reviewNotes}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 flex-wrap justify-end">
+                          {document.canReview && isPending && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={isReviewing}
+                                onClick={() => handleReviewDocument(document, "approved")}
+                              >
+                                {isReviewing ? "Saving..." : "Approve"}
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                disabled={isReviewing}
+                                onClick={() => handleReviewDocument(document, "rejected")}
+                              >
+                                {isReviewing ? "Saving..." : "Reject"}
+                              </Button>
+                            </>
+                          )}
+                          <Button variant="ghost" size="sm" onClick={() => handleView(document)}>
+                            <Eye className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDownload(document)}
+                          >
+                            <Download className="h-3 w-3" />
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreVertical className="h-3 w-3" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleView(document)}>
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>Share Document</DropdownMenuItem>
+                              <DropdownMenuItem>Move to Case</DropdownMenuItem>
+                              <DropdownMenuItem>Version History</DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => handleDelete(document)}
+                              >
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {filteredDocuments.map((document) => {
+              const isPending = document.status === "pending";
+              const isReviewing = reviewingDocumentId === document.id;
+
+              return (
+                <Card key={document.id} className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-4 flex-1 min-w-0">
+                        <div className="p-3 bg-muted rounded-lg">
+                          <FileText className="h-6 w-6 text-muted-foreground" />
+                        </div>
+
+                        <div className="flex-1 space-y-2 min-w-0">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <h3 className="text-lg font-semibold text-foreground truncate">
                               {document.name}
-                            </span>
-                            <Badge className={getCategoryColor(document.category)} variant="secondary">
+                            </h3>
+                            <Badge className={getCategoryColor(document.category)}>
                               {toTitleCase(document.category)}
                             </Badge>
                             <Badge variant="outline" className={getStatusColor(document.status)}>
                               {document.status.toUpperCase()}
                             </Badge>
                           </div>
-                          <div className="flex gap-4 text-xs text-muted-foreground mt-1 flex-wrap">
-                            <span>Size: {document.size}</span>
-                            <span>Uploaded: {formatDate(document.uploadDate)}</span>
-                            <span>By: {document.uploadedBy}</span>
+
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-muted-foreground">
+                            <div>
+                              <span className="font-medium">Case Name:</span> {document.caseTitle}
+                            </div>
+                            <div>
+                              <span className="font-medium">Case No.:</span> {document.caseNumber}
+                            </div>
+                            <div>
+                              <span className="font-medium">Size:</span> {document.size}
+                            </div>
+                            <div>
+                              <span className="font-medium">Uploaded:</span>{" "}
+                              {formatDate(document.uploadDate)}
+                            </div>
+                            <div>
+                              <span className="font-medium">By:</span> {document.uploadedBy}
+                            </div>
+                          </div>
+                          <div className="space-y-1 text-sm">
+                            {document.caseIdentifier &&
+                              document.caseIdentifier !== document.caseNumber && (
+                                <p className="text-muted-foreground">
+                                  Identifier: {document.caseIdentifier}
+                                </p>
+                              )}
+                            {document.caseVersus && (
+                              <p className="text-muted-foreground">{document.caseVersus}</p>
+                            )}
+                            {document.raw?.reviewNotes && (
+                              <p className="text-xs text-muted-foreground">
+                                Review note: {document.raw.reviewNotes}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => handleView(document)}>
-                          <Eye className="h-3 w-3" />
+                      <div className="flex items-center gap-2 flex-wrap justify-end">
+                        {document.canReview && isPending && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={isReviewing}
+                              onClick={() => handleReviewDocument(document, "approved")}
+                            >
+                              {isReviewing ? "Saving..." : "Approve"}
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              disabled={isReviewing}
+                              onClick={() => handleReviewDocument(document, "rejected")}
+                            >
+                              {isReviewing ? "Saving..." : "Reject"}
+                            </Button>
+                          </>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleView(document)}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          View
                         </Button>
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
                           onClick={() => handleDownload(document)}
                         >
-                          <Download className="h-3 w-3" />
+                          <Download className="h-4 w-4 mr-2" />
+                          Download
                         </Button>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreVertical className="h-3 w-3" />
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
@@ -684,96 +989,10 @@ export default function DocumentsPage() {
                         </DropdownMenu>
                       </div>
                     </div>
-                  ))}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="grid gap-4">
-            {filteredDocuments.map((document) => (
-              <Card key={document.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4 flex-1 min-w-0">
-                      <div className="p-3 bg-muted rounded-lg">
-                        <FileText className="h-6 w-6 text-muted-foreground" />
-                      </div>
-
-                      <div className="flex-1 space-y-2 min-w-0">
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <h3 className="text-lg font-semibold text-foreground truncate">
-                            {document.name}
-                          </h3>
-                          <Badge className={getCategoryColor(document.category)}>
-                            {toTitleCase(document.category)}
-                          </Badge>
-                          <Badge variant="outline" className={getStatusColor(document.status)}>
-                            {document.status.toUpperCase()}
-                          </Badge>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-muted-foreground">
-                          <div>
-                            <span className="font-medium">Case:</span> {document.caseNumber}
-                          </div>
-                          <div>
-                            <span className="font-medium">Size:</span> {document.size}
-                          </div>
-                          <div>
-                            <span className="font-medium">Uploaded:</span>{" "}
-                            {formatDate(document.uploadDate)}
-                          </div>
-                          <div>
-                            <span className="font-medium">By:</span> {document.uploadedBy}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleView(document)}
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        View
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDownload(document)}
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Download
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleView(document)}>
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>Share Document</DropdownMenuItem>
-                          <DropdownMenuItem>Move to Case</DropdownMenuItem>
-                          <DropdownMenuItem>Version History</DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => handleDelete(document)}
-                          >
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
 
