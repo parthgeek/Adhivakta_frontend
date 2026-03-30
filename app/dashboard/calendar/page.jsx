@@ -18,8 +18,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Textarea } from "@/components/ui/textarea"
-import { ChevronLeft, ChevronRight, Plus, CalendarIcon, Clock, MapPin, Users, Edit, Trash } from "lucide-react"
+import { ChevronLeft, ChevronRight, Plus, CalendarIcon, Clock, MapPin, Users, Edit, Trash, X, User } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Badge } from "@/components/ui/badge"
 import Image from "next/image"
 import { toast } from "@/components/ui/use-toast"
 import { api, fetchCases } from "@/lib/api"
@@ -157,6 +158,8 @@ export default function CalendarPage() {
   const [isEditMode, setIsEditMode] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [detailEvent, setDetailEvent] = useState(null)
+  const [showDetailDialog, setShowDetailDialog] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -190,6 +193,10 @@ export default function CalendarPage() {
               description: event.description || "",
               case: event.case?.title || "",
               caseId: event.case?._id || "",
+              status: event.status || "scheduled",
+              priority: event.priority || "medium",
+              participants: event.participants || [],
+              createdByName: event.createdBy?.name || "",
             });
             if (event.case?._id) eventCaseIds.add(event.case._id);
           });
@@ -314,6 +321,10 @@ export default function CalendarPage() {
             description: event.description || "",
             case: event.case?.title || "",
             caseId: event.case?._id || "",
+            status: event.status || "scheduled",
+            priority: event.priority || "medium",
+            participants: event.participants || [],
+            createdByName: event.createdBy?.name || "",
           });
           if (event.case?._id) eventCaseIds.add(event.case._id);
         });
@@ -660,6 +671,24 @@ export default function CalendarPage() {
     fetchEvents()
   }, [viewMode])
 
+  // Auto-refresh when window regains focus or tab becomes visible
+  useEffect(() => {
+    const handleFocus = () => fetchEvents()
+    const handleVisibility = () => { if (document.visibilityState === "visible") fetchEvents() }
+    window.addEventListener("focus", handleFocus)
+    document.addEventListener("visibilitychange", handleVisibility)
+    return () => {
+      window.removeEventListener("focus", handleFocus)
+      document.removeEventListener("visibilitychange", handleVisibility)
+    }
+  }, [])
+
+  // Open event detail dialog
+  const viewEventDetail = (event) => {
+    setDetailEvent(event)
+    setShowDetailDialog(true)
+  }
+
   // Show skeleton while loading
   if (loading) {
     return <CalendarSkeleton />
@@ -870,7 +899,7 @@ export default function CalendarPage() {
                               key={event.id}
                               className={`text-xs p-1 rounded border truncate cursor-pointer ${getEventColor(event.type)}`}
                               title={event.title}
-                              onClick={() => (isLawyer ? editEvent(event) : null)}
+                              onClick={() => viewEventDetail(event)}
                             >
                               {event.time && `${event.time} - `}
                               {event.title}
@@ -943,7 +972,7 @@ export default function CalendarPage() {
                             key={event.id}
                             className={`text-xs p-1 rounded border truncate cursor-pointer ${getEventColor(event.type)}`}
                             title={event.title}
-                            onClick={() => (isLawyer ? editEvent(event) : null)}
+                            onClick={() => viewEventDetail(event)}
                           >
                             {event.time && `${event.time} - `}
                             {event.title}
@@ -958,6 +987,144 @@ export default function CalendarPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Event Detail Dialog */}
+      <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
+        <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
+          {detailEvent && (() => {
+            const detailCase = cases.find(c => (c._id || c.id) === detailEvent.caseId)
+            const lawyers = detailCase?.lawyers || []
+            const clients = detailCase?.clients || []
+            const eventType = EVENT_TYPES.find(t => t.value === detailEvent.type)
+            return (
+              <>
+                <DialogHeader>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-1">
+                      <DialogTitle className="text-xl">{detailEvent.title}</DialogTitle>
+                      {eventType && (
+                        <span className={`inline-flex items-center text-xs px-2 py-0.5 rounded border font-medium ${eventType.color}`}>
+                          {eventType.label}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                  {/* Date & Time */}
+                  <div className="flex items-center gap-3 text-sm">
+                    <CalendarIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className="font-medium">
+                      {detailEvent.date ? new Date(detailEvent.date).toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" }) : "Date TBD"}
+                      {detailEvent.time ? ` · ${detailEvent.time}` : ""}
+                    </span>
+                  </div>
+
+                  {/* Location */}
+                  {detailEvent.location && (
+                    <div className="flex items-center gap-3 text-sm">
+                      <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span>{detailEvent.location}</span>
+                    </div>
+                  )}
+
+                  {/* Status & Priority */}
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                      detailEvent.status === "scheduled" ? "bg-blue-100 text-blue-800" :
+                      detailEvent.status === "completed" ? "bg-green-100 text-green-800" :
+                      detailEvent.status === "cancelled" ? "bg-red-100 text-red-800" :
+                      "bg-amber-100 text-amber-800"
+                    }`}>
+                      {detailEvent.status?.charAt(0).toUpperCase() + detailEvent.status?.slice(1)}
+                    </span>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                      detailEvent.priority === "critical" || detailEvent.priority === "high" ? "bg-red-100 text-red-800" :
+                      detailEvent.priority === "low" ? "bg-gray-100 text-gray-800" :
+                      "bg-yellow-100 text-yellow-800"
+                    }`}>
+                      {detailEvent.priority?.charAt(0).toUpperCase() + detailEvent.priority?.slice(1)} priority
+                    </span>
+                  </div>
+
+                  {/* Related Case */}
+                  {(detailEvent.case || detailCase) && (
+                    <div className="p-3 bg-muted/50 rounded-lg space-y-1">
+                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Related Case</p>
+                      <p className="text-sm font-semibold">{detailEvent.case || detailCase?.title || "—"}</p>
+                      {(detailCase?.caseNumber || detailCase?.number) && (
+                        <p className="text-xs text-muted-foreground">{detailCase.caseNumber || detailCase.number}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Description */}
+                  {detailEvent.description && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Notes</p>
+                      <p className="text-sm text-foreground">{detailEvent.description}</p>
+                    </div>
+                  )}
+
+                  {/* Users Involved */}
+                  {(lawyers.length > 0 || clients.length > 0 || detailEvent.createdByName) && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">People Involved</p>
+                      </div>
+                      <div className="space-y-2 pl-1">
+                        {lawyers.map((l, i) => (
+                          <div key={i} className="flex items-center gap-2 text-sm">
+                            <div className="h-7 w-7 rounded-full bg-[#03234b]/10 flex items-center justify-center shrink-0">
+                              <User className="h-3.5 w-3.5 text-[#03234b]" />
+                            </div>
+                            <div>
+                              <span className="font-medium">{l.name || l.user?.name || "—"}</span>
+                              <span className="ml-2 text-xs text-muted-foreground">Lawyer{l.isLead ? " (Lead)" : ""}</span>
+                            </div>
+                          </div>
+                        ))}
+                        {clients.map((c, i) => (
+                          <div key={i} className="flex items-center gap-2 text-sm">
+                            <div className="h-7 w-7 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                              <User className="h-3.5 w-3.5 text-green-700" />
+                            </div>
+                            <div>
+                              <span className="font-medium">{c.name || c.user?.name || "—"}</span>
+                              <span className="ml-2 text-xs text-muted-foreground">Client{c.isPrimary ? " (Primary)" : ""}</span>
+                            </div>
+                          </div>
+                        ))}
+                        {lawyers.length === 0 && clients.length === 0 && detailEvent.createdByName && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center shrink-0">
+                              <User className="h-3.5 w-3.5 text-muted-foreground" />
+                            </div>
+                            <div>
+                              <span className="font-medium">{detailEvent.createdByName}</span>
+                              <span className="ml-2 text-xs text-muted-foreground">Created by</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <DialogFooter className="flex gap-2">
+                  <Button variant="outline" onClick={() => setShowDetailDialog(false)}>Close</Button>
+                  {isLawyer && !detailEvent.isCaseHearing && (
+                    <Button onClick={() => { setShowDetailDialog(false); editEvent(detailEvent) }}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit Event
+                    </Button>
+                  )}
+                </DialogFooter>
+              </>
+            )
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
