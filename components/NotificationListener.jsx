@@ -1,19 +1,29 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { AlertCircle, Bell, CheckCircle } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { getNotificationTarget } from "@/lib/notification-link";
+import { useAuth } from "@/context/auth-context";
+import api from "@/services/api";
+
+const DASHBOARD_NOTIFICATION_POLL_MS = 30000;
 
 export default function NotificationListener() {
   const processedNotificationIdsRef = useRef(new Set());
+  const pollingRef = useRef(false);
   const router = useRouter();
+  const pathname = usePathname();
+  const { user, isAuthenticated } = useAuth();
 
   useEffect(() => {
-    const showNotificationToast = (event) => {
-      const payload = event?.detail || {};
+    const showNotificationToast = (payload = {}) => {
       const notificationId = payload._id;
+
+      if (shouldIgnoreNotificationToast(payload)) {
+        return;
+      }
 
       if (
         notificationId &&
@@ -24,9 +34,6 @@ export default function NotificationListener() {
 
       if (notificationId) {
         processedNotificationIdsRef.current.add(notificationId);
-        window.setTimeout(() => {
-          processedNotificationIdsRef.current.delete(notificationId);
-        }, 10000);
       }
 
       const isPriority = payload.meta?.priority === "high";
@@ -74,12 +81,78 @@ export default function NotificationListener() {
       }
     };
 
-    window.addEventListener("app:notification", showNotificationToast);
+    const handleNotificationEvent = (event) => {
+      showNotificationToast(event?.detail || {});
+    };
+
+    window.addEventListener("app:notification", handleNotificationEvent);
 
     return () => {
-      window.removeEventListener("app:notification", showNotificationToast);
+      window.removeEventListener("app:notification", handleNotificationEvent);
     };
   }, [router]);
+
+  useEffect(() => {
+    if (
+      typeof window === "undefined" ||
+      !isAuthenticated ||
+      !user ||
+      !pathname?.startsWith("/dashboard")
+    ) {
+      return undefined;
+    }
+
+    let isCancelled = false;
+
+    const syncDashboardApprovalNotifications = async () => {
+      if (pollingRef.current || document.hidden) {
+        return;
+      }
+
+      pollingRef.current = true;
+
+      try {
+        const notificationsResponse = await api.notifications.getAll();
+        if (isCancelled) {
+          return;
+        }
+
+        const notifications = Array.isArray(notificationsResponse)
+          ? notificationsResponse
+          : [];
+
+        notifications
+          .filter(isUnreadApprovalNotification)
+          .sort((a, b) => new Date(b?.createdAt || 0) - new Date(a?.createdAt || 0))
+          .slice(0, 3)
+          .forEach((notification) => {
+            if (!notification?._id) {
+              return;
+            }
+
+            window.dispatchEvent(
+              new CustomEvent("app:notification", { detail: notification })
+            );
+          });
+      } catch (error) {
+        console.error("Error polling dashboard notifications:", error);
+      } finally {
+        pollingRef.current = false;
+      }
+    };
+
+    syncDashboardApprovalNotifications();
+
+    const intervalId = window.setInterval(
+      syncDashboardApprovalNotifications,
+      DASHBOARD_NOTIFICATION_POLL_MS
+    );
+
+    return () => {
+      isCancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [isAuthenticated, pathname, user]);
 
   return null;
 }
@@ -100,4 +173,23 @@ function getDefaultTitle(type, meta = {}) {
   };
 
   return titles[type] || "New Notification";
+}
+
+function shouldIgnoreNotificationToast(payload = {}) {
+  const normalizedText = [
+    payload.title,
+    payload.message,
+    payload.body,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return normalizedText.includes("data loaded successfully");
+}
+
+function isUnreadApprovalNotification(payload = {}) {
+  return payload.type === "document_review_request" && !payload.read;
 }

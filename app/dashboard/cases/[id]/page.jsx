@@ -1095,30 +1095,32 @@ export default function CaseDetailsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <div className="flex justify-between items-center">
+                <div className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-4 gap-y-1">
                   <h3 className="text-sm font-medium">Status</h3>
-                  <Badge className={getStatusColor(caseData.status)}>
+                  <Badge className={`justify-self-end ${getStatusColor(caseData.status)}`}>
                     {caseData.status?.charAt(0).toUpperCase() + caseData.status?.slice(1)}
                   </Badge>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-4 gap-y-1">
                   <h3 className="text-sm font-medium">Case Type</h3>
-                  <span className="text-sm">
+                  <span className="text-sm text-right break-words">
                     {formatCaseTypeLabel(caseData.caseSubType || caseData.caseType)}
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-4 gap-y-1">
                   <h3 className="text-sm font-medium">Filing Date</h3>
-                  <span className="text-sm">{formatDate(caseData.filingDate)}</span>
+                  <span className="text-sm text-right">{formatDate(caseData.filingDate)}</span>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-4 gap-y-1">
                   <h3 className="text-sm font-medium">First Hearing</h3>
-                  <span className="text-sm">{formatDate(caseData.nextHearingDate || caseData.hearingDate)}</span>
+                  <span className="text-sm text-right">{formatDate(caseData.nextHearingDate || caseData.hearingDate)}</span>
                 </div>
                 {caseData.court && (
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-sm font-medium">Court</h3>
-                    <span className="text-sm">{caseData.court}</span>
+                  <div className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-start gap-x-4 gap-y-1">
+                    <h3 className="pt-0.5 text-sm font-medium">Court</h3>
+                    <span className="min-w-0 text-sm text-right break-words">
+                      {caseData.court}
+                    </span>
                   </div>
                 )}
               </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/context/auth-context";
 import {
   FileText,
@@ -26,6 +26,14 @@ import { getNotificationTarget } from "@/lib/notification-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { getCaseIdentifier, getDisplayCaseType, formatDisplayCaseNumber } from "@/lib/caseTypeUtils";
 import { cn } from "@/lib/utils";
 import { formatLegalTeamSummary } from "@/lib/legal-team";
@@ -178,6 +186,20 @@ const isHighPriorityNotification = (notification) =>
 
 const sortNotificationsByRecency = (a, b) =>
   new Date(b?.createdAt || 0) - new Date(a?.createdAt || 0);
+
+const DASHBOARD_NOTIFICATION_POLL_MS = 30000;
+
+const isApprovalReviewNotification = (notification) =>
+  notification?.type === "document_review_request" && !notification?.read;
+
+const getApprovalReviewNotifications = (notifications = []) =>
+  notifications
+    .filter(isApprovalReviewNotification)
+    .sort(sortNotificationsByRecency);
+
+const getNotificationKey = (notification, index = 0) =>
+  notification?._id ||
+  `${notification?.type || "notification"}-${notification?.createdAt || index}-${notification?.message || ""}`;
 
 // Cases List Component
 const CasesList = ({ cases = [] }) => {
@@ -463,6 +485,112 @@ const PriorityAlerts = ({ notifications = [] }) => {
   );
 };
 
+const ApprovalNotificationsPopup = ({
+  notifications = [],
+  open,
+  onOpenChange,
+  dismissedNotificationIds = [],
+}) => {
+  const visibleNotifications = notifications.filter(
+    (notification) =>
+      !notification?._id || !dismissedNotificationIds.includes(notification._id)
+  );
+
+  if (visibleNotifications.length === 0) {
+    return null;
+  }
+
+  const primaryNotification = visibleNotifications[0];
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl border-rose-200 bg-gradient-to-br from-white via-rose-50/60 to-orange-50 p-0 sm:rounded-2xl">
+        <div className="border-b border-rose-100 px-6 py-5">
+          <DialogHeader className="space-y-2 text-left">
+            <div className="flex items-center gap-2">
+              <div className="rounded-full bg-rose-100 p-2">
+                <AlertCircle className="h-5 w-5 text-rose-600" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl text-slate-900">
+                  Documents Waiting For Approval
+                </DialogTitle>
+                <DialogDescription className="mt-1 text-sm text-slate-600">
+                  {visibleNotifications.length === 1
+                    ? "A document needs lawyer review right now."
+                    : `${visibleNotifications.length} documents need lawyer review right now.`}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+        </div>
+
+        <div className="max-h-[60vh] space-y-3 overflow-y-auto px-6 py-5">
+          {visibleNotifications.slice(0, 4).map((notification) => {
+            const href = getNotificationTarget(notification);
+
+            return (
+              <div
+                key={getNotificationKey(notification)}
+                className="rounded-2xl border border-rose-200 bg-white/90 p-4 shadow-sm"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="rounded-xl bg-rose-100 p-3">
+                    <AlertCircle className="h-5 w-5 text-rose-600" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge className="border-rose-200 bg-rose-100 text-rose-700 hover:bg-rose-100">
+                        Priority
+                      </Badge>
+                      <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">
+                        Approval Required
+                      </Badge>
+                      <span className="text-xs text-slate-500">
+                        {notification.createdAt
+                          ? formatRelativeTime(new Date(notification.createdAt))
+                          : "Just now"}
+                      </span>
+                    </div>
+                    <p className="mt-3 text-sm font-medium leading-6 text-slate-900">
+                      {notification.message}
+                    </p>
+                    <div className="mt-4">
+                      <Link href={href}>
+                        <Button className="bg-[#03234b] text-white hover:bg-[#042d5e]">
+                          Review document
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {visibleNotifications.length > 4 && (
+            <div className="rounded-xl border border-dashed border-rose-200 bg-white/70 px-4 py-3 text-sm text-slate-600">
+              {visibleNotifications.length - 4} more approval notifications are waiting in
+              your notification center.
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="border-t border-rose-100 bg-white/80 px-6 py-4">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Remind me later
+          </Button>
+          <Link href={getNotificationTarget(primaryNotification)}>
+            <Button className="bg-[#03234b] text-white hover:bg-[#042d5e]">
+              Open review queue
+            </Button>
+          </Link>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 // Upcoming Hearings Component
 const UpcomingHearings = ({ events = [] }) => {
   return (
@@ -534,6 +662,24 @@ const NewDashboard = () => {
     },
   });
   const [loading, setLoading] = useState(true);
+  const [isApprovalPopupOpen, setIsApprovalPopupOpen] = useState(false);
+  const [dismissedApprovalIds, setDismissedApprovalIds] = useState([]);
+  const knownNotificationIdsRef = useRef(new Set());
+  const hasSyncedNotificationsRef = useRef(false);
+
+  const approvalNotifications = useMemo(
+    () => getApprovalReviewNotifications(dashboardData.notifications),
+    [dashboardData.notifications]
+  );
+
+  const dismissCurrentApprovalPopup = () => {
+    const activeIds = approvalNotifications
+      .map((notification) => notification?._id)
+      .filter(Boolean);
+
+    setDismissedApprovalIds((prev) => Array.from(new Set([...prev, ...activeIds])));
+    setIsApprovalPopupOpen(false);
+  };
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -628,12 +774,115 @@ const NewDashboard = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const activeApprovalIds = new Set(
+      approvalNotifications
+        .map((notification) => notification?._id)
+        .filter(Boolean)
+    );
+
+    setDismissedApprovalIds((prev) =>
+      prev.filter((notificationId) => activeApprovalIds.has(notificationId))
+    );
+
+    const currentNotificationIds = new Set(
+      dashboardData.notifications
+        .map((notification) => notification?._id)
+        .filter(Boolean)
+    );
+
+    const hasNewApprovalNotification = approvalNotifications.some(
+      (notification) =>
+        notification?._id && !knownNotificationIdsRef.current.has(notification._id)
+    );
+
+    if (approvalNotifications.length === 0) {
+      setIsApprovalPopupOpen(false);
+    } else if (!hasSyncedNotificationsRef.current || hasNewApprovalNotification) {
+      setIsApprovalPopupOpen(true);
+    }
+
+    knownNotificationIdsRef.current = currentNotificationIds;
+    hasSyncedNotificationsRef.current = true;
+  }, [approvalNotifications, dashboardData.notifications]);
+
+  useEffect(() => {
+    if (loading) {
+      return undefined;
+    }
+
+    let isCancelled = false;
+    let isPolling = false;
+
+    const pollNotifications = async () => {
+      if (isPolling || document.hidden) {
+        return;
+      }
+
+      isPolling = true;
+
+      try {
+        const notificationsResponse = await api.notifications.getAll();
+        if (isCancelled) {
+          return;
+        }
+
+        const notifications = Array.isArray(notificationsResponse)
+          ? notificationsResponse
+          : [];
+        const newNotifications = notifications.filter(
+          (notification) =>
+            notification?._id && !knownNotificationIdsRef.current.has(notification._id)
+        );
+
+        setDashboardData((prev) => ({
+          ...prev,
+          notifications,
+        }));
+
+        newNotifications.forEach((notification) => {
+          window.dispatchEvent(
+            new CustomEvent("app:notification", { detail: notification })
+          );
+        });
+      } catch (error) {
+        console.error("Error polling dashboard notifications:", error);
+      } finally {
+        isPolling = false;
+      }
+    };
+
+    const intervalId = window.setInterval(
+      pollNotifications,
+      DASHBOARD_NOTIFICATION_POLL_MS
+    );
+
+    return () => {
+      isCancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [loading]);
+
   if (loading) {
     return <DashboardSkeleton />;
   }
 
   return (
     <div className="min-h-screen bg-gray-50/50 pt-3 px-6 pb-6">
+      <ApprovalNotificationsPopup
+        notifications={approvalNotifications}
+        open={isApprovalPopupOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            dismissCurrentApprovalPopup();
+            return;
+          }
+
+          setIsApprovalPopupOpen(true);
+        }}
+        dismissedNotificationIds={dismissedApprovalIds}
+      />
+
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Welcome Section */}
         <div className="space-y-2">

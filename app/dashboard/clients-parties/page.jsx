@@ -371,8 +371,6 @@ export default function ClientsPartiesPage() {
 
         const processedPeople = processCasesData(cases);
         setPeople(processedPeople);
-        
-        toast.success('Data loaded successfully');
       } catch (err) {
         console.error("Error fetching data:", err);
         setError(err.message || "Failed to load data. Please try again later.");

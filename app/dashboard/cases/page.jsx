@@ -78,6 +78,7 @@ export default function CasesPage() {
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [expandedDescriptions, setExpandedDescriptions] = useState({});
 
   useEffect(() => {
     if (user) {
@@ -192,6 +193,13 @@ export default function CasesPage() {
 
     return matchesSearch && matchesStatus && matchesType && matchesPriority;
   });
+
+  const toggleDescription = (caseId) => {
+    setExpandedDescriptions((prev) => ({
+      ...prev,
+      [caseId]: !prev[caseId],
+    }));
+  };
 
   // Get unique values for filters
   const caseTypes = [
@@ -336,6 +344,9 @@ export default function CasesPage() {
         {filteredCases.length > 0 ? (
           filteredCases.map((rawCase) => {
             const caseItem = mapCaseFields(rawCase);
+            const description = caseItem.description || "No summary added yet.";
+            const isDescriptionExpanded = Boolean(expandedDescriptions[caseItem.id]);
+            const shouldShowReadMore = description.length > 140;
             const petitioners = rawCase.parties?.petitioner || [];
             const respondents = rawCase.parties?.respondent || [];
             const respondentCounsels = Array.from(
@@ -402,9 +413,22 @@ export default function CasesPage() {
                         </div>
                         <div className="pt-1">
                           <p className="text-xs text-muted-foreground mb-0.5">Description</p>
-                          <p className="text-sm text-foreground/80 line-clamp-2">
-                            {caseItem.description || "No summary added yet."}
+                          <p
+                            className={`text-sm text-foreground/80 ${
+                              isDescriptionExpanded ? "" : "line-clamp-2"
+                            }`}
+                          >
+                            {description}
                           </p>
+                          {shouldShowReadMore && (
+                            <button
+                              type="button"
+                              onClick={() => toggleDescription(caseItem.id)}
+                              className="mt-1 text-xs font-medium text-[#1a2332] hover:underline"
+                            >
+                              {isDescriptionExpanded ? "Read less" : "Read more"}
+                            </button>
+                          )}
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2 pt-2">
                           <div>
