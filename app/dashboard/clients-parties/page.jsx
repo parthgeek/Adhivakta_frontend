@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { useAuth } from "@/context/auth-context"  // ADD THIS
 import api from "@/services/api"  // ADD THIS
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
@@ -341,8 +341,10 @@ const ClientsPartiesPageSkeleton = () => (
 // Main Component
 export default function ClientsPartiesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();  // ADD THIS - Use auth context
-  const [searchTerm, setSearchTerm] = useState("")
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("q") || "")
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "clients")
   const [filteredClients, setFilteredClients] = useState([]);
   const [filteredLawyers, setFilteredLawyers] = useState([]);
   const [people, setPeople] = useState({
@@ -387,6 +389,11 @@ export default function ClientsPartiesPage() {
 
     fetchData();
   }, [router])
+
+  useEffect(() => {
+    setSearchTerm(searchParams.get("q") || "");
+    setActiveTab(searchParams.get("tab") || "clients");
+  }, [searchParams]);
 
   // Filter people based on search term
   const filterPeople = useCallback((person, searchTerm = '') => {
@@ -694,7 +701,7 @@ export default function ClientsPartiesPage() {
       {/* Main Card */}
       <Card>
         <CardContent className="p-0">
-          <Tabs defaultValue="clients" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <div className="border-b px-6 pt-6">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="clients" className="flex items-center gap-2">
