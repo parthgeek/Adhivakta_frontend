@@ -28,6 +28,13 @@ import {
   Loader2,
 } from "lucide-react";
 import { formatLegalTeamSummary } from "@/lib/legal-team";
+import {
+  getCasePriority,
+  getCasePriorityColor,
+  getCasePriorityLabel,
+  isPriorityAlertCase,
+} from "@/lib/casePriority";
+import { formatDisplayCaseNumber } from "@/lib/caseTypeUtils";
 
 const normalizeStatus = (status) => {
   switch (status) {
@@ -60,18 +67,6 @@ const normalizeType = (type) => {
   }
 };
 
-const normalizePriority = (priority) => {
-  switch (priority) {
-    case "critical":
-    case "high":
-      return "high";
-    case "low":
-      return "low";
-    default:
-      return "medium";
-  }
-};
-
 const getTypeColor = (type) => {
   switch (type) {
     case "hearing":
@@ -97,19 +92,6 @@ const getStatusColor = (status) => {
       return "bg-amber-500 text-white";
     case "cancelled":
       return "bg-red-600 text-white";
-    default:
-      return "bg-muted text-foreground";
-  }
-};
-
-const getPriorityColor = (priority) => {
-  switch (priority) {
-    case "high":
-      return "bg-red-600 text-white";
-    case "medium":
-      return "bg-amber-400 text-black";
-    case "low":
-      return "bg-green-600 text-white";
     default:
       return "bg-muted text-foreground";
   }
@@ -247,7 +229,7 @@ export default function HearingsPage() {
         courtroom: caseObj?.courtHall ? `Court Room ${caseObj.courtHall}` : "Court Room TBD",
         judge: caseObj?.judge || caseObj?.assignedJudge || "Not assigned",
         type: normalizeType(event.type),
-        priority: normalizePriority(event.priority),
+        priority: getCasePriority(caseObj || {}, { hearingDate: event.start }),
         status: normalizeStatus(event.status),
         advocate,
         client,
@@ -307,7 +289,7 @@ export default function HearingsPage() {
         courtroom: caseItem.courtHall ? `Court Room ${caseItem.courtHall}` : "Court Room TBD",
         judge: caseItem.judge || caseItem.assignedJudge || "Not assigned",
         type: "hearing",
-        priority: normalizePriority(caseItem.priority),
+        priority: getCasePriority(caseItem),
         status:
           startDate && startDate < new Date()
             ? "completed"
@@ -607,26 +589,35 @@ export default function HearingsPage() {
           <Card key={hearing.id} className="hover:shadow-md transition-shadow">
             <CardContent className="p-6">
               <div className="space-y-4">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <h3 className="text-lg font-semibold text-foreground">
-                        {hearing.caseNumber}
-                      </h3>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Case Name</p>
+                    <h3 className="text-lg font-semibold text-foreground leading-snug">
+                      {hearing.caseName}
+                    </h3>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className="text-xs text-muted-foreground">Priority:</span>
+                      <Badge className={getCasePriorityColor(hearing.priority)}>
+                        {getCasePriorityLabel(hearing.priority)}
+                      </Badge>
+                      {isPriorityAlertCase(hearing.priority) && (
+                        <AlertCircle className="h-4 w-4 text-red-600" />
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-xs text-muted-foreground">Case No.</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {formatDisplayCaseNumber({ caseNumber: hearing.caseNumber }) || hearing.caseNumber}
+                    </p>
+                    <div className="flex items-center justify-end gap-1.5 mt-1 flex-wrap">
                       <Badge className={getTypeColor(hearing.type)}>
                         {hearing.type.replace("_", " ").toUpperCase()}
                       </Badge>
                       <Badge className={getStatusColor(hearing.status)}>
                         {hearing.status.toUpperCase()}
                       </Badge>
-                      <Badge className={getPriorityColor(hearing.priority)}>
-                        {hearing.priority.toUpperCase()}
-                      </Badge>
-                      {hearing.priority === "high" && (
-                        <AlertCircle className="h-5 w-5 text-red-600" />
-                      )}
                     </div>
-                    <p className="text-base text-muted-foreground">{hearing.caseName}</p>
                   </div>
                 </div>
 

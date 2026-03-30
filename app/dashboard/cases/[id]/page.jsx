@@ -1164,7 +1164,7 @@ export default function CaseDetailsPage() {
                 <Button
                   className="w-full"
                   variant="outline"
-                  onClick={() => router.push(`/dashboard/calendar/new?caseId=${id}`)}
+                  onClick={() => setShowScheduleDialog(true)}
                 >
                   Schedule Hearing
                 </Button>

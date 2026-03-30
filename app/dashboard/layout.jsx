@@ -4,13 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { SidebarProvider } from "@/context/sidebar-context";
-import { RealTimeCountsProvider } from "@/context/realtime-counts-context";
 import Sidebar from "@/components/dashboard/sidebar";
 import Header from "@/components/dashboard/header";
-import NotificationListener from "@/components/NotificationListener";
-
-
-import Toaster from "@/components/Toaster";
 
 export default function DashboardLayout({ children }) {
   const router = useRouter();
@@ -59,20 +54,15 @@ export default function DashboardLayout({ children }) {
 
   return (
     <SidebarProvider>
-      <RealTimeCountsProvider>
-        <div className="flex h-screen flex-col overflow-hidden">
-          <Header />
-          <div className="flex flex-1 overflow-hidden">
-            <Sidebar />
-            <main className="flex-1 overflow-y-auto p-4 md:p-6">
-              {children}
-            </main>
-          </div>
+      <div className="flex h-screen flex-col overflow-hidden">
+        <Header />
+        <div className="flex flex-1 overflow-hidden">
+          <Sidebar />
+          <main className="flex-1 overflow-y-auto p-4 md:p-6">
+            {children}
+          </main>
         </div>
-
-        <Toaster />
-        <NotificationListener user={user} />
-      </RealTimeCountsProvider>
+      </div>
     </SidebarProvider>
   );
 }

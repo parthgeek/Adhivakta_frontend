@@ -18,7 +18,7 @@ import {
   Check,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { toast } from "react-toastify";
+import { toast } from "@/components/ui/use-toast";
 import { useNotifications } from "@/hooks/UseNotifications";
 
 export default function NotificationsPageEnhanced() {
@@ -45,9 +45,16 @@ export default function NotificationsPageEnhanced() {
   const handleMarkAllAsRead = async () => {
     const result = await markAllAsRead();
     if (result) {
-      toast.success("All notifications marked as read");
+      toast({
+        title: "Success",
+        description: "All notifications marked as read",
+      });
     } else {
-      toast.error("Failed to mark all as read");
+      toast({
+        title: "Error",
+        description: "Failed to mark all as read",
+        variant: "destructive",
+      });
     }
   };
 
@@ -55,9 +62,16 @@ export default function NotificationsPageEnhanced() {
     if (window.confirm("Are you sure you want to delete all notifications?")) {
       const result = await clearAll();
       if (result) {
-        toast.success("All notifications cleared");
+        toast({
+          title: "Success",
+          description: "All notifications cleared",
+        });
       } else {
-        toast.error("Failed to clear notifications");
+        toast({
+          title: "Error",
+          description: "Failed to clear notifications",
+          variant: "destructive",
+        });
       }
     }
   };
@@ -66,9 +80,16 @@ export default function NotificationsPageEnhanced() {
     e.stopPropagation();
     const result = await deleteNotification(notificationId);
     if (result.success) {
-      toast.success("Notification deleted");
+      toast({
+        title: "Success",
+        description: "Notification deleted",
+      });
     } else {
-      toast.error("Failed to delete notification");
+      toast({
+        title: "Error",
+        description: "Failed to delete notification",
+        variant: "destructive",
+      });
     }
   };
 

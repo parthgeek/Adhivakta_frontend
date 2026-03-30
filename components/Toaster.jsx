@@ -1,15 +1,51 @@
 "use client";
 
-import React from "react";
-import { useToast } from "@/hooks/use-toast";
+import React, { useEffect, useRef } from "react";
+import { useToast } from "@/components/ui/use-toast";
 import { X } from "lucide-react";
 
 export default function Toaster() {
   const { toasts, dismiss } = useToast();
+  const timeoutIdsRef = useRef(new Map());
+
+  useEffect(() => {
+    toasts.forEach((toast) => {
+      if (toast.open === false || !toast.duration) {
+        return;
+      }
+
+      if (timeoutIdsRef.current.has(toast.id)) {
+        return;
+      }
+
+      const timeoutId = window.setTimeout(() => {
+        dismiss(toast.id);
+        timeoutIdsRef.current.delete(toast.id);
+      }, toast.duration);
+
+      timeoutIdsRef.current.set(toast.id, timeoutId);
+    });
+
+    toasts.forEach((toast) => {
+      if (toast.open === false && timeoutIdsRef.current.has(toast.id)) {
+        window.clearTimeout(timeoutIdsRef.current.get(toast.id));
+        timeoutIdsRef.current.delete(toast.id);
+      }
+    });
+
+    return () => {
+      timeoutIdsRef.current.forEach((timeoutId) => {
+        window.clearTimeout(timeoutId);
+      });
+      timeoutIdsRef.current.clear();
+    };
+  }, [toasts, dismiss]);
+
+  const visibleToasts = toasts.filter((toast) => toast.open !== false);
 
   return (
     <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 max-w-md">
-      {toasts.map((t) => (
+      {visibleToasts.map((t) => (
         <div
           key={t.id}
           role="status"
@@ -23,11 +59,7 @@ export default function Toaster() {
             ${t.variant === 'default' ? 'border-l-4 border-l-[#03234b]' : ''}
             hover:shadow-xl cursor-pointer
           `}
-          onClick={() => {
-            if (t.action?.onClick) {
-              t.action.onClick();
-            }
-          }}
+          onClick={() => t.action?.onClick?.()}
         >
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1">
@@ -46,7 +78,7 @@ export default function Toaster() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (t.action.onClick) t.action.onClick();
+                      t.action.onClick?.();
                       dismiss(t.id);
                     }}
                     className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-[#03234b] rounded-md hover:bg-[#03234b] transition-colors focus:outline-none focus:ring-2 focus:ring-[#03234b] focus:ring-offset-2"
