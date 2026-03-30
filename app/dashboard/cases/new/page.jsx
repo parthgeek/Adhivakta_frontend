@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import CaseTabs from "@/components/cases/CaseTabs";
@@ -237,6 +237,7 @@ export default function NewCasePage() {
   );
   const isLawyer = user?.role === "lawyer" || user?.role === "admin";
 
+  const pageTopRef = useRef(null);
   const [caseData, setCaseData] = useState(
     syncDerivedCaseFields({
       title: "",
@@ -484,6 +485,18 @@ export default function NewCasePage() {
   useEffect(() => {
     loadStates();
   }, []);
+
+  useEffect(() => {
+    if (pageTopRef.current) {
+      pageTopRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+        inline: "nearest",
+      });
+    } else if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [activeTab]);
 
   // Validate all fields
   const validateAllFields = () => {
@@ -837,6 +850,7 @@ export default function NewCasePage() {
             email: normalizeValue(r.email),
             contact: normalizeValue(r.contact),
             address: normalizeValue(r.address),
+            opposingCounsel: normalizeValue(r.opposingCounsel),
           })),
         },
 
@@ -1389,7 +1403,7 @@ export default function NewCasePage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" ref={pageTopRef}>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Add Case</h1>
