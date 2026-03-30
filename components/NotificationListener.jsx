@@ -5,6 +5,7 @@ import { io } from "socket.io-client";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Bell, CheckCircle } from "lucide-react";
+import { getNotificationTarget } from "@/lib/notification-link";
 
 export default function NotificationListener({ user }) {
   const socketRef = useRef(null);
@@ -68,6 +69,7 @@ export default function NotificationListener({ user }) {
       const isPriority = payload.meta?.priority === "high";
       const title = payload.title || getDefaultTitle(payload.type, payload.meta);
       const actionLabel = payload.type === "document_review_request" ? "Review" : "View";
+      const target = getNotificationTarget(payload);
 
       // Show toast notification with enhanced styling
       toast({
@@ -97,7 +99,7 @@ export default function NotificationListener({ user }) {
             : "border-l-4 border-l-[#03234b]",
         action: payload.link ? {
           label: actionLabel,
-          onClick: () => router.push(payload.link)
+          onClick: () => router.push(target)
         } : undefined,
       });
 

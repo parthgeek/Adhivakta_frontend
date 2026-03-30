@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/context/auth-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -21,9 +21,12 @@ import { toast } from "@/components/ui/use-toast"
 import { formatCaseTypeLabel, formatDisplayCaseNumber } from "@/lib/caseTypeUtils"
 import { getDocumentOpenUrl } from "@/lib/document-url"
 
+const CASE_TAB_VALUES = new Set(["details", "people", "documents", "hearings"])
+
 export default function CaseDetailsPage() {
   const { id } = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user } = useAuth()
   const [caseData, setCaseData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -46,7 +49,21 @@ export default function CaseDetailsPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState("")
   const [deleting, setDeleting] = useState(false)
-  
+  const requestedTab = searchParams.get("tab")
+  const activeTab = CASE_TAB_VALUES.has(requestedTab) ? requestedTab : "details"
+
+  const handleTabChange = (nextTab) => {
+    const params = new URLSearchParams(searchParams.toString())
+
+    if (nextTab === "details") {
+      params.delete("tab")
+    } else {
+      params.set("tab", nextTab)
+    }
+
+    const query = params.toString()
+    router.replace(query ? `/dashboard/cases/${id}?${query}` : `/dashboard/cases/${id}`)
+  }
 
   const fetchCaseDocuments = async () => {
     const docsResponse = await api.documents.getByCaseId(id)
@@ -433,7 +450,7 @@ export default function CaseDetailsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2">
-          <Tabs defaultValue="details" className="w-full">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="details">Case Details</TabsTrigger>
               <TabsTrigger value="people">People</TabsTrigger>

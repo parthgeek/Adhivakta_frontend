@@ -20,6 +20,7 @@ import {
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { useNotifications } from "@/hooks/UseNotifications";
+import { getNotificationTarget } from "@/lib/notification-link";
 
 export default function NotificationsPageEnhanced() {
   const router = useRouter();
@@ -38,7 +39,7 @@ export default function NotificationsPageEnhanced() {
       await markAsRead(notification._id);
     }
     if (notification.link) {
-      router.push(notification.link);
+      router.push(getNotificationTarget(notification));
     }
   };
 
