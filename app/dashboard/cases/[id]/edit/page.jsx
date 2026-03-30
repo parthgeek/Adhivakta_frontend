@@ -443,6 +443,10 @@ export default function EditCasePage() {
           toast({ title: "Error", description: `Please enter a name for Lawyer ${i + 1}.`, variant: "destructive" });
           return;
         }
+        if (!(lawyer.email || lawyer.user?.email || "").trim()) {
+          toast({ title: "Error", description: `Please enter an email for Lawyer ${i + 1}.`, variant: "destructive" });
+          return;
+        }
       }
     }
 
@@ -455,6 +459,10 @@ export default function EditCasePage() {
         const client = caseData.clients[i];
         if (!client.name) {
           toast({ title: "Error", description: `Please enter a name for Client ${i + 1}.`, variant: "destructive" });
+          return;
+        }
+        if (!(client.email || client.user?.email || "").trim()) {
+          toast({ title: "Error", description: `Please enter an email for Client ${i + 1}.`, variant: "destructive" });
           return;
         }
       }

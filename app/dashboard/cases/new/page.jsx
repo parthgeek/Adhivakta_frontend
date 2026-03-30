@@ -609,6 +609,9 @@ export default function NewCasePage() {
           if (!client.name || client.name.trim() === '') {
             errors.push({ tab: 'associatedParties', message: `Client ${index + 1} name is required` });
           }
+          if (!normalizeValue(client?.email)) {
+            errors.push({ tab: 'associatedParties', message: `Client ${index + 1} email ID is required` });
+          }
         });
       }
     } else {
