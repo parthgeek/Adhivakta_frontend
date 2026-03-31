@@ -17,7 +17,8 @@ export default function AssociatedPartiesTab({
   isSubmitting,
   handleSubmit,
   router,
-  user
+  user,
+  validationErrors,
 }) {
   return (
     <Card>
@@ -29,6 +30,7 @@ export default function AssociatedPartiesTab({
           removeClient={removeClient}
           addClient={addClient}
           user={user}
+          validationErrors={validationErrors}
         />
       ) : (
         <ClientView
@@ -38,6 +40,7 @@ export default function AssociatedPartiesTab({
           removeClient={removeClient}
           addClient={addClient}
           user={user}
+          validationErrors={validationErrors}
         />
       )}
 
@@ -46,6 +49,7 @@ export default function AssociatedPartiesTab({
         updateStakeholderField={updateStakeholderField}
         removeStakeholder={removeStakeholder}
         addStakeholder={addStakeholder}
+        validationErrors={validationErrors}
       />
 
       <CardFooter className="flex justify-between mt-6 pt-6 border-t">

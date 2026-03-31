@@ -4,6 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export default function CourtInfoTab({
   caseData,
@@ -16,11 +17,18 @@ export default function CourtInfoTab({
   router,
   handleNext,
   handleBack,
-  isLastTab
+  isLastTab,
+  validationErrors,
 }) {
   const { states = [], districts = [], complexes = [], courts = [], caseTypes = [] } =
     courtDirectoryOptions || {};
   const selectedEcourt = caseData.eCourt || {};
+  const fieldErrors = validationErrors?.fieldErrors || {};
+  const getFieldError = (field) => fieldErrors[field];
+  const getFieldClassName = (field) =>
+    getFieldError(field) ? "border-destructive/50 bg-red-50 focus-visible:ring-red-300" : "";
+  const getLabelClassName = (field) =>
+    getFieldError(field) ? "text-red-800" : "";
 
   return (
     <Card>
@@ -35,7 +43,7 @@ export default function CourtInfoTab({
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="courtState">
+                <Label htmlFor="courtState" className={getLabelClassName("courtState")}>
                   State <span className="text-red-500">*</span>
                 </Label>
                 <Select
@@ -43,7 +51,7 @@ export default function CourtInfoTab({
                   onValueChange={(value) => handleSelectChange("ecourtState", value)}
                   disabled={courtDirectoryLoading?.states}
                 >
-                  <SelectTrigger id="courtState">
+                  <SelectTrigger id="courtState" className={getFieldClassName("courtState")}>
                     <SelectValue
                       placeholder={
                         courtDirectoryLoading?.states ? "Loading states..." : "Select state"
@@ -58,10 +66,13 @@ export default function CourtInfoTab({
                     ))}
                   </SelectContent>
                 </Select>
+                {getFieldError("courtState") && (
+                  <p className="text-sm text-red-700">{getFieldError("courtState")}</p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="district">
+                <Label htmlFor="district" className={getLabelClassName("district")}>
                   District <span className="text-red-500">*</span>
                 </Label>
                 <Select
@@ -69,7 +80,7 @@ export default function CourtInfoTab({
                   onValueChange={(value) => handleSelectChange("ecourtDistrict", value)}
                   disabled={!selectedEcourt.stateCode || courtDirectoryLoading?.districts}
                 >
-                  <SelectTrigger id="district">
+                  <SelectTrigger id="district" className={getFieldClassName("district")}>
                     <SelectValue
                       placeholder={
                         !selectedEcourt.stateCode
@@ -88,12 +99,15 @@ export default function CourtInfoTab({
                     ))}
                   </SelectContent>
                 </Select>
+                {getFieldError("district") && (
+                  <p className="text-sm text-red-700">{getFieldError("district")}</p>
+                )}
               </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="courtComplex">
+                <Label htmlFor="courtComplex" className={getLabelClassName("courtComplex")}>
                   Court Complex <span className="text-red-500">*</span>
                 </Label>
                 <Select
@@ -101,7 +115,7 @@ export default function CourtInfoTab({
                   onValueChange={(value) => handleSelectChange("ecourtComplex", value)}
                   disabled={!selectedEcourt.districtCode || courtDirectoryLoading?.complexes}
                 >
-                  <SelectTrigger id="courtComplex">
+                  <SelectTrigger id="courtComplex" className={getFieldClassName("courtComplex")}>
                     <SelectValue
                       placeholder={
                         !selectedEcourt.districtCode
@@ -120,10 +134,13 @@ export default function CourtInfoTab({
                     ))}
                   </SelectContent>
                 </Select>
+                {getFieldError("courtComplex") && (
+                  <p className="text-sm text-red-700">{getFieldError("courtComplex")}</p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="courtSelection">
+                <Label htmlFor="courtSelection" className={getLabelClassName("courtSelection")}>
                   Court / Establishment <span className="text-red-500">*</span>
                 </Label>
                 <Select
@@ -131,7 +148,7 @@ export default function CourtInfoTab({
                   onValueChange={(value) => handleSelectChange("ecourtCourt", value)}
                   disabled={!selectedEcourt.complexCode || courtDirectoryLoading?.courts}
                 >
-                  <SelectTrigger id="courtSelection">
+                  <SelectTrigger id="courtSelection" className={getFieldClassName("courtSelection")}>
                     <SelectValue
                       placeholder={
                         !selectedEcourt.complexCode
@@ -150,11 +167,14 @@ export default function CourtInfoTab({
                     ))}
                   </SelectContent>
                 </Select>
+                {getFieldError("courtSelection") && (
+                  <p className="text-sm text-red-700">{getFieldError("courtSelection")}</p>
+                )}
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="ecourtCaseType">
+              <Label htmlFor="ecourtCaseType" className={getLabelClassName("ecourtCaseType")}>
                  Case Type <span className="text-red-500">*</span>
               </Label>
               <Select
@@ -162,7 +182,7 @@ export default function CourtInfoTab({
                 onValueChange={(value) => handleSelectChange("ecourtCaseType", value)}
                 disabled={!selectedEcourt.courtCode || courtDirectoryLoading?.caseTypes}
               >
-                <SelectTrigger id="ecourtCaseType">
+                <SelectTrigger id="ecourtCaseType" className={getFieldClassName("ecourtCaseType")}>
                   <SelectValue
                     placeholder={
                       !selectedEcourt.courtCode
@@ -181,6 +201,9 @@ export default function CourtInfoTab({
                   ))}
                 </SelectContent>
               </Select>
+              {getFieldError("ecourtCaseType") && (
+                <p className="text-sm text-red-700">{getFieldError("ecourtCaseType")}</p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -191,6 +214,7 @@ export default function CourtInfoTab({
                   name="courtHall"
                   value={caseData.courtHall}
                   onChange={handleChange}
+                  className={cn(getFieldClassName("courtHall"))}
                 />
               </div>
             </div>
@@ -205,6 +229,7 @@ export default function CourtInfoTab({
               onChange={handleChange}
               rows={3}
               placeholder="Any additional notes about the court or proceedings"
+              className={cn(getFieldClassName("notes"))}
             />
           </div>
         </div>

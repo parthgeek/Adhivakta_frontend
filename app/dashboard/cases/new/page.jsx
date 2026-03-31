@@ -52,6 +52,9 @@ const EMPTY_COURT_DIRECTORY_LOADING = {
 };
 
 const DEFAULT_CASE_YEAR = String(new Date().getFullYear());
+const TAB_ORDER = ["court", "details", "party", "documents", "associatedParties"];
+const LIGHT_ERROR_TOAST_CLASSNAME =
+  "!bg-red-50 !text-red-950 !border !border-red-200";
 
 const syncDerivedCaseFields = (caseInfo = {}) => {
   const caseYear = caseInfo.caseYear || DEFAULT_CASE_YEAR;
@@ -193,10 +196,18 @@ const validateRequiredLegalTeamFields = ({
   errors,
   requireAtLeastOne = false,
   emptyStateMessage,
+  emptyStateField,
+  emptyStateFocusId,
 }) => {
   if (!Array.isArray(participants) || participants.length === 0) {
     if (requireAtLeastOne && emptyStateMessage) {
-      errors.push({ tab, message: emptyStateMessage });
+      errors.push({
+        tab,
+        field: emptyStateField,
+        focusId: emptyStateFocusId,
+        summary: emptyStateMessage,
+        message: emptyStateMessage,
+      });
     }
     return;
   }
@@ -205,21 +216,141 @@ const validateRequiredLegalTeamFields = ({
     const participantNumber = `${roleLabel} ${index + 1}`;
 
     if (!normalizeValue(participant?.name)) {
-      errors.push({ tab, message: `${participantNumber} name is required` });
+      errors.push({
+        tab,
+        field: `${tab}.${roleLabel.toLowerCase()}.${index}.name`,
+        focusId: `${roleLabel.toLowerCase()}-name-${index}`,
+        summary: `${participantNumber} name`,
+        message: `Enter ${participantNumber.toLowerCase()} name`,
+      });
     }
 
     if (!normalizeValue(participant?.company)) {
-      errors.push({ tab, message: `${participantNumber} law firm is required` });
+      errors.push({
+        tab,
+        field: `${tab}.${roleLabel.toLowerCase()}.${index}.company`,
+        focusId: `${roleLabel.toLowerCase()}-company-${index}`,
+        summary: `${participantNumber} law firm`,
+        message: `Enter ${participantNumber.toLowerCase()} law firm`,
+      });
     }
 
     if (!normalizeValue(participant?.contact)) {
-      errors.push({ tab, message: `${participantNumber} mobile number is required` });
+      errors.push({
+        tab,
+        field: `${tab}.${roleLabel.toLowerCase()}.${index}.contact`,
+        focusId: `${roleLabel.toLowerCase()}-contact-${index}`,
+        summary: `${participantNumber} mobile number`,
+        message: `Enter ${participantNumber.toLowerCase()} mobile number`,
+      });
     }
 
     if (!normalizeValue(participant?.email)) {
-      errors.push({ tab, message: `${participantNumber} email ID is required` });
+      errors.push({
+        tab,
+        field: `${tab}.${roleLabel.toLowerCase()}.${index}.email`,
+        focusId: `${roleLabel.toLowerCase()}-email-${index}`,
+        summary: `${participantNumber} email`,
+        message: `Enter ${participantNumber.toLowerCase()} email`,
+      });
     }
   });
+};
+
+const buildValidationState = (errors = []) => {
+  const grouped = {};
+
+  errors.forEach((error) => {
+    if (!grouped[error.tab]) {
+      grouped[error.tab] = {
+        hasErrors: true,
+        errorCount: 0,
+        messages: [],
+        summaries: [],
+        fieldErrors: {},
+        firstFocusId: error.focusId || null,
+      };
+    }
+
+    const bucket = grouped[error.tab];
+    bucket.errorCount += 1;
+
+    if (error.message && !bucket.messages.includes(error.message)) {
+      bucket.messages.push(error.message);
+    }
+
+    if (error.summary && !bucket.summaries.includes(error.summary)) {
+      bucket.summaries.push(error.summary);
+    }
+
+    if (error.field && !bucket.fieldErrors[error.field]) {
+      bucket.fieldErrors[error.field] = error.message;
+    }
+
+    if (!bucket.firstFocusId && error.focusId) {
+      bucket.firstFocusId = error.focusId;
+    }
+  });
+
+  return grouped;
+};
+
+const focusFieldById = (fieldId) => {
+  if (typeof document === "undefined" || !fieldId) return false;
+
+  const element = document.getElementById(fieldId);
+  if (!element) return false;
+
+  element.scrollIntoView({
+    behavior: "smooth",
+    block: "center",
+    inline: "nearest",
+  });
+
+  if (typeof element.focus === "function") {
+    element.focus({ preventScroll: true });
+  }
+
+  return true;
+};
+
+const formatValidationToast = (errors = [], activeTabOnly = false) => {
+  if (!errors.length) return null;
+
+  if (activeTabOnly) {
+    const fields = [...new Set(errors.map((error) => error.summary))];
+    return {
+      title: "Complete required fields",
+      description: fields.join(", "),
+    };
+  }
+
+  const grouped = errors.reduce((acc, error) => {
+    if (!acc[error.tab]) {
+      acc[error.tab] = [];
+    }
+
+    if (!acc[error.tab].includes(error.summary)) {
+      acc[error.tab].push(error.summary);
+    }
+
+    return acc;
+  }, {});
+
+  const tabLabels = {
+    court: "Court",
+    details: "Case details",
+    party: "Parties",
+    documents: "Documents",
+    associatedParties: "People",
+  };
+
+  return {
+    title: "Complete required fields",
+    description: Object.entries(grouped)
+      .map(([tab, items]) => `${tabLabels[tab] || tab}: ${items.join(", ")}`)
+      .join("\n"),
+  };
 };
 
 export default function NewCasePage() {
@@ -238,6 +369,8 @@ export default function NewCasePage() {
   const isLawyer = user?.role === "lawyer" || user?.role === "admin";
 
   const pageTopRef = useRef(null);
+  const [validationErrors, setValidationErrors] = useState({});
+  const [pendingFocusTarget, setPendingFocusTarget] = useState(null);
   const [caseData, setCaseData] = useState(
     syncDerivedCaseFields({
       title: "",
@@ -498,67 +631,163 @@ export default function NewCasePage() {
     }
   }, [activeTab]);
 
+  useEffect(() => {
+    if (!pendingFocusTarget?.fieldId || pendingFocusTarget.tab !== activeTab) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      const didFocus = focusFieldById(pendingFocusTarget.fieldId);
+      if (didFocus) {
+        setPendingFocusTarget(null);
+      }
+    }, 80);
+
+    return () => window.clearTimeout(timer);
+  }, [activeTab, pendingFocusTarget]);
+
   // Validate all fields
   const validateAllFields = () => {
     const errors = [];
 
     // Case Details validation
     if (!caseData.title || caseData.title.trim() === '') {
-      errors.push({ tab: 'details', message: 'Case title is required' });
+      errors.push({
+        tab: "details",
+        field: "title",
+        focusId: "title",
+        summary: "Case title",
+        message: "Enter case title",
+      });
     } else if (caseData.title.length < 3) {
-      errors.push({ tab: 'details', message: 'Case title must be at least 3 characters' });
+      errors.push({
+        tab: "details",
+        field: "title",
+        focusId: "title",
+        summary: "Case title",
+        message: "Case title must be at least 3 characters",
+      });
     }
 
     if (!normalizeValue(caseData.caseNumberMiddle)) {
-      errors.push({ tab: 'details', message: 'Case number is required' });
+      errors.push({
+        tab: "details",
+        field: "caseNumberMiddle",
+        focusId: "caseNumberMiddle",
+        summary: "Case number",
+        message: "Enter case number",
+      });
     }
 
     if (!normalizeValue(caseData.caseYear)) {
-      errors.push({ tab: 'details', message: 'Case year is required' });
+      errors.push({
+        tab: "details",
+        field: "caseYear",
+        focusId: "caseYear",
+        summary: "Case year",
+        message: "Select case year",
+      });
     }
 
     if (!caseData.category) {
       errors.push({
-        tab: 'details',
-        message: 'Case category could not be derived from the selected Case type'
+        tab: "details",
+        field: "selectedCaseType",
+        focusId: "selectedCaseType",
+        summary: "Case type",
+        message: "Select case type in Court Information first",
       });
     }
 
     if (!caseData.status) {
-      errors.push({ tab: 'details', message: 'Case status is required' });
+      errors.push({
+        tab: "details",
+        field: "status",
+        focusId: "status",
+        summary: "Status",
+        message: "Select case status",
+      });
     }
 
     if (!normalizeValue(caseData.description)) {
-      errors.push({ tab: 'details', message: 'Case description is required' });
+      errors.push({
+        tab: "details",
+        field: "description",
+        focusId: "description",
+        summary: "Case description",
+        message: "Enter case description",
+      });
     }
 
     // Court validation
     if (!caseData.eCourt?.stateCode) {
-      errors.push({ tab: 'court', message: 'State is required' });
+      errors.push({
+        tab: "court",
+        field: "courtState",
+        focusId: "courtState",
+        summary: "State",
+        message: "Select state",
+      });
     }
     if (!caseData.eCourt?.districtCode) {
-      errors.push({ tab: 'court', message: 'District is required' });
+      errors.push({
+        tab: "court",
+        field: "district",
+        focusId: "district",
+        summary: "District",
+        message: "Select district",
+      });
     }
     if (!caseData.eCourt?.complexCode) {
-      errors.push({ tab: 'court', message: 'Court complex is required' });
+      errors.push({
+        tab: "court",
+        field: "courtComplex",
+        focusId: "courtComplex",
+        summary: "Court complex",
+        message: "Select court complex",
+      });
     }
     if (!caseData.eCourt?.courtCode) {
-      errors.push({ tab: 'court', message: 'Court selection is required' });
+      errors.push({
+        tab: "court",
+        field: "courtSelection",
+        focusId: "courtSelection",
+        summary: "Court",
+        message: "Select court",
+      });
     }
     if (!caseData.eCourt?.caseTypeCode) {
-      errors.push({ tab: 'court', message: 'Case type is required' });
+      errors.push({
+        tab: "court",
+        field: "ecourtCaseType",
+        focusId: "ecourtCaseType",
+        summary: "Case type",
+        message: "Select case type",
+      });
     }
 
     // First Hearing Date validation (MANDATORY)
     if (!caseData.nextHearingDate) {
-      errors.push({ tab: 'details', message: 'First hearing date is required' });
+      errors.push({
+        tab: "details",
+        field: "nextHearingDate",
+        focusId: "nextHearingDate",
+        summary: "First hearing date",
+        message: "Select first hearing date",
+      });
     } else {
       const hearingDate = new Date(caseData.nextHearingDate);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
       if (hearingDate < today) {
-        errors.push({ tab: 'details', message: 'First hearing date must be in the future' });
+        errors.push({
+          tab: "details",
+          field: "nextHearingDate",
+          focusId: "nextHearingDate",
+          summary: "First hearing date",
+          message: "First hearing date must be in the future",
+        });
       }
 
       if (caseData.filingDate) {
@@ -566,18 +795,36 @@ export default function NewCasePage() {
         filingDate.setHours(0, 0, 0, 0);
 
         if (hearingDate <= filingDate) {
-          errors.push({ tab: 'details', message: 'First hearing date must be after the filing date' });
+          errors.push({
+            tab: "details",
+            field: "nextHearingDate",
+            focusId: "nextHearingDate",
+            summary: "First hearing date",
+            message: "First hearing date must be after the filing date",
+          });
         }
       }
     }
 
     // Petitioner validation (MANDATORY - at least one)
     if (!caseData.petitioners || caseData.petitioners.length === 0) {
-      errors.push({ tab: 'party', message: 'At least one petitioner/plaintiff/appellant is required' });
+      errors.push({
+        tab: "party",
+        field: "petitioners",
+        focusId: "add-petitioner-button",
+        summary: "Filing side",
+        message: "Add at least one filing-side party",
+      });
     } else {
       caseData.petitioners.forEach((petitioner, index) => {
         if (!petitioner.name || petitioner.name.trim() === '') {
-          errors.push({ tab: 'party', message: `Petitioner ${index + 1} name is required` });
+          errors.push({
+            tab: "party",
+            field: `petitioners.${index}.name`,
+            focusId: `petitioners-name-${index}`,
+            summary: `Petitioner ${index + 1} name`,
+            message: `Enter petitioner ${index + 1} name`,
+          });
         }
       });
     }
@@ -586,7 +833,13 @@ export default function NewCasePage() {
     if (caseData.respondents && caseData.respondents.length > 0) {
       caseData.respondents.forEach((respondent, index) => {
         if (!respondent.name || respondent.name.trim() === '') {
-          errors.push({ tab: 'party', message: `Respondent ${index + 1} name is required` });
+          errors.push({
+            tab: "party",
+            field: `respondents.${index}.name`,
+            focusId: `respondents-name-${index}`,
+            summary: `Respondent ${index + 1} name`,
+            message: `Enter respondent ${index + 1} name`,
+          });
         }
       });
     }
@@ -599,29 +852,61 @@ export default function NewCasePage() {
         tab: "associatedParties",
         errors,
         requireAtLeastOne: true,
-        emptyStateMessage: "Primary lawyer details are required",
+        emptyStateMessage: "Add a lawyer",
+        emptyStateField: "lawyers",
+        emptyStateFocusId: "add-lawyer-button",
       });
 
       if (!caseData.clients || caseData.clients.length === 0) {
-        errors.push({ tab: 'associatedParties', message: 'At least one client is required when a lawyer creates a case' });
+        errors.push({
+          tab: "associatedParties",
+          field: "clients",
+          focusId: "add-client-button",
+          summary: "Client",
+          message: "Add at least one client",
+        });
       } else {
         caseData.clients.forEach((client, index) => {
           if (!client.name || client.name.trim() === '') {
-            errors.push({ tab: 'associatedParties', message: `Client ${index + 1} name is required` });
+            errors.push({
+              tab: "associatedParties",
+              field: `clients.${index}.name`,
+              focusId: `client-name-${index}`,
+              summary: `Client ${index + 1} name`,
+              message: `Enter client ${index + 1} name`,
+            });
           }
           if (!normalizeValue(client?.email)) {
-            errors.push({ tab: 'associatedParties', message: `Client ${index + 1} email ID is required` });
+            errors.push({
+              tab: "associatedParties",
+              field: `clients.${index}.email`,
+              focusId: `client-email-${index}`,
+              summary: `Client ${index + 1} email`,
+              message: `Enter client ${index + 1} email`,
+            });
           }
         });
       }
     } else {
       // Client-specific validation
       if (!caseData.clients || caseData.clients.length === 0) {
-        errors.push({ tab: 'associatedParties', message: 'Primary client details are required' });
+        errors.push({
+          tab: "associatedParties",
+          field: "clients",
+          focusId: "add-client-button",
+          summary: "Client",
+          message: "Add a client",
+        });
       } else {
         caseData.clients.forEach((client, index) => {
           if (!client.name || client.name.trim() === '') {
-            errors.push({ tab: 'associatedParties', message: `Client ${index + 1} name is required` });
+            errors.push({
+              tab: "associatedParties",
+              field: `clients.${index}.name`,
+              focusId: `client-name-${index}`,
+              summary: `Client ${index + 1} name`,
+              message: `Enter client ${index + 1} name`,
+            });
           }
         });
       }
@@ -632,7 +917,9 @@ export default function NewCasePage() {
         tab: "associatedParties",
         errors,
         requireAtLeastOne: true,
-        emptyStateMessage: "At least one lawyer is required when creating a case",
+        emptyStateMessage: "Add a lawyer",
+        emptyStateField: "advocates",
+        emptyStateFocusId: "add-advocate-button",
       });
     }
 
@@ -640,7 +927,13 @@ export default function NewCasePage() {
     if (caseData.stakeholders && caseData.stakeholders.length > 0) {
       caseData.stakeholders.forEach((stakeholder, index) => {
         if (!stakeholder.name || stakeholder.name.trim() === '') {
-          errors.push({ tab: 'associatedParties', message: `Stakeholder ${index + 1} name is required` });
+          errors.push({
+            tab: "associatedParties",
+            field: `stakeholders.${index}.name`,
+            focusId: `stakeholder-name-${index}`,
+            summary: `Stakeholder ${index + 1} name`,
+            message: `Enter stakeholder ${index + 1} name`,
+          });
         }
       });
     }
@@ -650,35 +943,44 @@ export default function NewCasePage() {
 
   // Handle Next button click with validation
   const handleNext = () => {
-    const tabOrder = ["court", "details", "party", "documents", "associatedParties"];
-    const currentIndex = tabOrder.indexOf(activeTab);
+    const currentIndex = TAB_ORDER.indexOf(activeTab);
 
-    // Validate all fields and filter for current tab
     const allErrors = validateAllFields();
+    setValidationErrors(buildValidationState(allErrors));
     const currentTabErrors = allErrors.filter(error => error.tab === activeTab);
 
     if (currentTabErrors.length > 0) {
-      const errorMessage = currentTabErrors.map(e => e.message).join('\n');
+      const toastCopy = formatValidationToast(currentTabErrors, true);
       toast({
-        title: "Validation Errors",
-        description: `Please fix the following errors before proceeding:\n${errorMessage}`,
+        title: toastCopy.title,
+        description: toastCopy.description,
         variant: "destructive",
+        className: LIGHT_ERROR_TOAST_CLASSNAME,
       });
+
+      const firstError = currentTabErrors[0];
+      if (firstError?.focusId) {
+        const didFocus = focusFieldById(firstError.focusId);
+        if (!didFocus) {
+          setPendingFocusTarget({ tab: firstError.tab, fieldId: firstError.focusId });
+        }
+      }
+
       return;
     }
 
-    if (currentIndex < tabOrder.length - 1) {
-      setActiveTab(tabOrder[currentIndex + 1]);
+    if (currentIndex < TAB_ORDER.length - 1) {
+      setValidationErrors({});
+      setActiveTab(TAB_ORDER[currentIndex + 1]);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
   // Handle Back button click
   const handleBack = () => {
-    const tabOrder = ["court", "details", "party", "documents", "associatedParties"];
-    const currentIndex = tabOrder.indexOf(activeTab);
+    const currentIndex = TAB_ORDER.indexOf(activeTab);
     if (currentIndex > 0) {
-      setActiveTab(tabOrder[currentIndex - 1]);
+      setActiveTab(TAB_ORDER[currentIndex - 1]);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
@@ -741,39 +1043,39 @@ export default function NewCasePage() {
       const errors = validateAllFields();
 
       if (errors.length > 0) {
-        // Group errors by tab
-        const errorsByTab = {};
-        errors.forEach(error => {
-          if (!errorsByTab[error.tab]) {
-            errorsByTab[error.tab] = [];
-          }
-          errorsByTab[error.tab].push(error.message);
-        });
-
-        // Create formatted error message
-        const errorSummary = Object.entries(errorsByTab)
-          .map(([tab, messages]) => {
-            const tabName = tab.charAt(0).toUpperCase() + tab.slice(1);
-            return `${tabName}:\n${messages.map(m => `• ${m}`).join('\n')}`;
-          })
-          .join('\n\n');
+        setValidationErrors(buildValidationState(errors));
+        const toastCopy = formatValidationToast(errors);
 
         toast({
-          title: `${errors.length} Validation ${errors.length === 1 ? 'Error' : 'Errors'} Found`,
-          description: errorSummary,
+          title: toastCopy.title,
+          description: toastCopy.description,
           variant: "destructive",
           duration: 8000,
+          className: LIGHT_ERROR_TOAST_CLASSNAME,
         });
 
-        // Switch to first tab with errors
         const firstErrorTab = errors[0]?.tab;
         if (firstErrorTab && firstErrorTab !== activeTab) {
           setActiveTab(firstErrorTab);
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
+        const firstFocusId = errors[0]?.focusId;
+        if (firstErrorTab && firstFocusId) {
+          if (firstErrorTab === activeTab) {
+            const didFocus = focusFieldById(firstFocusId);
+            if (!didFocus) {
+              setPendingFocusTarget({ tab: firstErrorTab, fieldId: firstFocusId });
+            }
+          } else {
+            setPendingFocusTarget({ tab: firstErrorTab, fieldId: firstFocusId });
+          }
+        }
+
         return;
       }
+
+      setValidationErrors({});
 
       setIsSubmitting(true);
 
@@ -957,6 +1259,7 @@ export default function NewCasePage() {
           description: formattedErrors,
           variant: "destructive",
           duration: 8000,
+          className: LIGHT_ERROR_TOAST_CLASSNAME,
         });
         setIsSubmitting(false);
         return;
@@ -1029,12 +1332,14 @@ export default function NewCasePage() {
           description: backendErrors,
           variant: "destructive",
           duration: 8000,
+          className: LIGHT_ERROR_TOAST_CLASSNAME,
         });
       } else {
         toast({
           title: "Error",
           description: error.message || "Failed to save case. Please try again.",
           variant: "destructive",
+          className: LIGHT_ERROR_TOAST_CLASSNAME,
         });
       }
 
@@ -1043,6 +1348,13 @@ export default function NewCasePage() {
       setIsSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    const hasErrors = Object.keys(validationErrors).length > 0;
+    if (!hasErrors) return;
+
+    setValidationErrors(buildValidationState(validateAllFields()));
+  }, [caseData, isLawyer]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -1445,6 +1757,7 @@ export default function NewCasePage() {
             setActiveTab={setActiveTab}
             handleNext={handleNext}
             handleBack={handleBack}
+            validationErrors={validationErrors}
           />
         </div>
 

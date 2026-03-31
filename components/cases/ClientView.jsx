@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { User, Trash2, PlusCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const normalizeEmail = (value) =>
   typeof value === "string" ? value.trim().toLowerCase() : "";
@@ -37,7 +38,14 @@ export default function ClientView({
   removeClient,
   addClient,
   user,
+  validationErrors,
 }) {
+  const fieldErrors = validationErrors?.fieldErrors || {};
+  const getFieldError = (field) => fieldErrors[field];
+  const getFieldClassName = (field) =>
+    getFieldError(field) ? "border-destructive/50 bg-red-50 focus-visible:ring-red-300" : "";
+  const getLabelClassName = (field) => (getFieldError(field) ? "text-red-800" : "");
+
   return (
     <>
       <CardHeader>
@@ -72,7 +80,7 @@ export default function ClientView({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label htmlFor={`adv-name-${idx}`} className="text-sm font-medium">
+                  <Label htmlFor={`adv-name-${idx}`} className={cn("text-sm font-medium", getLabelClassName(`associatedParties.advocate.${idx}.name`))}>
                     Full Name <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -84,13 +92,16 @@ export default function ClientView({
                       setCaseData((prev) => ({ ...prev, advocates: arr }));
                     }}
                     placeholder="Full Name"
-                    className="h-9 text-sm"
+                    className={cn("h-9 text-sm", getFieldClassName(`associatedParties.advocate.${idx}.name`))}
                     required
                   />
+                  {getFieldError(`associatedParties.advocate.${idx}.name`) && (
+                    <p className="text-sm text-red-700">{getFieldError(`associatedParties.advocate.${idx}.name`)}</p>
+                  )}
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor={`adv-email-${idx}`} className="text-sm font-medium">
+                  <Label htmlFor={`adv-email-${idx}`} className={cn("text-sm font-medium", getLabelClassName(`associatedParties.advocate.${idx}.email`))}>
                     Email ID <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -103,13 +114,16 @@ export default function ClientView({
                       setCaseData((prev) => ({ ...prev, advocates: arr }));
                     }}
                     placeholder="email@example.com"
-                    className="h-9 text-sm"
+                    className={cn("h-9 text-sm", getFieldClassName(`associatedParties.advocate.${idx}.email`))}
                     required
                   />
+                  {getFieldError(`associatedParties.advocate.${idx}.email`) && (
+                    <p className="text-sm text-red-700">{getFieldError(`associatedParties.advocate.${idx}.email`)}</p>
+                  )}
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor={`adv-contact-${idx}`} className="text-sm font-medium">
+                  <Label htmlFor={`adv-contact-${idx}`} className={cn("text-sm font-medium", getLabelClassName(`associatedParties.advocate.${idx}.contact`))}>
                     Mobile Number <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -122,13 +136,16 @@ export default function ClientView({
                       setCaseData((prev) => ({ ...prev, advocates: arr }));
                     }}
                     placeholder="+91 XXXXXXXXXX"
-                    className="h-9 text-sm"
+                    className={cn("h-9 text-sm", getFieldClassName(`associatedParties.advocate.${idx}.contact`))}
                     required
                   />
+                  {getFieldError(`associatedParties.advocate.${idx}.contact`) && (
+                    <p className="text-sm text-red-700">{getFieldError(`associatedParties.advocate.${idx}.contact`)}</p>
+                  )}
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor={`adv-company-${idx}`} className="text-sm font-medium">
+                  <Label htmlFor={`adv-company-${idx}`} className={cn("text-sm font-medium", getLabelClassName(`associatedParties.advocate.${idx}.company`))}>
                     Law Firm <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -140,9 +157,12 @@ export default function ClientView({
                       setCaseData((prev) => ({ ...prev, advocates: arr }));
                     }}
                     placeholder="Law Firm Name"
-                    className="h-9 text-sm"
+                    className={cn("h-9 text-sm", getFieldClassName(`associatedParties.advocate.${idx}.company`))}
                     required
                   />
+                  {getFieldError(`associatedParties.advocate.${idx}.company`) && (
+                    <p className="text-sm text-red-700">{getFieldError(`associatedParties.advocate.${idx}.company`)}</p>
+                  )}
                 </div>
 
                 <div className="space-y-1">
@@ -228,6 +248,7 @@ export default function ClientView({
           ))}
 
           <Button
+            id="add-advocate-button"
             type="button"
             onClick={() =>
               setCaseData((prev) => ({
@@ -283,7 +304,7 @@ export default function ClientView({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor={`client-name-${idx}`}>
+                    <Label htmlFor={`client-name-${idx}`} className={getLabelClassName(`clients.${idx}.name`)}>
                       Name <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -292,12 +313,16 @@ export default function ClientView({
                       onChange={(e) => updateClientField(idx, "name", e.target.value)}
                       placeholder="Full Name"
                       disabled={isPrimaryClient}
+                      className={getFieldClassName(`clients.${idx}.name`)}
                       required
                     />
+                    {getFieldError(`clients.${idx}.name`) && (
+                      <p className="text-sm text-red-700">{getFieldError(`clients.${idx}.name`)}</p>
+                    )}
                   </div>
 
                   <div>
-                    <Label htmlFor={`client-email-${idx}`}>
+                    <Label htmlFor={`client-email-${idx}`} className={getLabelClassName(`clients.${idx}.email`)}>
                       Email <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -307,8 +332,12 @@ export default function ClientView({
                       onChange={(e) => updateClientField(idx, "email", e.target.value)}
                       placeholder="email@example.com"
                       disabled={isPrimaryClient}
+                      className={getFieldClassName(`clients.${idx}.email`)}
                       required
                     />
+                    {getFieldError(`clients.${idx}.email`) && (
+                      <p className="text-sm text-red-700">{getFieldError(`clients.${idx}.email`)}</p>
+                    )}
                   </div>
 
                   <div>
@@ -352,7 +381,7 @@ export default function ClientView({
             );
           })}
 
-          <Button type="button" onClick={addClient} variant="outline" className="mt-4">
+          <Button id="add-client-button" type="button" onClick={addClient} variant="outline" className="mt-4">
             <PlusCircle className="mr-2 h-4 w-4" /> Add Client
           </Button>
         </div>
