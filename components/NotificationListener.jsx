@@ -17,6 +17,8 @@ export default function NotificationListener() {
   const pathname = usePathname();
   const { user, isAuthenticated } = useAuth();
 
+
+  
   useEffect(() => {
     const showNotificationToast = (payload = {}) => {
       const notificationId = payload._id;

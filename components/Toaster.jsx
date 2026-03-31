@@ -18,6 +18,8 @@ export default function Toaster() {
         return;
       }
 
+
+      
       const timeoutId = window.setTimeout(() => {
         dismiss(toast.id);
         timeoutIdsRef.current.delete(toast.id);
