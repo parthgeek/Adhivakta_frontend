@@ -16,6 +16,7 @@ import {
   Info,
   Trash2,
   Check,
+  ArrowLeft,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/use-toast";
@@ -41,6 +42,15 @@ export default function NotificationsPageEnhanced() {
     if (notification.link) {
       router.push(getNotificationTarget(notification));
     }
+  };
+
+  const handleBackNavigation = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+      return;
+    }
+
+    router.push("/dashboard");
   };
 
   const handleMarkAllAsRead = async () => {
@@ -189,6 +199,15 @@ export default function NotificationsPageEnhanced() {
         {/* Header */}
         <div className="flex items-start justify-between">
           <div className="space-y-1">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleBackNavigation}
+              className="mb-2 -ml-3 flex items-center gap-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
             <h1 className="text-3xl font-semibold text-slate-900">
               Notifications
             </h1>

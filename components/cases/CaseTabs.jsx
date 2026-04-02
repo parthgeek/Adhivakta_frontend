@@ -1,6 +1,4 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import CaseDetailsTab from "./CaseDetailsTab";
 import CourtInfoTab from "./CourtInfoTab";
 import PartySectionTab from "./PartySectionTab";
@@ -38,96 +36,27 @@ export default function CaseTabs({
   handleBack,
   validationErrors = {}
 }) {
-  const tabOrder = ["court", "details", "party", "documents", "associatedParties"];
-
-  // Helper function to get validation icon for each tab
-  const getTabIcon = (tabKey) => {
-    const tabValidation = validationErrors[tabKey];
-    
-    if (!tabValidation) return null;
-    
-    if (tabValidation.hasErrors) {
-      return (
-        <XCircle className="h-3 w-3 text-red-600 ml-1 inline-block" />
-      );
-    }
-    
-    return (
-      <CheckCircle2 className="h-3 w-3 text-green-600 ml-1 inline-block" />
-    );
-  };
-
-  // Helper function to get error badge count
-  const getErrorBadge = (tabKey) => {
-    const tabValidation = validationErrors[tabKey];
-    
-    if (!tabValidation || !tabValidation.hasErrors) return null;
-    
-    return (
-      <Badge 
-        variant="destructive" 
-        className="ml-2 h-5 w-5 p-0 flex items-center justify-center text-xs rounded-full"
-      >
-        {tabValidation.errorCount}
-      </Badge>
-    );
-  };
-
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
       <TabsList className="grid w-full grid-cols-5">
-        <TabsTrigger 
-          value="court"
-          className="relative"
-        >
-          <span className="flex items-center">
-            Court Info
-            {getTabIcon('court')}
-            {getErrorBadge('court')}
-          </span>
+        <TabsTrigger value="court" className="relative">
+          <span className="flex items-center">Court Info</span>
         </TabsTrigger>
 
-        <TabsTrigger 
-          value="details"
-          className="relative"
-        >
-          <span className="flex items-center">
-            Case Details
-            {getTabIcon('details')}
-            {getErrorBadge('details')}
-          </span>
+        <TabsTrigger value="details" className="relative">
+          <span className="flex items-center">Case Details</span>
         </TabsTrigger>
         
-        <TabsTrigger 
-          value="party"
-          className="relative"
-        >
-          <span className="flex items-center">
-            Party Section
-            {getTabIcon('party')}
-            {getErrorBadge('party')}
-          </span>
+        <TabsTrigger value="party" className="relative">
+          <span className="flex items-center">Party Section</span>
         </TabsTrigger>
         
-        <TabsTrigger 
-          value="documents"
-          className="relative"
-        >
-          <span className="flex items-center">
-            Documents
-            {getTabIcon('documents')}
-          </span>
+        <TabsTrigger value="documents" className="relative">
+          <span className="flex items-center">Documents</span>
         </TabsTrigger>
         
-        <TabsTrigger 
-          value="associatedParties"
-          className="relative"
-        >
-          <span className="flex items-center">
-            People
-            {getTabIcon('associatedParties')}
-            {getErrorBadge('associatedParties')}
-          </span>
+        <TabsTrigger value="associatedParties" className="relative">
+          <span className="flex items-center">People</span>
         </TabsTrigger>
       </TabsList>
 

@@ -28,10 +28,10 @@ export default function CaseDetailsTab({
     String(currentYear - index)
   );
   const fieldErrors = validationErrors?.fieldErrors || {};
-  const errorMessages = validationErrors?.messages || [];
   const getFieldError = (field) => fieldErrors[field];
   const getInputClassName = (field) =>
-    getFieldError(field) ? "border-destructive focus-visible:ring-destructive" : "";
+    getFieldError(field) ? "border-destructive/50 bg-red-50 focus-visible:ring-red-300" : "";
+  const getLabelClassName = (field) => (getFieldError(field) ? "text-red-800" : "");
   const selectedCaseType = [
     caseData.caseCode,
     typeof caseData.eCourt?.caseTypeName === "string"
@@ -51,19 +51,8 @@ export default function CaseDetailsTab({
       </CardHeader>
       <CardContent>
         <form id="case-form" onSubmit={(e) => e.preventDefault()} className="space-y-4">
-          {validationErrors?.hasErrors && errorMessages.length > 0 && (
-            <div className="rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-              <p className="font-medium">Please fix the highlighted case details.</p>
-              <ul className="mt-2 list-disc space-y-1 pl-5">
-                {errorMessages.map((message) => (
-                  <li key={message}>{message}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
           <div className="space-y-2">
-            <Label htmlFor="title">
+            <Label htmlFor="title" className={getLabelClassName("title")}>
               Case Title <span className="text-red-500">*</span>
             </Label>
             <Input
@@ -75,14 +64,14 @@ export default function CaseDetailsTab({
               required
             />
             {getFieldError("title") && (
-              <p className="text-sm text-destructive">{getFieldError("title")}</p>
+              <p className="text-sm text-red-700">{getFieldError("title")}</p>
             )}
           </div>
 
           <div className="space-y-3">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_140px]">
               <div className="space-y-2">
-                <Label htmlFor="selectedCaseType">
+                <Label htmlFor="selectedCaseType" className={getLabelClassName("selectedCaseType")}>
                   Case Type <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -96,12 +85,12 @@ export default function CaseDetailsTab({
                   )}
                 />
                 {getFieldError("selectedCaseType") && (
-                  <p className="text-sm text-destructive">{getFieldError("selectedCaseType")}</p>
+                  <p className="text-sm text-red-700">{getFieldError("selectedCaseType")}</p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="caseNumberMiddle">
+                <Label htmlFor="caseNumberMiddle" className={getLabelClassName("caseNumberMiddle")}>
                   Case Number <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -114,12 +103,12 @@ export default function CaseDetailsTab({
                   required
                 />
                 {getFieldError("caseNumberMiddle") && (
-                  <p className="text-sm text-destructive">{getFieldError("caseNumberMiddle")}</p>
+                  <p className="text-sm text-red-700">{getFieldError("caseNumberMiddle")}</p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="caseYear">
+                <Label htmlFor="caseYear" className={getLabelClassName("caseYear")}>
                   Year <span className="text-red-500">*</span>
                 </Label>
                 <Select
@@ -138,7 +127,7 @@ export default function CaseDetailsTab({
                   </SelectContent>
                 </Select>
                 {getFieldError("caseYear") && (
-                  <p className="text-sm text-destructive">{getFieldError("caseYear")}</p>
+                  <p className="text-sm text-red-700">{getFieldError("caseYear")}</p>
                 )}
               </div>
             </div>
@@ -150,7 +139,7 @@ export default function CaseDetailsTab({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="status">
+            <Label htmlFor="status" className={getLabelClassName("status")}>
               Status <span className="text-red-500">*</span>
             </Label>
             <Select
@@ -167,13 +156,13 @@ export default function CaseDetailsTab({
               </SelectContent>
             </Select>
             {getFieldError("status") && (
-              <p className="text-sm text-destructive">{getFieldError("status")}</p>
+              <p className="text-sm text-red-700">{getFieldError("status")}</p>
             )}
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="filingDate">Filing Date</Label>
+              <Label htmlFor="filingDate" className={getLabelClassName("filingDate")}>Filing Date</Label>
               <DatePicker
                 id="filingDate"
                 selected={caseData.filingDate}
@@ -181,12 +170,12 @@ export default function CaseDetailsTab({
                 className={getInputClassName("filingDate")}
               />
               {getFieldError("filingDate") && (
-                <p className="text-sm text-destructive">{getFieldError("filingDate")}</p>
+                <p className="text-sm text-red-700">{getFieldError("filingDate")}</p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="nextHearingDate">
+              <Label htmlFor="nextHearingDate" className={getLabelClassName("nextHearingDate")}>
                 First Hearing Date <span className="text-red-500">*</span>
               </Label>
               <DatePicker
@@ -196,7 +185,7 @@ export default function CaseDetailsTab({
                 className={getInputClassName("nextHearingDate")}
               />
               {getFieldError("nextHearingDate") && (
-                <p className="text-sm text-destructive">{getFieldError("nextHearingDate")}</p>
+                <p className="text-sm text-red-700">{getFieldError("nextHearingDate")}</p>
               )}
             </div>
           </div>
@@ -239,7 +228,7 @@ export default function CaseDetailsTab({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">
+            <Label htmlFor="description" className={getLabelClassName("description")}>
               Case Description <span className="text-red-500">*</span>
             </Label>
             <Textarea
@@ -253,7 +242,7 @@ export default function CaseDetailsTab({
               className={getInputClassName("description")}
             />
             {getFieldError("description") && (
-              <p className="text-sm text-destructive">{getFieldError("description")}</p>
+              <p className="text-sm text-red-700">{getFieldError("description")}</p>
             )}
           </div>
 

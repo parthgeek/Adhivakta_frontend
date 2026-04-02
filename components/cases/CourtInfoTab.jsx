@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Building2, Scale, Gavel, CheckCircle2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const COURT_TYPE_OPTIONS = [
   {
@@ -41,10 +42,17 @@ export default function CourtInfoTab({
   handleNext,
   handleBack,
   isLastTab,
+  validationErrors = {},
 }) {
   const { states = [], districts = [], complexes = [], courts = [], caseTypes = [] } =
     courtDirectoryOptions || {};
   const selectedEcourt = caseData.eCourt || {};
+  const fieldErrors = validationErrors?.fieldErrors || {};
+  const getFieldError = (field) => fieldErrors[field];
+  const getFieldClassName = (field) =>
+    getFieldError(field) ? "border-destructive/50 bg-red-50 focus-visible:ring-red-300" : "";
+  const getLabelClassName = (field) =>
+    getFieldError(field) ? "text-red-800" : "";
 
   const isHighCourt = courtSource === "highcourts";
   const isSupremeCourt = courtSource === "supremecourt";
@@ -244,6 +252,9 @@ export default function CourtInfoTab({
                     ))}
                   </SelectContent>
                 </Select>
+                {getFieldError("district") && (
+                  <p className="text-sm text-red-700">{getFieldError("district")}</p>
+                )}
               </div>
             </div>
           )}
@@ -396,6 +407,9 @@ export default function CourtInfoTab({
                     ))}
                   </SelectContent>
                 </Select>
+                {getFieldError("courtSelection") && (
+                  <p className="text-sm text-red-700">{getFieldError("courtSelection")}</p>
+                )}
               </div>
             </div>
           )}
@@ -463,6 +477,7 @@ export default function CourtInfoTab({
               onChange={handleChange}
               rows={3}
               placeholder="Any additional notes about the court or proceedings"
+              className={cn(getFieldClassName("notes"))}
             />
           </div>
         </div>

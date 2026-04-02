@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/context/auth-context"
 import { Button } from "@/components/ui/button"
@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, Calendar, Clock, FileText, MapPin, User, Users, AlertTriangle, CheckCircle } from "lucide-react"
+import { ArrowLeft, Calendar, Clock, FileText, MapPin, User, Users, AlertTriangle } from "lucide-react"
 import api from "@/services/api"
 import PartyDetails from "@/components/ui/party-details"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
@@ -22,6 +22,44 @@ import { formatCaseTypeLabel, formatDisplayCaseNumber } from "@/lib/caseTypeUtil
 import { getDocumentOpenUrl } from "@/lib/document-url"
 
 const CASE_TAB_VALUES = new Set(["details", "people", "documents", "hearings"])
+
+const personMatchesUser = (person, currentUser) => {
+  if (!person || !currentUser) return false
+
+  const userIdentifiers = [
+    currentUser._id,
+    currentUser.id,
+    currentUser.user?._id,
+    currentUser.user?.id,
+    currentUser.email,
+  ]
+    .filter(Boolean)
+    .map((value) => String(value).toLowerCase())
+
+  const personIdentifiers = [
+    person._id,
+    person.id,
+    person.user?._id,
+    person.user?.id,
+    person.userId,
+    person.email,
+  ]
+    .filter(Boolean)
+    .map((value) => String(value).toLowerCase())
+
+  return personIdentifiers.some((identifier) => userIdentifiers.includes(identifier))
+}
+
+const toDate = (value) => {
+  if (!value) return null
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+const isFutureHearing = (value) => {
+  const date = toDate(value)
+  return Boolean(date && date.getTime() > Date.now())
+}
 
 export default function CaseDetailsPage() {
   const { id } = useParams()
@@ -63,6 +101,19 @@ export default function CaseDetailsPage() {
 
     const query = params.toString()
     router.replace(query ? `/dashboard/cases/${id}?${query}` : `/dashboard/cases/${id}`)
+  }
+
+  const fetchCaseEvents = async () => {
+    const eventsResponse = await api.events.getByCaseId(id)
+    if (Array.isArray(eventsResponse)) {
+      setEvents(eventsResponse)
+      return
+    }
+    if (Array.isArray(eventsResponse?.data)) {
+      setEvents(eventsResponse.data)
+      return
+    }
+    setEvents([])
   }
 
   const fetchCaseDocuments = async () => {
@@ -110,12 +161,7 @@ export default function CaseDetailsPage() {
         }
 
         try {
-          const eventsResponse = await api.events.getByCaseId(id)
-          if (eventsResponse && Array.isArray(eventsResponse.data)) {
-            setEvents(eventsResponse.data)
-          } else if (eventsResponse && Array.isArray(eventsResponse)) {
-            setEvents(eventsResponse)
-          }
+          await fetchCaseEvents()
         } catch (eventError) {
           console.error("Error fetching events:", eventError)
         }
@@ -257,14 +303,12 @@ export default function CaseDetailsPage() {
         type: "hearing",
         case: caseData._id || caseData.id,
         location: caseData.court || "Courtroom",
-        description: "Scheduled via case details page"
+        description: ""
       }
       await api.events.create(eventPayload)
       setShowScheduleDialog(false)
       setHearingDate(null)
-      // Refresh events list
-      const eventsResponse = await api.events.getByCaseId(id)
-      setEvents(eventsResponse)
+      await fetchCaseEvents()
       toast({ title: "Success", description: "Event scheduled." })
     } catch (err) {
       toast({ title: "Error", description: err.message || "Failed to schedule event." })
@@ -282,16 +326,45 @@ export default function CaseDetailsPage() {
   const handleSaveOutcome = async () => {
     if (!editingEvent) return;
     try {
-      await api.events.update(editingEvent._id, { ...editingEvent, outcome: outcomeValue });
+      const hearingStart = editingEvent.start || editingEvent.date;
+      const hearingStartDate = toDate(hearingStart);
+      const hearingEnd =
+        editingEvent.end ||
+        (hearingStartDate
+          ? new Date(hearingStartDate.getTime() + 60 * 60 * 1000).toISOString()
+          : undefined);
+
+      if (editingEvent._id && !editingEvent.isVirtualFirst) {
+        await api.events.update(editingEvent._id, {
+          ...editingEvent,
+          outcome: outcomeValue,
+          case: editingEvent.case?._id || editingEvent.case || caseData?._id || caseData?.id,
+        });
+      } else {
+        if (!hearingStartDate || !caseData) {
+          throw new Error("Hearing details are incomplete.");
+        }
+
+        await api.events.create({
+          title: editingEvent.title || `Hearing for ${caseData.title || caseData.caseNumber || "Case"}`,
+          start: hearingStartDate.toISOString(),
+          end: hearingEnd,
+          type: "hearing",
+          case: caseData._id || caseData.id,
+          location: editingEvent.location || caseData.court || "Courtroom",
+          description: editingEvent.description || "",
+          outcome: outcomeValue,
+          status: editingEvent.status || "completed",
+        });
+      }
+
       setShowOutcomeDialog(false);
       setEditingEvent(null);
       setOutcomeValue("");
-      // Refresh events list
-      const eventsResponse = await api.events.getByCaseId(id);
-      setEvents(eventsResponse);
+      await fetchCaseEvents();
       toast({ title: "Success", description: "Outcome updated." });
     } catch (err) {
-      toast({ title: "Error", description: "Failed to update outcome." });
+      toast({ title: "Error", description: err.message || "Failed to update outcome." });
     }
   };
 
@@ -323,6 +396,36 @@ export default function CaseDetailsPage() {
     if (n === 10) return 'Tenth';
     return n + 'th';
   };
+
+  const hearings = useMemo(() => {
+    const firstHearingDate = caseData?.nextHearingDate || caseData?.hearingDate
+    const eventHearings = events
+      .filter((event) => event.type === "hearing")
+      .sort((a, b) => new Date(a.start) - new Date(b.start))
+
+    const firstHearingExists = eventHearings.some((event) => {
+      const eventDate = toDate(event.start)?.toDateString()
+      const firstDate = toDate(firstHearingDate)?.toDateString()
+      return Boolean(firstDate && eventDate === firstDate)
+    })
+
+    if (firstHearingDate && !firstHearingExists) {
+      return [
+        {
+          _id: "first-hearing",
+          start: firstHearingDate,
+          description: "Set during case creation",
+          outcome: "",
+          isVirtualFirst: true,
+          location: caseData?.court || "Courtroom",
+          title: `Hearing for ${caseData?.title || caseData?.caseNumber || "Case"}`,
+        },
+        ...eventHearings,
+      ]
+    }
+
+    return eventHearings
+  }, [caseData, events])
 
   const handleDeleteCase = async () => {
     if (deleteConfirmation !== caseData.title) {
@@ -1011,56 +1114,49 @@ export default function CaseDetailsPage() {
                   <CardDescription>Chronological list of all hearings for this case</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {(() => {
-                    // Prepare the hearings list
-                    const firstHearingDate = caseData.nextHearingDate || caseData.hearingDate;
-                    let hearings = events
-                      .filter(e => e.type === 'hearing')
-                      .sort((a, b) => new Date(a.start) - new Date(b.start));
-                    // Check if first hearing date is already in events
-                    const firstHearingExists = hearings.some(e => {
-                      const eventDate = new Date(e.start).toDateString();
-                      const firstDate = firstHearingDate ? new Date(firstHearingDate).toDateString() : null;
-                      return firstDate && eventDate === firstDate;
-                    });
-                    // If not, prepend a virtual hearing for the first hearing
-                    if (firstHearingDate && !firstHearingExists) {
-                      hearings = [
-                        {
-                          _id: 'first-hearing',
-                          start: firstHearingDate,
-                          description: 'Set during case creation',
-                          outcome: '',
-                          isVirtualFirst: true,
-                        },
-                        ...hearings,
-                      ];
-                    }
-                    return hearings.length > 0 ? (
+                  {hearings.length > 0 ? (
                       <ul className="space-y-3">
                         {hearings.map((event, idx) => (
-                          <li key={event._id || `hearing-${idx}`} className="p-3 border rounded-md flex flex-col md:flex-row md:items-center md:justify-between">
-                            <div className="flex items-center gap-3">
-                              <span className="font-bold mr-2">{idx + 1}.</span>
-                              <Calendar className="h-4 w-4 text-[#03234b]" />
-                              <span className="font-medium">{event.start ? formatDate(event.start) : 'Not set'}</span>
-                              <span className="ml-2 text-xs text-gray-500">({getOrdinal(idx + 1)} Hearing)</span>
-                        </div>
-                            <div className="flex-1 mt-2 md:mt-0 md:ml-6">
-                              <span className="text-sm text-muted-foreground">{event.description || "No description"}</span>
-                          </div>
-                            <div className="flex items-center gap-2 mt-2 md:mt-0">
-                              <span className="text-xs text-gray-600">Proceedings:</span>
-                              <span className="text-sm font-semibold">{event.outcome ? event.outcome.slice(0, 40) + (event.outcome.length > 40 ? "…" : "") : "-"}</span>
-                              <Button size="sm" variant="outline" onClick={() => handleViewOutcome(event, idx)}>
+                          <li
+                            key={event._id || `hearing-${idx}`}
+                            className="rounded-xl border bg-card px-4 py-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#03234b]/10 text-sm font-semibold text-[#03234b]">
+                                {idx + 1}
+                              </div>
+                              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#03234b]/5">
+                                <Calendar className="h-5 w-5 text-[#03234b]" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="font-medium text-base">
+                                  {event.start ? formatDate(event.start) : 'Not set'}
+                                </div>
+                                <div className="text-sm text-muted-foreground">
+                                  {getOrdinal(idx + 1)} Hearing
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 md:justify-end">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={isFutureHearing(event.start)}
+                                onClick={() => handleViewOutcome(event, idx)}
+                              >
                                 View
                               </Button>
-                              {isLawyer && !event.isVirtualFirst && (
-                                <Button size="sm" variant="outline" onClick={() => handleEditOutcome(event)}>
-                                  {event.outcome ? "Edit Proceedings" : "Add Proceedings"}
+                              {isLawyer && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={isFutureHearing(event.start)}
+                                  onClick={() => handleEditOutcome(event)}
+                                >
+                                  {event.outcome ? "Edit Proceeding" : "Add Proceeding"}
                                 </Button>
                               )}
-                        </div>
+                            </div>
                           </li>
                         ))}
                       </ul>
@@ -1072,8 +1168,7 @@ export default function CaseDetailsPage() {
                           There are no hearings set for this case yet.
                       </p>
                     </div>
-                    );
-                  })()}
+                  )}
                 </CardContent>
                 {((isLawyer && (caseData?.lawyer?._id === user?.id || caseData?.lawyer === user?.id)) || 
                   (user?.role === 'client' && (caseData?.client?._id === user?.id || caseData?.client === user?.id))) && (

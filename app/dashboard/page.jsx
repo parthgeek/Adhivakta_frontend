@@ -504,18 +504,18 @@ const ApprovalNotificationsPopup = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl border-rose-200 bg-gradient-to-br from-white via-rose-50/60 to-orange-50 p-0 sm:rounded-2xl">
-        <div className="border-b border-rose-100 px-6 py-5">
+      <DialogContent className="max-w-2xl overflow-hidden border border-slate-200 bg-white p-0 shadow-2xl shadow-slate-900/10 sm:rounded-3xl">
+        <div className="border-b border-slate-200 bg-slate-50/80 px-6 py-5">
           <DialogHeader className="space-y-2 text-left">
-            <div className="flex items-center gap-2">
-              <div className="rounded-full bg-rose-100 p-2">
-                <AlertCircle className="h-5 w-5 text-rose-600" />
+            <div className="flex items-start gap-3 pr-8">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#03234b]/10 bg-[#03234b]/5">
+                <AlertCircle className="h-5 w-5 text-[#03234b]" />
               </div>
-              <div>
-                <DialogTitle className="text-xl text-slate-900">
+              <div className="min-w-0">
+                <DialogTitle className="text-[1.75rem] font-semibold tracking-[-0.02em] text-slate-900">
                   Documents Waiting For Approval
                 </DialogTitle>
-                <DialogDescription className="mt-1 text-sm text-slate-600">
+                <DialogDescription className="mt-1 text-sm leading-6 text-slate-600">
                   {visibleNotifications.length === 1
                     ? "A document needs lawyer review right now."
                     : `${visibleNotifications.length} documents need lawyer review right now.`}
@@ -532,32 +532,32 @@ const ApprovalNotificationsPopup = ({
             return (
               <div
                 key={getNotificationKey(notification)}
-                className="rounded-2xl border border-rose-200 bg-white/90 p-4 shadow-sm"
+                className="rounded-3xl border border-slate-200 bg-slate-50/70 p-4 shadow-sm shadow-slate-900/5"
               >
-                <div className="flex items-start gap-3">
-                  <div className="rounded-xl bg-rose-100 p-3">
-                    <AlertCircle className="h-5 w-5 text-rose-600" />
+                <div className="flex items-start gap-4">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white">
+                    <AlertCircle className="h-5 w-5 text-[#03234b]" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge className="border-rose-200 bg-rose-100 text-rose-700 hover:bg-rose-100">
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <Badge className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 font-medium text-amber-700 hover:bg-amber-50">
                         Priority
                       </Badge>
-                      <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">
+                      <Badge className="rounded-full border border-[#03234b]/10 bg-[#03234b]/5 px-3 py-1 font-medium text-[#03234b] hover:bg-[#03234b]/5">
                         Approval Required
                       </Badge>
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs font-medium text-slate-500">
                         {notification.createdAt
                           ? formatRelativeTime(new Date(notification.createdAt))
                           : "Just now"}
                       </span>
                     </div>
-                    <p className="mt-3 text-sm font-medium leading-6 text-slate-900">
+                    <p className="mt-3 text-base font-medium leading-7 text-slate-900">
                       {notification.message}
                     </p>
                     <div className="mt-4">
                       <Link href={href}>
-                        <Button className="bg-[#03234b] text-white hover:bg-[#042d5e]">
+                        <Button className="h-11 rounded-xl bg-[#03234b] px-5 text-sm font-semibold text-white hover:bg-[#042d5e]">
                           Review document
                         </Button>
                       </Link>
@@ -569,22 +569,31 @@ const ApprovalNotificationsPopup = ({
           })}
 
           {visibleNotifications.length > 4 && (
-            <div className="rounded-xl border border-dashed border-rose-200 bg-white/70 px-4 py-3 text-sm text-slate-600">
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600">
               {visibleNotifications.length - 4} more approval notifications are waiting in
               your notification center.
             </div>
           )}
         </div>
 
-        <DialogFooter className="border-t border-rose-100 bg-white/80 px-6 py-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Remind me later
-          </Button>
-          <Link href={getNotificationTarget(primaryNotification)}>
-            <Button className="bg-[#03234b] text-white hover:bg-[#042d5e]">
-              Open review queue
+        <DialogFooter className="border-t border-slate-200 bg-slate-50/60 px-6 py-4 sm:justify-between">
+          <p className="hidden text-sm text-slate-500 sm:block">
+            Review pending documents to keep case activity moving.
+          </p>
+          <div className="flex w-full flex-col-reverse gap-3 sm:w-auto sm:flex-row">
+            <Button
+              variant="outline"
+              className="h-11 rounded-xl border-slate-300 bg-white px-5 text-slate-700 hover:bg-slate-100"
+              onClick={() => onOpenChange(false)}
+            >
+              Remind me later
             </Button>
-          </Link>
+            <Link href={getNotificationTarget(primaryNotification)}>
+              <Button className="h-11 w-full rounded-xl bg-[#03234b] px-5 text-sm font-semibold text-white hover:bg-[#042d5e] sm:w-auto">
+                Open review queue
+              </Button>
+            </Link>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

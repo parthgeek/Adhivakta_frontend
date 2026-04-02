@@ -9,8 +9,15 @@ export default function StakeholderSection({
   caseData,
   updateStakeholderField,
   removeStakeholder,
-  addStakeholder
+  addStakeholder,
+  validationErrors,
 }) {
+  const fieldErrors = validationErrors?.fieldErrors || {};
+  const getFieldError = (field) => fieldErrors[field];
+  const getFieldClassName = (field) =>
+    getFieldError(field) ? "border-destructive/50 bg-red-50 focus-visible:ring-red-300" : "";
+  const getLabelClassName = (field) => (getFieldError(field) ? "text-red-800" : "");
+
   return (
     <div className="mt-6 pt-6 border-t">
       <CardHeader>
@@ -31,7 +38,7 @@ export default function StakeholderSection({
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor={`stakeholder-name-${idx}`}>
+                  <Label htmlFor={`stakeholder-name-${idx}`} className={getLabelClassName(`stakeholders.${idx}.name`)}>
                     Name <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -39,8 +46,12 @@ export default function StakeholderSection({
                     value={stakeholder.name || ""}
                     onChange={(e) => updateStakeholderField(idx, "name", e.target.value)}
                     placeholder="Full Name"
+                    className={getFieldClassName(`stakeholders.${idx}.name`)}
                     required
                   />
+                  {getFieldError(`stakeholders.${idx}.name`) && (
+                    <p className="text-sm text-red-700">{getFieldError(`stakeholders.${idx}.name`)}</p>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor={`stakeholder-role-${idx}`}>Role/Relation in Case</Label>
@@ -87,7 +98,7 @@ export default function StakeholderSection({
               </div>
             </div>
           ))}
-          <Button type="button" onClick={addStakeholder} variant="outline" className="mt-4">
+          <Button id="add-stakeholder-button" type="button" onClick={addStakeholder} variant="outline" className="mt-4">
             <PlusCircle className="mr-2 h-4 w-4" /> Add Stakeholder
           </Button>
         </div>

@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { User, Trash2, PlusCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const normalizeEmail = (value) =>
   typeof value === "string" ? value.trim().toLowerCase() : "";
@@ -33,7 +34,13 @@ const isCurrentLawyer = (lawyer, user) => {
   );
 };
 
-export default function LawyerView({ caseData, setCaseData, updateClientField, removeClient, addClient, user }) {
+export default function LawyerView({ caseData, setCaseData, updateClientField, removeClient, addClient, user, validationErrors }) {
+  const fieldErrors = validationErrors?.fieldErrors || {};
+  const getFieldError = (field) => fieldErrors[field];
+  const getFieldClassName = (field) =>
+    getFieldError(field) ? "border-destructive/50 bg-red-50 focus-visible:ring-red-300" : "";
+  const getLabelClassName = (field) => (getFieldError(field) ? "text-red-800" : "");
+
   return (
     <>
       <CardHeader>
@@ -72,7 +79,7 @@ export default function LawyerView({ caseData, setCaseData, updateClientField, r
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <Label htmlFor={`lawyer-name-${idx}`} className="text-sm font-medium">
+                    <Label htmlFor={`lawyer-name-${idx}`} className={cn("text-sm font-medium", getLabelClassName(`associatedParties.lawyer.${idx}.name`))}>
                       Full Name <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -84,14 +91,17 @@ export default function LawyerView({ caseData, setCaseData, updateClientField, r
                         setCaseData((prev) => ({ ...prev, lawyers: arr }));
                       }}
                       placeholder="Full Name"
-                      className="h-9 text-sm"
+                      className={cn("h-9 text-sm", getFieldClassName(`associatedParties.lawyer.${idx}.name`))}
                       disabled={primaryLawyer && !!normalizeValue(lawyer.name)}
                       required
                     />
+                    {getFieldError(`associatedParties.lawyer.${idx}.name`) && (
+                      <p className="text-sm text-red-700">{getFieldError(`associatedParties.lawyer.${idx}.name`)}</p>
+                    )}
                   </div>
 
                   <div className="space-y-1">
-                    <Label htmlFor={`lawyer-email-${idx}`} className="text-sm font-medium">
+                    <Label htmlFor={`lawyer-email-${idx}`} className={cn("text-sm font-medium", getLabelClassName(`associatedParties.lawyer.${idx}.email`))}>
                       Email ID <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -104,14 +114,17 @@ export default function LawyerView({ caseData, setCaseData, updateClientField, r
                         setCaseData((prev) => ({ ...prev, lawyers: arr }));
                       }}
                       placeholder="email@example.com"
-                      className="h-9 text-sm"
+                      className={cn("h-9 text-sm", getFieldClassName(`associatedParties.lawyer.${idx}.email`))}
                       disabled={primaryLawyer && !!normalizeEmail(lawyer.email)}
                       required
                     />
+                    {getFieldError(`associatedParties.lawyer.${idx}.email`) && (
+                      <p className="text-sm text-red-700">{getFieldError(`associatedParties.lawyer.${idx}.email`)}</p>
+                    )}
                   </div>
 
                   <div className="space-y-1">
-                    <Label htmlFor={`lawyer-contact-${idx}`} className="text-sm font-medium">
+                    <Label htmlFor={`lawyer-contact-${idx}`} className={cn("text-sm font-medium", getLabelClassName(`associatedParties.lawyer.${idx}.contact`))}>
                       Mobile Number <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -124,13 +137,16 @@ export default function LawyerView({ caseData, setCaseData, updateClientField, r
                         setCaseData((prev) => ({ ...prev, lawyers: arr }));
                       }}
                       placeholder="+91 XXXXXXXXXX"
-                      className="h-9 text-sm"
+                      className={cn("h-9 text-sm", getFieldClassName(`associatedParties.lawyer.${idx}.contact`))}
                       required
                     />
+                    {getFieldError(`associatedParties.lawyer.${idx}.contact`) && (
+                      <p className="text-sm text-red-700">{getFieldError(`associatedParties.lawyer.${idx}.contact`)}</p>
+                    )}
                   </div>
 
                   <div className="space-y-1">
-                    <Label htmlFor={`lawyer-company-${idx}`} className="text-sm font-medium">
+                    <Label htmlFor={`lawyer-company-${idx}`} className={cn("text-sm font-medium", getLabelClassName(`associatedParties.lawyer.${idx}.company`))}>
                       Law Firm <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -142,9 +158,12 @@ export default function LawyerView({ caseData, setCaseData, updateClientField, r
                         setCaseData((prev) => ({ ...prev, lawyers: arr }));
                       }}
                       placeholder="Law Firm Name"
-                      className="h-9 text-sm"
+                      className={cn("h-9 text-sm", getFieldClassName(`associatedParties.lawyer.${idx}.company`))}
                       required
                     />
+                    {getFieldError(`associatedParties.lawyer.${idx}.company`) && (
+                      <p className="text-sm text-red-700">{getFieldError(`associatedParties.lawyer.${idx}.company`)}</p>
+                    )}
                   </div>
 
                   <div className="space-y-1">
@@ -210,6 +229,7 @@ export default function LawyerView({ caseData, setCaseData, updateClientField, r
           })}
 
           <Button
+            id="add-lawyer-button"
             type="button"
             onClick={() =>
               setCaseData((prev) => ({
@@ -256,7 +276,7 @@ export default function LawyerView({ caseData, setCaseData, updateClientField, r
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor={`client-name-${idx}`}>
+                  <Label htmlFor={`client-name-${idx}`} className={getLabelClassName(`clients.${idx}.name`)}>
                     Name <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -264,11 +284,15 @@ export default function LawyerView({ caseData, setCaseData, updateClientField, r
                     value={client.name || ""}
                     onChange={(e) => updateClientField(idx, "name", e.target.value)}
                     placeholder="Full Name"
+                    className={getFieldClassName(`clients.${idx}.name`)}
                     required
                   />
+                  {getFieldError(`clients.${idx}.name`) && (
+                    <p className="text-sm text-red-700">{getFieldError(`clients.${idx}.name`)}</p>
+                  )}
                 </div>
                 <div>
-                  <Label htmlFor={`client-email-${idx}`}>
+                  <Label htmlFor={`client-email-${idx}`} className={getLabelClassName(`clients.${idx}.email`)}>
                     Email <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -277,8 +301,12 @@ export default function LawyerView({ caseData, setCaseData, updateClientField, r
                     value={client.email || ""}
                     onChange={(e) => updateClientField(idx, "email", e.target.value)}
                     placeholder="email@example.com"
+                    className={getFieldClassName(`clients.${idx}.email`)}
                     required
                   />
+                  {getFieldError(`clients.${idx}.email`) && (
+                    <p className="text-sm text-red-700">{getFieldError(`clients.${idx}.email`)}</p>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor={`client-contact-${idx}`}>Contact Number</Label>
@@ -303,7 +331,7 @@ export default function LawyerView({ caseData, setCaseData, updateClientField, r
               </div>
             </div>
           ))}
-          <Button type="button" onClick={addClient} variant="outline" className="mt-4">
+          <Button id="add-client-button" type="button" onClick={addClient} variant="outline" className="mt-4">
             <PlusCircle className="mr-2 h-4 w-4" /> Add Client
           </Button>
         </div>

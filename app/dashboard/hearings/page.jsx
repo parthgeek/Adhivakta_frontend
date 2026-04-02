@@ -10,6 +10,14 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -118,6 +126,11 @@ const toDayKey = (value) => {
   return date.toISOString().slice(0, 10);
 };
 
+const isFutureHearing = (value) => {
+  const date = toDate(value);
+  return Boolean(date && date.getTime() > Date.now());
+};
+
 export default function HearingsPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -130,6 +143,11 @@ export default function HearingsPage() {
   const [filterType, setFilterType] = useState("all");
   const [activeQuickFilter, setActiveQuickFilter] = useState(null);
   const [sendingReminderFor, setSendingReminderFor] = useState(null);
+  const [showProceedingsDialog, setShowProceedingsDialog] = useState(false);
+  const [showViewProceedingsDialog, setShowViewProceedingsDialog] = useState(false);
+  const [selectedHearing, setSelectedHearing] = useState(null);
+  const [proceedingsValue, setProceedingsValue] = useState("");
+  const [savingProceedings, setSavingProceedings] = useState(false);
 
   const isLawyer = user?.role === "lawyer" || user?.role === "admin";
 
@@ -234,6 +252,12 @@ export default function HearingsPage() {
         advocate,
         client,
         notes: event.description || "",
+        description: event.description || "",
+        outcome: event.outcome || "",
+        start: event.start,
+        end: event.end,
+        location: event.location || caseObj?.court || "Courtroom",
+        eventTitle: event.title,
         documentsRequired: [],
         updatedAt: event.updatedAt || event.createdAt || event.start,
       });
@@ -297,6 +321,14 @@ export default function HearingsPage() {
         advocate,
         client,
         notes: "Hearing scheduled from case timeline.",
+        description: "Hearing scheduled from case timeline.",
+        outcome: "",
+        start: nextHearing,
+        end: startDate
+          ? new Date(startDate.getTime() + 60 * 60 * 1000).toISOString()
+          : null,
+        location: caseItem.court || "Courtroom",
+        eventTitle: `Hearing for ${caseItem.title || caseItem.caseNumber || "Case"}`,
         documentsRequired: [],
         updatedAt: caseItem.updatedAt || caseItem.createdAt || nextHearing,
       });
@@ -415,6 +447,80 @@ export default function HearingsPage() {
       });
     } finally {
       setSendingReminderFor(null);
+    }
+  };
+
+  const handleViewProceedings = (hearing) => {
+    setSelectedHearing(hearing);
+    setShowViewProceedingsDialog(true);
+  };
+
+  const handleEditProceedings = (hearing) => {
+    setSelectedHearing(hearing);
+    setProceedingsValue(hearing.outcome || "");
+    setShowProceedingsDialog(true);
+  };
+
+  const handleSaveProceedings = async () => {
+    if (!selectedHearing?.caseId) {
+      toast({
+        title: "Error",
+        description: "This hearing is not linked to a case.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const hearingStart = toDate(selectedHearing.start || selectedHearing.date);
+    if (!hearingStart) {
+      toast({
+        title: "Error",
+        description: "Hearing date is invalid.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSavingProceedings(true);
+
+    try {
+      const payload = {
+        title: selectedHearing.eventTitle || `Hearing for ${selectedHearing.caseName}`,
+        start: hearingStart.toISOString(),
+        end:
+          selectedHearing.end ||
+          new Date(hearingStart.getTime() + 60 * 60 * 1000).toISOString(),
+        type: "hearing",
+        case: selectedHearing.caseId,
+        location: selectedHearing.location || selectedHearing.court || "Courtroom",
+        description: selectedHearing.description || selectedHearing.notes || "Recorded from hearings page",
+        outcome: proceedingsValue,
+        status: selectedHearing.status || "completed",
+      };
+
+      if (selectedHearing.sourceId) {
+        await api.events.update(selectedHearing.sourceId, payload);
+      } else {
+        await api.events.create(payload);
+      }
+
+      setShowProceedingsDialog(false);
+      setSelectedHearing(null);
+      setProceedingsValue("");
+      await fetchHearingsAndCases();
+      toast({
+        title: "Success",
+        description: "Proceedings saved successfully.",
+      });
+    } catch (error) {
+      console.error("Error saving proceedings:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save proceedings.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingProceedings(false);
     }
   };
 
@@ -669,6 +775,15 @@ export default function HearingsPage() {
                   </div>
                 )}
 
+                <div className="p-3 border rounded-lg bg-muted/30">
+                  <p className="text-sm font-medium text-foreground mb-1">Proceedings</p>
+                  <p className="text-sm text-muted-foreground">
+                    {hearing.outcome
+                      ? `${hearing.outcome.slice(0, 120)}${hearing.outcome.length > 120 ? "..." : ""}`
+                      : "No proceedings recorded yet."}
+                  </p>
+                </div>
+
                 {hearing.documentsRequired.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-foreground">
@@ -692,6 +807,32 @@ export default function HearingsPage() {
                       : new Date().toLocaleDateString()}
                   </div>
                   <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isFutureHearing(hearing.date)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleViewProceedings(hearing);
+                      }}
+                    >
+                      View Proceeding
+                    </Button>
+
+                    {isLawyer && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isFutureHearing(hearing.date)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleEditProceedings(hearing);
+                        }}
+                      >
+                        {hearing.outcome ? "Edit Proceeding" : "Add Proceeding"}
+                      </Button>
+                    )}
+
                     <Button
                       variant="outline"
                       size="sm"
@@ -764,6 +905,47 @@ export default function HearingsPage() {
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={showProceedingsDialog} onOpenChange={setShowProceedingsDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {selectedHearing?.outcome ? "Edit Proceeding" : "Add Proceeding"}
+            </DialogTitle>
+            <DialogDescription>
+              Record what happened during this hearing.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Textarea
+              rows={6}
+              placeholder="Describe what happened during this hearing..."
+              value={proceedingsValue}
+              onChange={(event) => setProceedingsValue(event.target.value)}
+            />
+            <Button onClick={handleSaveProceedings} disabled={savingProceedings}>
+              {savingProceedings ? "Saving..." : "Save Proceedings"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={showViewProceedingsDialog}
+        onOpenChange={setShowViewProceedingsDialog}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Proceedings</DialogTitle>
+            <DialogDescription>
+              {selectedHearing?.caseName || "Hearing details"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="text-sm whitespace-pre-wrap text-foreground leading-relaxed">
+            {selectedHearing?.outcome || "No proceedings recorded for this hearing."}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

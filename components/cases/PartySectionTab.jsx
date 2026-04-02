@@ -38,14 +38,15 @@ function PartyForm({ party, idx, partyList, fieldKey, setCaseData, nameError }) 
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <Label>Full Name <span className="text-destructive">*</span></Label>
+          <Label className={nameError ? "text-red-800" : ""}>Full Name <span className="text-destructive">*</span></Label>
           <Input
+            id={`${fieldKey}-name-${idx}`}
             value={party.name}
             onChange={(e) => update("name", e.target.value)}
             placeholder="e.g. Rajesh Kumar"
-            className={nameError ? "border-destructive focus-visible:ring-destructive" : ""}
+            className={nameError ? "border-destructive/50 bg-red-50 focus-visible:ring-red-300" : ""}
           />
-          {nameError && <p className="text-sm text-destructive">{nameError}</p>}
+          {nameError && <p className="text-sm text-red-700">{nameError}</p>}
         </div>
         <div className="space-y-1.5">
           <Label>Party Type</Label>
@@ -200,6 +201,7 @@ function PartyColumn({
 
       {/* Add button */}
       <Button
+        id={`add-${listKey === "petitioners" ? "petitioner" : "respondent"}-button`}
         type="button"
         variant="outline"
         className="w-full gap-2"
@@ -232,17 +234,6 @@ export default function PartySectionTab({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {validationErrors?.hasErrors && (validationErrors?.messages || []).length > 0 && (
-          <div className="mb-4 rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            <p className="font-medium">Please complete the required party details.</p>
-            <ul className="mt-2 list-disc space-y-1 pl-5">
-              {validationErrors.messages.map((message) => (
-                <li key={message}>{message}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
         <div className="flex flex-col lg:flex-row gap-6">
           <PartyColumn
             title="Filing Side"
