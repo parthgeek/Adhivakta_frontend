@@ -390,8 +390,9 @@ const api = {
   },
 
   courtDirectory: {
-    getStates: async () => {
-      const response = await fetch(`${API_URL}/court-directory/states`, {
+    getStates: async (source = "ecourts") => {
+      const queryParams = new URLSearchParams({ source });
+      const response = await fetch(`${API_URL}/court-directory/states?${queryParams.toString()}`, {
         method: "GET",
         headers: createHeaders(),
       });
@@ -400,9 +401,10 @@ const api = {
       return data.data || [];
     },
 
-    getDistricts: async (stateCode) => {
+    getDistricts: async (stateCode, source = "ecourts") => {
+      const queryParams = new URLSearchParams({ stateCode, source });
       const response = await fetch(
-        `${API_URL}/court-directory/districts?stateCode=${encodeURIComponent(stateCode)}`,
+        `${API_URL}/court-directory/districts?${queryParams.toString()}`,
         {
           method: "GET",
           headers: createHeaders(),
@@ -413,11 +415,8 @@ const api = {
       return data.data || [];
     },
 
-    getComplexes: async (stateCode, districtCode) => {
-      const queryParams = new URLSearchParams({
-        stateCode,
-        districtCode,
-      });
+    getComplexes: async (stateCode, districtCode, source = "ecourts") => {
+      const queryParams = new URLSearchParams({ stateCode, districtCode, source });
 
       const response = await fetch(
         `${API_URL}/court-directory/complexes?${queryParams.toString()}`,
@@ -431,12 +430,8 @@ const api = {
       return data.data || [];
     },
 
-    getCourts: async (stateCode, districtCode, complexCode) => {
-      const queryParams = new URLSearchParams({
-        stateCode,
-        districtCode,
-        complexCode,
-      });
+    getCourts: async (stateCode, districtCode, complexCode, source = "ecourts") => {
+      const queryParams = new URLSearchParams({ stateCode, districtCode, complexCode, source });
 
       const response = await fetch(
         `${API_URL}/court-directory/courts?${queryParams.toString()}`,
@@ -450,12 +445,13 @@ const api = {
       return data.data || [];
     },
 
-    getCaseTypes: async (stateCode, districtCode, complexCode, courtCode) => {
+    getCaseTypes: async (stateCode, districtCode, complexCode, courtCode, source = "ecourts") => {
       const queryParams = new URLSearchParams({
         stateCode,
         districtCode,
         complexCode,
         courtCode,
+        source,
       });
 
       const response = await fetch(

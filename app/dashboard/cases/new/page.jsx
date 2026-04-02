@@ -229,6 +229,7 @@ export default function NewCasePage() {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploadProgress, setUploadProgress] = useState({});
   const [activeTab, setActiveTab] = useState("court");
+  const [courtSource, setCourtSource] = useState("ecourts");
   const [courtDirectoryOptions, setCourtDirectoryOptions] = useState(
     EMPTY_COURT_DIRECTORY_OPTIONS
   );
@@ -315,11 +316,11 @@ export default function NewCasePage() {
     }));
   };
 
-  const loadStates = async () => {
+  const loadStates = async (source = "ecourts") => {
     setCourtLookupLoading("states", true);
 
     try {
-      const states = await api.courtDirectory.getStates();
+      const states = await api.courtDirectory.getStates(source);
       setCourtDirectoryOptions((prev) => ({
         ...prev,
         states,
@@ -335,13 +336,13 @@ export default function NewCasePage() {
     }
   };
 
-  const loadDistricts = async (stateCode) => {
+  const loadDistricts = async (stateCode, source = "ecourts") => {
     if (!stateCode) return [];
 
     setCourtLookupLoading("districts", true);
 
     try {
-      const districts = await api.courtDirectory.getDistricts(stateCode);
+      const districts = await api.courtDirectory.getDistricts(stateCode, source);
       setCourtDirectoryOptions((prev) => ({
         ...prev,
         districts,
@@ -369,16 +370,13 @@ export default function NewCasePage() {
     }
   };
 
-  const loadComplexes = async (stateCode, districtCode) => {
+  const loadComplexes = async (stateCode, districtCode, source = "ecourts") => {
     if (!stateCode || !districtCode) return [];
 
     setCourtLookupLoading("complexes", true);
 
     try {
-      const complexes = await api.courtDirectory.getComplexes(
-        stateCode,
-        districtCode
-      );
+      const complexes = await api.courtDirectory.getComplexes(stateCode, districtCode, source);
       setCourtDirectoryOptions((prev) => ({
         ...prev,
         complexes,
@@ -405,17 +403,13 @@ export default function NewCasePage() {
     }
   };
 
-  const loadCourts = async (stateCode, districtCode, complexCode) => {
+  const loadCourts = async (stateCode, districtCode, complexCode, source = "ecourts") => {
     if (!stateCode || !districtCode || !complexCode) return [];
 
     setCourtLookupLoading("courts", true);
 
     try {
-      const courts = await api.courtDirectory.getCourts(
-        stateCode,
-        districtCode,
-        complexCode
-      );
+      const courts = await api.courtDirectory.getCourts(stateCode, districtCode, complexCode, source);
       setCourtDirectoryOptions((prev) => ({
         ...prev,
         courts,
@@ -440,12 +434,7 @@ export default function NewCasePage() {
     }
   };
 
-  const loadCaseTypes = async (
-    stateCode,
-    districtCode,
-    complexCode,
-    courtCode
-  ) => {
+  const loadCaseTypes = async (stateCode, districtCode, complexCode, courtCode, source = "ecourts") => {
     if (!stateCode || !districtCode || !complexCode || !courtCode) {
       return [];
     }
@@ -457,7 +446,8 @@ export default function NewCasePage() {
         stateCode,
         districtCode,
         complexCode,
-        courtCode
+        courtCode,
+        source
       );
       const caseTypes = payload?.caseTypes || [];
       setCourtDirectoryOptions((prev) => ({
@@ -482,8 +472,56 @@ export default function NewCasePage() {
     }
   };
 
+  // Fixed Supreme Court identifiers (only one court exists)
+  const SUPREME_COURT_ECOURT = {
+    source: "supremecourt",
+    stateCode: "IND",
+    state: "India",
+    districtCode: "SCI",
+    district: "Supreme Court of India",
+    complexCode: "SCI_PRINCIPAL_BENCH",
+    complex: "Principal Bench, New Delhi",
+    courtCode: "SCI_MAIN",
+    court: "Supreme Court of India",
+    caseTypeCode: "",
+    caseTypeName: "",
+    requiresEstablishment: false,
+  };
+
+  const handleCourtTypeChange = async (newSource) => {
+    const courtTypeMap = {
+      ecourts: "district_court",
+      highcourts: "high_court",
+      supremecourt: "supreme_court",
+    };
+
+    setCourtSource(newSource);
+    setCourtDirectoryOptions(EMPTY_COURT_DIRECTORY_OPTIONS);
+
+    if (newSource === "supremecourt") {
+      // Auto-populate all fixed SC values; user just picks case type
+      setCaseData((prev) =>
+        syncDerivedCaseFields({
+          ...prev,
+          eCourt: { ...SUPREME_COURT_ECOURT },
+          courtType: "supreme_court",
+        })
+      );
+      await loadCaseTypes("IND", "SCI", "SCI_PRINCIPAL_BENCH", "SCI_MAIN", "supremecourt");
+    } else {
+      setCaseData((prev) =>
+        syncDerivedCaseFields({
+          ...prev,
+          eCourt: { ...DEFAULT_ECOURT_SELECTION, source: newSource },
+          courtType: courtTypeMap[newSource] || "district_court",
+        })
+      );
+      await loadStates(newSource);
+    }
+  };
+
   useEffect(() => {
-    loadStates();
+    loadStates("ecourts");
   }, []);
 
   useEffect(() => {
@@ -532,21 +570,33 @@ export default function NewCasePage() {
       errors.push({ tab: 'details', message: 'Case description is required' });
     }
 
-    // Court validation
-    if (!caseData.eCourt?.stateCode) {
-      errors.push({ tab: 'court', message: 'State is required' });
-    }
-    if (!caseData.eCourt?.districtCode) {
-      errors.push({ tab: 'court', message: 'District is required' });
-    }
-    if (!caseData.eCourt?.complexCode) {
-      errors.push({ tab: 'court', message: 'Court complex is required' });
-    }
-    if (!caseData.eCourt?.courtCode) {
-      errors.push({ tab: 'court', message: 'Court selection is required' });
-    }
-    if (!caseData.eCourt?.caseTypeCode) {
-      errors.push({ tab: 'court', message: 'Case type is required' });
+    // Court validation — supreme court values are auto-filled, only case type is user-selected
+    if (courtSource === "supremecourt") {
+      if (!caseData.eCourt?.caseTypeCode) {
+        errors.push({ tab: 'court', message: 'Case type is required' });
+      }
+    } else {
+      if (!caseData.eCourt?.stateCode) {
+        errors.push({ tab: 'court', message: 'State is required' });
+      }
+      if (!caseData.eCourt?.districtCode) {
+        errors.push({
+          tab: 'court',
+          message: courtSource === "highcourts" ? 'High Court is required' : 'District is required',
+        });
+      }
+      if (!caseData.eCourt?.complexCode) {
+        errors.push({
+          tab: 'court',
+          message: courtSource === "highcourts" ? 'Bench is required' : 'Court complex is required',
+        });
+      }
+      if (!caseData.eCourt?.courtCode) {
+        errors.push({ tab: 'court', message: 'Court selection is required' });
+      }
+      if (!caseData.eCourt?.caseTypeCode) {
+        errors.push({ tab: 'court', message: 'Case type is required' });
+      }
     }
 
     // First Hearing Date validation (MANDATORY)
@@ -1110,7 +1160,7 @@ export default function NewCasePage() {
         caseTypes: [],
       }));
 
-      await loadDistricts(value);
+      await loadDistricts(value, courtSource);
       return;
     }
 
@@ -1148,7 +1198,7 @@ export default function NewCasePage() {
         caseTypes: [],
       }));
 
-      await loadComplexes(stateCode, value);
+      await loadComplexes(stateCode, value, courtSource);
       return;
     }
 
@@ -1183,7 +1233,7 @@ export default function NewCasePage() {
         caseTypes: [],
       }));
 
-      const courts = await loadCourts(stateCode, districtCode, value);
+      const courts = await loadCourts(stateCode, districtCode, value, courtSource);
 
       if (courts.length === 1) {
         const selectedCourt = courts[0];
@@ -1206,7 +1256,8 @@ export default function NewCasePage() {
           stateCode,
           districtCode,
           value,
-          selectedCourt.code
+          selectedCourt.code,
+          courtSource
         );
 
         if (caseTypes.length === 1) {
@@ -1258,7 +1309,8 @@ export default function NewCasePage() {
         stateCode,
         districtCode,
         complexCode,
-        value
+        value,
+        courtSource
       );
 
       if (caseTypes.length === 1) {
@@ -1423,6 +1475,8 @@ export default function NewCasePage() {
             setCaseData={setCaseData}
             courtDirectoryOptions={courtDirectoryOptions}
             courtDirectoryLoading={courtDirectoryLoading}
+            courtSource={courtSource}
+            handleCourtTypeChange={handleCourtTypeChange}
             isSubmitting={isSubmitting}
             isLawyer={isLawyer}
             selectedFiles={selectedFiles}

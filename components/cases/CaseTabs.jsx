@@ -12,6 +12,8 @@ export default function CaseTabs({
   setCaseData,
   courtDirectoryOptions,
   courtDirectoryLoading,
+  courtSource,
+  handleCourtTypeChange,
   isSubmitting,
   isLawyer,
   selectedFiles,
@@ -136,6 +138,8 @@ export default function CaseTabs({
           handleSelectChange={handleSelectChange}
           courtDirectoryOptions={courtDirectoryOptions}
           courtDirectoryLoading={courtDirectoryLoading}
+          courtSource={courtSource}
+          handleCourtTypeChange={handleCourtTypeChange}
           isSubmitting={isSubmitting}
           handleSubmit={handleSubmit}
           router={router}
