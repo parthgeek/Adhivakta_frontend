@@ -28,6 +28,16 @@ const COURT_TYPE_OPTIONS = [
   },
 ];
 
+const HIGH_COURT_STATE_LABELS = {
+  "1": "Maharashtra",
+  "8": "Bihar",
+  "10": "Tamil Nadu",
+  "16": "West Bengal",
+};
+
+const getHighCourtStateLabel = (state = {}) =>
+  HIGH_COURT_STATE_LABELS[String(state.code || "")] || state.name;
+
 export default function CourtInfoTab({
   caseData,
   handleChange,
@@ -280,7 +290,7 @@ export default function CourtInfoTab({
                     <SelectContent>
                       {states.map((state) => (
                         <SelectItem key={state.code} value={state.code}>
-                          {state.name}
+                          {getHighCourtStateLabel(state)}
                         </SelectItem>
                       ))}
                     </SelectContent>
