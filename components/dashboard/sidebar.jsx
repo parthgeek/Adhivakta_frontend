@@ -13,6 +13,7 @@ import {
   ChevronRight,
   AlertTriangle,
   MessageSquare,
+  BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,7 @@ const menuItems = [
   { icon: Calendar, label: "Calendar", path: "/dashboard/calendar" },
   { icon: FolderOpen, label: "Documents", path: "/dashboard/documents" },
   { icon: MessageSquare, label: "Messages", path: "/dashboard/messages" },
+  { icon: BarChart3, label: "NJDG Analytics", path: "/dashboard/njdg" },
   { icon: Settings, label: "Settings", path: "/dashboard/settings" },
 ];
 

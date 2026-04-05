@@ -974,6 +974,96 @@ const api = {
     },
   },
 
+  njdg: {
+    getNationalSummary: async (refresh = false) => {
+      const url = refresh
+        ? `${API_URL}/njdg/summary?refresh=true`
+        : `${API_URL}/njdg/summary`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: createHeaders(),
+      });
+      const data = await handleResponse(response);
+      return data.data;
+    },
+
+    getStates: async () => {
+      const response = await fetch(`${API_URL}/njdg/states`, {
+        method: "GET",
+        headers: createHeaders(),
+      });
+      const data = await handleResponse(response);
+      return data.data?.states || [];
+    },
+
+    getStateSummary: async (stateCode, refresh = false) => {
+      const encoded = encodeURIComponent(stateCode);
+      const url = refresh
+        ? `${API_URL}/njdg/state/${encoded}?refresh=true`
+        : `${API_URL}/njdg/state/${encoded}`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: createHeaders(),
+      });
+      const data = await handleResponse(response);
+      return data.data;
+    },
+
+    getDistricts: async (stateCode) => {
+      const encoded = encodeURIComponent(stateCode);
+      const response = await fetch(`${API_URL}/njdg/districts/${encoded}`, {
+        method: "GET",
+        headers: createHeaders(),
+      });
+      const data = await handleResponse(response);
+      return data.data?.districts || [];
+    },
+
+    getDistrictSummary: async (stateCode, districtCode, refresh = false) => {
+      const encodedState = encodeURIComponent(stateCode);
+      const encodedDistrict = encodeURIComponent(districtCode);
+      const url = refresh
+        ? `${API_URL}/njdg/district/${encodedState}/${encodedDistrict}?refresh=true`
+        : `${API_URL}/njdg/district/${encodedState}/${encodedDistrict}`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: createHeaders(),
+      });
+      const data = await handleResponse(response);
+      return data.data;
+    },
+
+    syncNational: async () => {
+      const response = await fetch(`${API_URL}/njdg/sync`, {
+        method: "POST",
+        headers: createHeaders(),
+      });
+      return handleResponse(response);
+    },
+
+    syncState: async (stateCode) => {
+      const encoded = encodeURIComponent(stateCode);
+      const response = await fetch(`${API_URL}/njdg/sync/state/${encoded}`, {
+        method: "POST",
+        headers: createHeaders(),
+      });
+      return handleResponse(response);
+    },
+
+    syncDistrict: async (stateCode, districtCode) => {
+      const encodedState = encodeURIComponent(stateCode);
+      const encodedDistrict = encodeURIComponent(districtCode);
+      const response = await fetch(
+        `${API_URL}/njdg/sync/district/${encodedState}/${encodedDistrict}`,
+        {
+          method: "POST",
+          headers: createHeaders(),
+        }
+      );
+      return handleResponse(response);
+    },
+  },
+
   // Subscription APIs
   subscriptions: {
     getPlans: async (role) => {
