@@ -19,6 +19,9 @@ import {
   User,
   AlertCircle,
   FileText,
+  Building2,
+  Scale,
+  Gavel,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +57,15 @@ import {
   isPriorityAlertCase,
 } from "@/lib/casePriority";
 
+const COURT_TYPE_META = {
+  district_court:  { label: "District Court",  icon: Building2, color: "bg-blue-100 text-blue-700 border-blue-200" },
+  high_court:      { label: "High Court",       icon: Scale,     color: "bg-purple-100 text-purple-700 border-purple-200" },
+  supreme_court:   { label: "Supreme Court",    icon: Gavel,     color: "bg-amber-100 text-amber-700 border-amber-200" },
+};
+
+const getCourtTypeMeta = (courtType) =>
+  COURT_TYPE_META[courtType] || { label: courtType || "Court", icon: Building2, color: "bg-gray-100 text-gray-600 border-gray-200" };
+
 const getStatusColor = (status) => {
   switch ((status || "active").toLowerCase()) {
     case "active":
@@ -75,6 +87,7 @@ export default function CasesPage() {
   const [categoryFilter, setCategoryFilter] = useState("All Categories");
   const [statusFilter, setStatusFilter] = useState("All Statuses");
   const [priorityFilter, setPriorityFilter] = useState("All Priority");
+  const [courtTypeFilter, setCourtTypeFilter] = useState("All Courts");
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -98,6 +111,8 @@ export default function CasesPage() {
               : undefined,
           type:
             categoryFilter !== "All Categories" ? categoryFilter : undefined,
+          courtType:
+            courtTypeFilter !== "All Courts" ? courtTypeFilter : undefined,
         };
 
         const response = await api.cases.getAll(filters);
@@ -122,7 +137,7 @@ export default function CasesPage() {
     };
 
     fetchCases();
-  }, [isLawyer, searchTerm, categoryFilter, statusFilter]);
+  }, [isLawyer, searchTerm, categoryFilter, statusFilter, courtTypeFilter]);
 
   // Helper function to map API case fields to UI fields
   const mapCaseFields = (caseItem) => {
@@ -153,6 +168,7 @@ export default function CasesPage() {
         caseItem.nextHearingDate || caseItem.nextHearing || caseItem.hearingDate,
       filingDate: caseItem.filingDate || caseItem.filing_date || caseItem.dateOfFiling,
       priority: getCasePriority(caseItem),
+      courtType: caseItem.courtType || "district_court",
     };
   };
 
@@ -191,7 +207,11 @@ export default function CasesPage() {
       (caseItem.priority &&
         caseItem.priority.toLowerCase() === priorityFilter.toLowerCase());
 
-    return matchesSearch && matchesStatus && matchesType && matchesPriority;
+    const matchesCourtType =
+      courtTypeFilter === "All Courts" ||
+      (caseItem.courtType === courtTypeFilter);
+
+    return matchesSearch && matchesStatus && matchesType && matchesPriority && matchesCourtType;
   });
 
   const toggleDescription = (caseId) => {
@@ -289,8 +309,8 @@ export default function CasesPage() {
           <CardTitle className="text-lg">Filter Cases</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="relative">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="relative md:col-span-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
                 placeholder="Search cases..."
@@ -321,15 +341,40 @@ export default function CasesPage() {
                 <SelectItem value="normal">Normal Priority</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Select value={courtTypeFilter} onValueChange={setCourtTypeFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filter by Court Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All Courts">All Court Types</SelectItem>
+                <SelectItem value="district_court">
+                  <span className="flex items-center gap-2">
+                    <Building2 className="h-3.5 w-3.5" /> District Court
+                  </span>
+                </SelectItem>
+                <SelectItem value="high_court">
+                  <span className="flex items-center gap-2">
+                    <Scale className="h-3.5 w-3.5" /> High Court
+                  </span>
+                </SelectItem>
+                <SelectItem value="supreme_court">
+                  <span className="flex items-center gap-2">
+                    <Gavel className="h-3.5 w-3.5" /> Supreme Court
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
               <SelectTrigger>
-                <SelectValue placeholder="Filter by Type" />
+                <SelectValue placeholder="Filter by Case Type" />
               </SelectTrigger>
               <SelectContent>
                 {caseTypes.map((type) => (
                   <SelectItem key={type} value={type}>
                     {type === "All Categories"
-                      ? "All Types"
+                      ? "All Case Types"
                       : formatCaseTypeLabel(type)}
                   </SelectItem>
                 ))}
@@ -373,6 +418,7 @@ export default function CasesPage() {
             const courtName = rawCase.court || "Not specified";
             const caseType = getDisplayCaseType(rawCase);
             const priority = getCasePriority(rawCase);
+            const courtTypeMeta = getCourtTypeMeta(rawCase.courtType);
 
             let clientName = rawCase.client?.name || rawCase.client;
             if (!clientName && Array.isArray(rawCase.clients) && rawCase.clients.length > 0) {
@@ -434,6 +480,13 @@ export default function CasesPage() {
                           <div>
                             <p className="text-xs text-muted-foreground">Case Type</p>
                             <p className="text-sm font-medium text-foreground">{caseType || "N/A"}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Court Level</p>
+                            <Badge variant="outline" className={`mt-0.5 text-xs gap-1 ${courtTypeMeta.color}`}>
+                              <courtTypeMeta.icon className="h-3 w-3" />
+                              {courtTypeMeta.label}
+                            </Badge>
                           </div>
                           <div>
                             <p className="text-xs text-muted-foreground">Court</p>
@@ -621,6 +674,7 @@ export default function CasesPage() {
                     setStatusFilter("All Statuses");
                     setPriorityFilter("All Priority");
                     setCategoryFilter("All Categories");
+                    setCourtTypeFilter("All Courts");
                   }}
                 >
                   Clear Filters

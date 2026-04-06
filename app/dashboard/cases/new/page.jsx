@@ -1456,6 +1456,7 @@ export default function NewCasePage() {
           court: "",
           eCourt: {
             ...DEFAULT_ECOURT_SELECTION,
+            source: courtSource,   // preserve the selected court type source
             stateCode: value,
             state: selectedState?.name || "",
           },
