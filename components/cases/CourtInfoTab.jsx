@@ -33,6 +33,8 @@ const HIGH_COURT_STATE_LABELS = {
   "8": "Bihar",
   "10": "Tamil Nadu",
   "16": "West Bengal",
+  "22": "Punjab and Haryana",
+  "23": "Madhya Pradesh",
 };
 
 const getHighCourtStateLabel = (state = {}) =>
