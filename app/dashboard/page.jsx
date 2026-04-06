@@ -188,6 +188,9 @@ const sortNotificationsByRecency = (a, b) =>
   new Date(b?.createdAt || 0) - new Date(a?.createdAt || 0);
 
 const DASHBOARD_NOTIFICATION_POLL_MS = 30000;
+const APPROVAL_REMINDER_SUPPRESSED_KEY = "approval_review_remind_later";
+const APPROVAL_LOGOUT_REMINDER_SHOWN_KEY = "approval_review_logout_reminder_shown";
+const APPROVAL_LOGOUT_EVENT = "app:approval-review:logout-attempt";
 
 const isApprovalReviewNotification = (notification) =>
   notification?.type === "document_review_request" && !notification?.read;
@@ -200,6 +203,38 @@ const getApprovalReviewNotifications = (notifications = []) =>
 const getNotificationKey = (notification, index = 0) =>
   notification?._id ||
   `${notification?.type || "notification"}-${notification?.createdAt || index}-${notification?.message || ""}`;
+
+const canUseSessionStorage = () => typeof window !== "undefined";
+
+const isApprovalReminderSuppressed = () =>
+  canUseSessionStorage() &&
+  sessionStorage.getItem(APPROVAL_REMINDER_SUPPRESSED_KEY) === "true";
+
+const setApprovalReminderSuppressed = (value) => {
+  if (!canUseSessionStorage()) return;
+
+  if (value) {
+    sessionStorage.setItem(APPROVAL_REMINDER_SUPPRESSED_KEY, "true");
+    return;
+  }
+
+  sessionStorage.removeItem(APPROVAL_REMINDER_SUPPRESSED_KEY);
+};
+
+const hasShownLogoutApprovalReminder = () =>
+  canUseSessionStorage() &&
+  sessionStorage.getItem(APPROVAL_LOGOUT_REMINDER_SHOWN_KEY) === "true";
+
+const setHasShownLogoutApprovalReminder = (value) => {
+  if (!canUseSessionStorage()) return;
+
+  if (value) {
+    sessionStorage.setItem(APPROVAL_LOGOUT_REMINDER_SHOWN_KEY, "true");
+    return;
+  }
+
+  sessionStorage.removeItem(APPROVAL_LOGOUT_REMINDER_SHOWN_KEY);
+};
 
 // Cases List Component
 const CasesList = ({ cases = [] }) => {
@@ -673,6 +708,8 @@ const NewDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [isApprovalPopupOpen, setIsApprovalPopupOpen] = useState(false);
   const [dismissedApprovalIds, setDismissedApprovalIds] = useState([]);
+  const [approvalPopupSource, setApprovalPopupSource] = useState("dashboard");
+  const pendingLogoutActionRef = useRef(null);
   const knownNotificationIdsRef = useRef(new Set());
   const hasSyncedNotificationsRef = useRef(false);
 
@@ -681,13 +718,26 @@ const NewDashboard = () => {
     [dashboardData.notifications]
   );
 
-  const dismissCurrentApprovalPopup = () => {
+  const dismissCurrentApprovalPopup = ({ source = approvalPopupSource } = {}) => {
     const activeIds = approvalNotifications
       .map((notification) => notification?._id)
       .filter(Boolean);
 
-    setDismissedApprovalIds((prev) => Array.from(new Set([...prev, ...activeIds])));
+    if (source === "dashboard") {
+      setDismissedApprovalIds((prev) => Array.from(new Set([...prev, ...activeIds])));
+      setApprovalReminderSuppressed(true);
+    }
+
     setIsApprovalPopupOpen(false);
+    setApprovalPopupSource("dashboard");
+
+    if (source === "logout") {
+      const continueLogout = pendingLogoutActionRef.current;
+      pendingLogoutActionRef.current = null;
+      window.setTimeout(() => {
+        continueLogout?.();
+      }, 0);
+    }
   };
 
   useEffect(() => {
@@ -784,6 +834,10 @@ const NewDashboard = () => {
   }, []);
 
   useEffect(() => {
+    if (loading) {
+      return;
+    }
+
     const activeApprovalIds = new Set(
       approvalNotifications
         .map((notification) => notification?._id)
@@ -806,14 +860,52 @@ const NewDashboard = () => {
     );
 
     if (approvalNotifications.length === 0) {
+      setApprovalReminderSuppressed(false);
+      setHasShownLogoutApprovalReminder(false);
       setIsApprovalPopupOpen(false);
-    } else if (!hasSyncedNotificationsRef.current || hasNewApprovalNotification) {
+    } else if (
+      !isApprovalReminderSuppressed() &&
+      (!hasSyncedNotificationsRef.current || hasNewApprovalNotification)
+    ) {
+      setApprovalPopupSource("dashboard");
       setIsApprovalPopupOpen(true);
     }
 
     knownNotificationIdsRef.current = currentNotificationIds;
     hasSyncedNotificationsRef.current = true;
-  }, [approvalNotifications, dashboardData.notifications]);
+  }, [approvalNotifications, dashboardData.notifications, loading]);
+
+  useEffect(() => {
+    const handleApprovalReminderLogoutAttempt = (event) => {
+      if (
+        approvalNotifications.length === 0 ||
+        !isApprovalReminderSuppressed() ||
+        hasShownLogoutApprovalReminder()
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      setHasShownLogoutApprovalReminder(true);
+      setApprovalReminderSuppressed(false);
+      pendingLogoutActionRef.current = event.detail?.continueLogout || null;
+      setDismissedApprovalIds([]);
+      setApprovalPopupSource("logout");
+      setIsApprovalPopupOpen(true);
+    };
+
+    window.addEventListener(
+      APPROVAL_LOGOUT_EVENT,
+      handleApprovalReminderLogoutAttempt
+    );
+
+    return () => {
+      window.removeEventListener(
+        APPROVAL_LOGOUT_EVENT,
+        handleApprovalReminderLogoutAttempt
+      );
+    };
+  }, [approvalNotifications]);
 
   useEffect(() => {
     if (loading) {

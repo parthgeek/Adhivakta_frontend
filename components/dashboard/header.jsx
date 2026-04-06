@@ -23,6 +23,8 @@ import {
 } from "@/lib/caseTypeUtils";
 import { cn } from "@/lib/utils";
 
+const APPROVAL_LOGOUT_EVENT = "app:approval-review:logout-attempt";
+
 const safeText = (value) => {
   if (!value) return "";
   if (typeof value === "string") return value;
@@ -132,6 +134,25 @@ export default function Header({ onMenuClick }) {
   }, [displayName]);
 
   const unreadNotifications = counts?.notifications || 0;
+
+  const handleLogout = () => {
+    if (typeof window !== "undefined") {
+      const logoutAttemptEvent = new CustomEvent(APPROVAL_LOGOUT_EVENT, {
+        cancelable: true,
+        detail: {
+          continueLogout: logout,
+        },
+      });
+
+      window.dispatchEvent(logoutAttemptEvent);
+
+      if (logoutAttemptEvent.defaultPrevented) {
+        return;
+      }
+    }
+
+    logout();
+  };
 
   useEffect(() => {
     let isCancelled = false;
@@ -427,7 +448,7 @@ export default function Header({ onMenuClick }) {
                 Settings
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive" onClick={logout}>
+              <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 Logout
               </DropdownMenuItem>

@@ -757,6 +757,26 @@ export default function NewCasePage() {
       });
     }
 
+    if (!normalizeValue(caseData.actSections)) {
+      errors.push({
+        tab: "details",
+        field: "actSections",
+        focusId: "actSections",
+        summary: "Act & Sections",
+        message: "Enter act and sections",
+      });
+    }
+
+    if (!normalizeValue(caseData.reliefSought)) {
+      errors.push({
+        tab: "details",
+        field: "reliefSought",
+        focusId: "reliefSought",
+        summary: "Relief sought",
+        message: "Enter relief sought",
+      });
+    }
+
     // Court validation — supreme court values are auto-filled, only case type is user-selected
     if (courtSource === "supremecourt") {
       if (!caseData.eCourt?.caseTypeCode) {
@@ -849,8 +869,16 @@ export default function NewCasePage() {
       });
     }
 
-    // Respondent validation (if provided)
-    if (caseData.respondents && caseData.respondents.length > 0) {
+    // Respondent validation (MANDATORY - at least one)
+    if (!caseData.respondents || caseData.respondents.length === 0) {
+      errors.push({
+        tab: "party",
+        field: "respondents",
+        focusId: "add-respondent-button",
+        summary: "Opposing side",
+        message: "Add at least one opposing-side party",
+      });
+    } else {
       caseData.respondents.forEach((respondent, index) => {
         if (!respondent.name || respondent.name.trim() === '') {
           errors.push({

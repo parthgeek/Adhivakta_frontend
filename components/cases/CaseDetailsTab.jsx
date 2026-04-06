@@ -247,7 +247,7 @@ export default function CaseDetailsTab({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="actSections">
+            <Label htmlFor="actSections" className={getLabelClassName("actSections")}>
               Act & Sections <span className="text-red-500">*</span>
             </Label>
             <Textarea
@@ -258,6 +258,7 @@ export default function CaseDetailsTab({
               rows={2}
               placeholder="e.g., IPC Section 302, CrPC Section 161"
               className={getInputClassName("actSections")}
+              required
             />
             {getFieldError("actSections") && (
               <p className="text-sm text-destructive">{getFieldError("actSections")}</p>
@@ -265,7 +266,7 @@ export default function CaseDetailsTab({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="reliefSought">
+            <Label htmlFor="reliefSought" className={getLabelClassName("reliefSought")}>
               Relief Sought <span className="text-red-500">*</span>
             </Label>
             <Textarea
@@ -276,6 +277,7 @@ export default function CaseDetailsTab({
               rows={2}
               placeholder="Describe the relief sought in this case"
               className={getInputClassName("reliefSought")}
+              required
             />
             {getFieldError("reliefSought") && (
               <p className="text-sm text-destructive">{getFieldError("reliefSought")}</p>

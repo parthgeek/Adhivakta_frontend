@@ -9,6 +9,12 @@ import { useAuth } from "@/context/auth-context";
 import api from "@/services/api";
 
 const DASHBOARD_NOTIFICATION_POLL_MS = 30000;
+const LIGHT_PRIORITY_TOAST_CLASSNAME =
+  "!border !border-rose-200 !border-l-4 !border-l-rose-500 !bg-rose-50 !text-rose-950";
+const LIGHT_SUCCESS_TOAST_CLASSNAME =
+  "!border !border-emerald-200 !border-l-4 !border-l-emerald-500 !bg-emerald-50 !text-emerald-950";
+const LIGHT_DEFAULT_TOAST_CLASSNAME =
+  "!border !border-slate-200 !border-l-4 !border-l-[#03234b] !bg-white !text-slate-950";
 
 export default function NotificationListener() {
   const processedNotificationIdsRef = useRef(new Set());
@@ -62,12 +68,11 @@ export default function NotificationListener() {
         ),
         description: payload.message || payload.body || "",
         duration: isPriority ? 12000 : 8000,
-        variant: isPriority ? "destructive" : "default",
         className: isPriority
-          ? "border-l-4 border-l-rose-600"
+          ? LIGHT_PRIORITY_TOAST_CLASSNAME
           : payload.type === "document_reviewed"
-            ? "border-l-4 border-l-emerald-500"
-            : "border-l-4 border-l-[#03234b]",
+            ? LIGHT_SUCCESS_TOAST_CLASSNAME
+            : LIGHT_DEFAULT_TOAST_CLASSNAME,
         action: payload.link ? {
           label: actionLabel,
           onClick: () => router.push(target)
