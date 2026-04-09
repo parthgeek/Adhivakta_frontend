@@ -1057,7 +1057,11 @@ export default function NewCasePage() {
           formData,
           (event) => {
             if (!event.lengthComputable) return;
-            const percent = Math.round((event.loaded * 100) / event.total);
+            // Cap at 99% — 100% is set only after server confirms scan passed
+            const percent = Math.min(
+              Math.round((event.loaded * 100) / event.total),
+              99
+            );
             setUploadProgress((prev) => ({
               ...prev,
               [file.name]: percent,

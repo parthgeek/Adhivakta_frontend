@@ -39,6 +39,7 @@ import {
   FolderOpen,
   FileText,
   X,
+  ShieldCheck,
 } from "lucide-react";
 import api from "@/services/api";
 import { useToast } from "@/components/ui/use-toast";
@@ -215,6 +216,7 @@ export default function DocumentsPage() {
 
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const [reviewingDocumentId, setReviewingDocumentId] = useState(null);
   const [uploadForm, setUploadForm] = useState({
     file: null,
@@ -531,6 +533,7 @@ export default function DocumentsPage() {
 
     try {
       setUploading(true);
+      setScanning(false);
 
       const formData = new FormData();
       formData.append("file", uploadForm.file);
@@ -549,7 +552,11 @@ export default function DocumentsPage() {
         formData.append("tags", uploadForm.tags);
       }
 
-      const result = await api.documents.upload(formData);
+      const result = await api.documents.upload(formData, (event) => {
+        if (event.loaded === event.total) {
+          setScanning(true);
+        }
+      });
 
       toast({
         title: "Document uploaded",
@@ -575,6 +582,7 @@ export default function DocumentsPage() {
       });
     } finally {
       setUploading(false);
+      setScanning(false);
     }
   };
 
@@ -1161,6 +1169,13 @@ export default function DocumentsPage() {
                 }
               />
 
+              {scanning && (
+                <div className="flex items-center gap-2 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-700">
+                  <ShieldCheck className="h-4 w-4 animate-pulse shrink-0" />
+                  <span className="animate-pulse">Scanning document for viruses...</span>
+                </div>
+              )}
+
               <DialogFooter>
                 <Button
                   type="button"
@@ -1171,7 +1186,16 @@ export default function DocumentsPage() {
                   Cancel
                 </Button>
                 <Button type="submit" disabled={uploading || !uploadForm.file || !uploadForm.caseId}>
-                  {uploading ? "Uploading..." : "Upload"}
+                  {scanning ? (
+                    <span className="flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4 animate-pulse" />
+                      Scanning...
+                    </span>
+                  ) : uploading ? (
+                    "Uploading..."
+                  ) : (
+                    "Upload"
+                  )}
                 </Button>
               </DialogFooter>
             </form>

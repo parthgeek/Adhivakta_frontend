@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, Calendar, Clock, FileText, MapPin, User, Users, AlertTriangle } from "lucide-react"
+import { ArrowLeft, Calendar, Clock, FileText, MapPin, User, Users, AlertTriangle, ShieldCheck } from "lucide-react"
 import api from "@/services/api"
 import PartyDetails from "@/components/ui/party-details"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
@@ -75,6 +75,7 @@ export default function CaseDetailsPage() {
   const [showScheduleDialog, setShowScheduleDialog] = useState(false)
   const [uploadForm, setUploadForm] = useState({ file: null, description: "" })
   const [uploading, setUploading] = useState(false)
+  const [scanning, setScanning] = useState(false)
   const [reviewingDocumentId, setReviewingDocumentId] = useState(null)
   const [hearingDate, setHearingDate] = useState(null)
   const [scheduling, setScheduling] = useState(false)
@@ -234,12 +235,17 @@ export default function CaseDetailsPage() {
   const handleUploadSubmit = async (e) => {
     e.preventDefault()
     setUploading(true)
+    setScanning(false)
     try {
       const formData = new FormData()
       formData.append("file", uploadForm.file)
       formData.append("description", uploadForm.description)
       formData.append("caseId", id)
-      const result = await api.documents.upload(formData)
+      const result = await api.documents.upload(formData, (event) => {
+        if (event.loaded === event.total) {
+          setScanning(true)
+        }
+      })
       setShowUploadDialog(false)
       setUploadForm({ file: null, description: "" })
       await fetchCaseDocuments()
@@ -255,6 +261,7 @@ export default function CaseDetailsPage() {
       })
     } finally {
       setUploading(false)
+      setScanning(false)
     }
   }
 
@@ -1311,7 +1318,24 @@ export default function CaseDetailsPage() {
               required
             />
             <Input type="text" placeholder="Description" value={uploadForm.description} onChange={e => setUploadForm(prev => ({ ...prev, description: e.target.value }))} />
-            <Button type="submit" disabled={uploading}>{uploading ? "Uploading..." : "Upload"}</Button>
+            {scanning && (
+              <div className="flex items-center gap-2 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-700">
+                <ShieldCheck className="h-4 w-4 animate-pulse shrink-0" />
+                <span className="animate-pulse">Scanning document for viruses...</span>
+              </div>
+            )}
+            <Button type="submit" disabled={uploading}>
+              {scanning ? (
+                <span className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 animate-pulse" />
+                  Scanning...
+                </span>
+              ) : uploading ? (
+                "Uploading..."
+              ) : (
+                "Upload"
+              )}
+            </Button>
           </form>
         </DialogContent>
       </Dialog>
