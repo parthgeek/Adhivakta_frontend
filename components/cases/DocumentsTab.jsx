@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { ShieldCheck } from "lucide-react";
 
 export default function DocumentsTab({
   selectedFiles,
@@ -59,13 +60,22 @@ export default function DocumentsTab({
                         ({(file.size / 1024).toFixed(2)} KB)
                       </span>
                     </div>
-                    {uploadProgress[file.name] > 0 && uploadProgress[file.name] < 100 && (
+                    {uploadProgress[file.name] > 0 && uploadProgress[file.name] < 99 && (
                       <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-primary"
                           style={{ width: `${uploadProgress[file.name]}%` }}
                         ></div>
                       </div>
+                    )}
+                    {uploadProgress[file.name] === 99 && (
+                      <span className="flex items-center gap-1.5 text-xs font-medium text-yellow-700 bg-yellow-50 border border-yellow-300 rounded-full px-2 py-0.5 animate-scan-pop-in">
+                        <span className="relative flex h-2 w-2">
+                          <span className="absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75 animate-ping" />
+                          <span className="relative inline-flex h-2 w-2 rounded-full bg-yellow-500" />
+                        </span>
+                        Scanning...
+                      </span>
                     )}
                     {uploadProgress[file.name] === 100 && (
                       <span className="text-xs text-green-600">Uploaded</span>
