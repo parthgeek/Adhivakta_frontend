@@ -248,7 +248,11 @@ export default function CaseDetailsPage() {
         description: result?.message || "Document uploaded.",
       })
     } catch (err) {
-      toast({ title: "Error", description: "Failed to upload document." })
+      toast({
+        title: "Error",
+        description: err.message || "Failed to upload document.",
+        variant: "destructive",
+      })
     } finally {
       setUploading(false)
     }
@@ -1300,7 +1304,12 @@ export default function CaseDetailsPage() {
             <DialogTitle>Upload Document</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleUploadSubmit} className="space-y-4">
-            <Input type="file" onChange={handleFileChange} required />
+            <Input
+              type="file"
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.txt,.csv,.xls,.xlsx,.ppt,.pptx,.zip"
+              onChange={handleFileChange}
+              required
+            />
             <Input type="text" placeholder="Description" value={uploadForm.description} onChange={e => setUploadForm(prev => ({ ...prev, description: e.target.value }))} />
             <Button type="submit" disabled={uploading}>{uploading ? "Uploading..." : "Upload"}</Button>
           </form>

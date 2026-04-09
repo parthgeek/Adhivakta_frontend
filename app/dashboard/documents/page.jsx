@@ -570,7 +570,7 @@ export default function DocumentsPage() {
       console.error("Error uploading document:", error);
       toast({
         title: "Upload failed",
-        description: "Failed to upload document. Please try again.",
+        description: error.message || "Failed to upload document. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -1093,7 +1093,7 @@ export default function DocumentsPage() {
                     file: event.target.files?.[0] || null,
                   }))
                 }
-                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt,.xls,.xlsx,.ppt,.pptx,.zip"
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.txt,.csv,.xls,.xlsx,.ppt,.pptx,.zip"
                 required
               />
 
