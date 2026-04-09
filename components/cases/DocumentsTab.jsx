@@ -34,6 +34,7 @@ export default function DocumentsTab({
                   id="document-upload"
                   className="hidden"
                   multiple
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.txt,.csv,.xls,.xlsx,.ppt,.pptx,.zip"
                   onChange={handleFileChange}
                 />
                 <Button

@@ -1077,6 +1077,12 @@ export default function NewCasePage() {
         }
       } catch (err) {
         console.error(`Error uploading document ${file.name}:`, err);
+        toast({
+          title: "Document upload failed",
+          description: err.message || `${file.name} could not be uploaded.`,
+          variant: "destructive",
+          className: LIGHT_ERROR_TOAST_CLASSNAME,
+        });
       }
     }
 
