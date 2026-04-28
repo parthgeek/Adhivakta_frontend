@@ -167,6 +167,34 @@ body {
 .notification-pulse {
   animation: pulse-ring 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+/* ClamAV scan animations */
+@keyframes scan-sweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+.animate-scan-sweep {
+  animation: scan-sweep 1.4s ease-in-out infinite;
+}
+
+@keyframes scan-pop-in {
+  0%   { opacity: 0; transform: scale(0.8); }
+  60%  { transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.animate-scan-pop-in {
+  animation: scan-pop-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes scan-check {
+  0%   { stroke-dashoffset: 40; opacity: 0; }
+  60%  { opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+.animate-scan-check {
+  stroke-dasharray: 40;
+  animation: scan-check 0.5s ease-out 0.1s both;
+}
+
 /* Better calendar selected date styling */
 .rdp-day_selected {
   background-color: hsl(var(--primary)) !important;

@@ -1082,7 +1082,11 @@ export default function NewCasePage() {
           formData,
           (event) => {
             if (!event.lengthComputable) return;
-            const percent = Math.round((event.loaded * 100) / event.total);
+            // Cap at 99% — 100% is set only after server confirms scan passed
+            const percent = Math.min(
+              Math.round((event.loaded * 100) / event.total),
+              99
+            );
             setUploadProgress((prev) => ({
               ...prev,
               [file.name]: percent,
@@ -1102,6 +1106,12 @@ export default function NewCasePage() {
         }
       } catch (err) {
         console.error(`Error uploading document ${file.name}:`, err);
+        toast({
+          title: "Document upload failed",
+          description: err.message || `${file.name} could not be uploaded.`,
+          variant: "destructive",
+          className: LIGHT_ERROR_TOAST_CLASSNAME,
+        });
       }
     }
 

@@ -363,6 +363,11 @@ export default function EditCasePage() {
         }
       } catch (error) {
         console.error(`Error uploading document ${file.name}:`, error);
+        toast({
+          title: "Document upload failed",
+          description: error.message || `${file.name} could not be uploaded.`,
+          variant: "destructive",
+        });
       }
     }
 
@@ -1260,6 +1265,7 @@ export default function EditCasePage() {
                             id="document-upload"
                             className="hidden"
                             multiple
+                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.txt,.csv,.xls,.xlsx,.ppt,.pptx,.zip"
                             onChange={handleFileChange}
                           />
                           <Button variant="outline" onClick={() => document.getElementById("document-upload").click()}>

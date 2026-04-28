@@ -34,6 +34,7 @@ export default function DocumentsTab({
                   id="document-upload"
                   className="hidden"
                   multiple
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.txt,.csv,.xls,.xlsx,.ppt,.pptx,.zip"
                   onChange={handleFileChange}
                 />
                 <Button
@@ -58,13 +59,19 @@ export default function DocumentsTab({
                         ({(file.size / 1024).toFixed(2)} KB)
                       </span>
                     </div>
-                    {uploadProgress[file.name] > 0 && uploadProgress[file.name] < 100 && (
+                    {uploadProgress[file.name] > 0 && uploadProgress[file.name] < 99 && (
                       <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-primary"
                           style={{ width: `${uploadProgress[file.name]}%` }}
                         ></div>
                       </div>
+                    )}
+                    {uploadProgress[file.name] === 99 && (
+                      <span className="flex items-center gap-1.5 text-xs font-medium text-yellow-700 bg-yellow-50 border border-yellow-300 rounded-full pl-0.5 pr-2 py-0.5 animate-scan-pop-in">
+                        <img src="/scanner.gif" alt="Scanning" className="h-5 w-5 object-contain" />
+                        Scanning...
+                      </span>
                     )}
                     {uploadProgress[file.name] === 100 && (
                       <span className="text-xs text-green-600">Uploaded</span>
