@@ -282,7 +282,7 @@ const CasesList = ({ cases = [] }) => {
               key={caseItem._id || caseItem.id || index}
               className="p-4 border rounded-lg hover:shadow-sm transition-shadow space-y-3"
             >
-              {/* Row 1: Case Name (left) | Case No. + Status (right) */}
+              {/* Row 1: Case Name (left) | Filing Number + Status (right) */}
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs text-muted-foreground">Case Name</p>
@@ -297,7 +297,7 @@ const CasesList = ({ cases = [] }) => {
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="text-xs text-muted-foreground">Case No.</p>
+                  <p className="text-xs text-muted-foreground">Filing Number</p>
                   <p className="text-sm font-semibold text-foreground">{caseNumber}</p>
                   <div className="flex items-center justify-end gap-1.5 mt-1">
                     <span className="text-xs text-muted-foreground">Status:</span>

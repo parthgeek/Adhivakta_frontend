@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Calendar as DatePicker } from "@/components/ui/calendar"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Calendar as CalendarIcon } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 import { formatCaseTypeLabel, formatDisplayCaseNumber } from "@/lib/caseTypeUtils"
@@ -81,9 +82,6 @@ export default function CaseDetailsPage() {
   const [showOutcomeDialog, setShowOutcomeDialog] = useState(false)
   const [editingEvent, setEditingEvent] = useState(null)
   const [outcomeValue, setOutcomeValue] = useState("")
-  const [showViewOutcomeDialog, setShowViewOutcomeDialog] = useState(false)
-  const [viewingEvent, setViewingEvent] = useState(null)
-  const [viewingIndex, setViewingIndex] = useState(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState("")
   const [deleting, setDeleting] = useState(false)
@@ -376,12 +374,6 @@ export default function CaseDetailsPage() {
     window.open(documentUrl, "_blank", "noopener,noreferrer");
   };
 
-  const handleViewOutcome = (event, idx) => {
-    setViewingEvent(event);
-    setViewingIndex(idx);
-    setShowViewOutcomeDialog(true);
-  };
-
   // Helper for ordinal numbers
   const getOrdinal = (n) => {
     if (n === 1) return 'First';
@@ -426,6 +418,31 @@ export default function CaseDetailsPage() {
 
     return eventHearings
   }, [caseData, events])
+
+  const hearingHistory = useMemo(() => {
+    return hearings.map((event, idx) => {
+      const hearingStart = event.start || event.date
+      const defaultPurpose = idx === 0 && event.isVirtualFirst
+        ? "First hearing scheduled during case creation"
+        : "Hearing"
+      const genericTitle =
+        typeof event.title === "string" && /^hearing for\b/i.test(event.title.trim())
+
+      return {
+        id: event._id || `hearing-history-${idx}`,
+        serialNumber: idx + 1,
+        date: hearingStart,
+        purpose:
+          event.description ||
+          (!genericTitle ? event.title : "") ||
+          defaultPurpose,
+        proceedings: event.outcome || "",
+        status:
+          event.status ||
+          (event.outcome ? "completed" : isFutureHearing(hearingStart) ? "scheduled" : "completed"),
+      }
+    })
+  }, [hearings])
 
   const handleDeleteCase = async () => {
     if (deleteConfirmation !== caseData.title) {
@@ -551,8 +568,8 @@ export default function CaseDetailsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2">
+      <div className="space-y-6">
+        <div>
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="details">Case Details</TabsTrigger>
@@ -568,10 +585,14 @@ export default function CaseDetailsPage() {
                   <CardDescription>Details and status of the case</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <h3 className="text-sm font-medium text-muted-foreground">Case Number</h3>
+                      <h3 className="text-sm font-medium text-muted-foreground">Filing Number</h3>
                       <p className="text-base">{formatDisplayCaseNumber({ caseNumber: caseData.caseNumber, caseTypeName: caseData.caseSubType || caseData.caseType || "", caseTypeCode: caseData.eCourt?.caseTypeCode || caseData.caseCode || "" }) || caseData.caseNumber}</p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground">CNR Number</h3>
+                      <p className="text-base">{caseData.cnrNumber || "Not available"}</p>
                     </div>
                     <div>
                       <h3 className="text-sm font-medium text-muted-foreground">Case Type</h3>
@@ -601,24 +622,24 @@ export default function CaseDetailsPage() {
 
                   <Separator />
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <h3 className="text-sm font-medium text-muted-foreground">Filing Date</h3>
-                      <p className="text-base flex items-center">
+                      <h3 className="text-sm font-medium text-foreground">Filing Date</h3>
+                      <p className="text-base text-muted-foreground flex items-center">
                         <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
                         {formatDate(caseData.filingDate)}
                       </p>
                     </div>
                     <div>
-                      <h3 className="text-sm font-medium text-muted-foreground">First Hearing</h3>
-                      <p className="text-base flex items-center">
+                      <h3 className="text-sm font-medium text-foreground">First Hearing</h3>
+                      <p className="text-base text-muted-foreground flex items-center">
                         <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
                         {formatDate(caseData.nextHearingDate || caseData.hearingDate)}
                       </p>
                     </div>
                     <div>
-                      <h3 className="text-sm font-medium text-muted-foreground">Case Stage</h3>
-                      <p className="text-base capitalize">
+                      <h3 className="text-sm font-medium text-foreground">Case Stage</h3>
+                      <p className="text-base text-muted-foreground capitalize">
                         {caseData.caseStage?.replace(/_/g, " ") || "Not specified"}
                       </p>
                     </div>
@@ -627,9 +648,9 @@ export default function CaseDetailsPage() {
                   <Separator />
 
                   <div>
-                    <h3 className="text-sm font-medium text-muted-foreground">Court Information</h3>
+                    <h3 className="text-sm font-medium text-foreground">Court Information</h3>
                     <div className="mt-2 space-y-2">
-                      <p className="text-base flex items-center">
+                      <p className="text-base text-muted-foreground flex items-center">
                         <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
                         {caseData.court || "Not specified"}
                         {caseData.courtHall && `, Hall ${caseData.courtHall}`}
@@ -645,22 +666,102 @@ export default function CaseDetailsPage() {
                     </div>
                   </div>
 
-                  <>
-                    <Separator />
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground">Description</h3>
-                      <p className="mt-2 text-base">
+                  <Separator />
+   <div>
+                      <h3 className="text-sm font-medium text-foreground">Case Description</h3>
+                      <p className="mt-2 text-base text-muted-foreground">
                         {caseData.description || "No case description provided yet."}
                       </p>
                     </div>
+                                        <Separator />
+
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground">Case History</h3>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Hearing dates, purpose, proceedings, and current status.
+                      </p>
+                    </div>
+
+                    {hearingHistory.length > 0 ? (
+                      <div className="rounded-lg border">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-14">#</TableHead>
+                              <TableHead className="min-w-[140px]">Hearing Date</TableHead>
+                              <TableHead className="min-w-[220px]">Purpose of Hearing</TableHead>
+                              <TableHead className="min-w-[280px]">Proceedings</TableHead>
+                              <TableHead className="min-w-[140px]">Status</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {hearingHistory.map((hearing) => (
+                              <TableRow key={hearing.id}>
+                                <TableCell className="font-medium">{hearing.serialNumber}</TableCell>
+                                <TableCell>{formatDate(hearing.date)}</TableCell>
+                                <TableCell className="text-muted-foreground">
+                                  {hearing.purpose || "Not specified"}
+                                </TableCell>
+                                <TableCell className="max-w-[420px] whitespace-pre-wrap text-muted-foreground">
+                                  {hearing.proceedings || "No proceedings recorded yet."}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge className={getStatusColor(hearing.status)}>
+                                    {hearing.status?.charAt(0).toUpperCase() + hearing.status?.slice(1)}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    ) : (
+                      <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                        No hearing history is available for this case yet.
+                      </div>
+                    )}
+                  </div>
+
+                  <>
+                 
                   </>
 
                   {caseData.actSections && (
                     <>
                       <Separator />
                       <div>
-                        <h3 className="text-sm font-medium text-muted-foreground">Act & Sections</h3>
-                        <p className="mt-2 text-base">{caseData.actSections}</p>
+                        <h3 className="text-sm font-medium text-foreground">Act & Sections</h3>
+                        <p className="mt-2 text-base text-muted-foreground">{caseData.actSections}</p>
+                      </div>
+                    </>
+                  )}
+
+                  {(caseData.policeStation || caseData.firNumber || caseData.firYear) && (
+                    <>
+                      <Separator />
+                      <div>
+                        <h3 className="text-sm font-medium text-foreground">FIR Details</h3>
+                        <div className="mt-2 grid grid-cols-1 gap-3 md:grid-cols-3">
+                          <div>
+                            <p className="text-sm font-medium text-foreground">Police Station</p>
+                            <p className="mt-1 text-base text-muted-foreground">
+                              {caseData.policeStation || "Not specified"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">FIR Number</p>
+                            <p className="mt-1 text-base text-muted-foreground">
+                              {caseData.firNumber || "Not specified"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">Year</p>
+                            <p className="mt-1 text-base text-muted-foreground">
+                              {caseData.firYear || "Not specified"}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     </>
                   )}
@@ -669,8 +770,8 @@ export default function CaseDetailsPage() {
                     <>
                       <Separator />
                       <div>
-                        <h3 className="text-sm font-medium text-muted-foreground">Relief Sought</h3>
-                        <p className="mt-2 text-base">{caseData.reliefSought}</p>
+                        <h3 className="text-sm font-medium text-foreground">Relief Sought</h3>
+                        <p className="mt-2 text-base text-muted-foreground">{caseData.reliefSought}</p>
                       </div>
                     </>
                   )}
@@ -679,8 +780,8 @@ export default function CaseDetailsPage() {
                     <>
                       <Separator />
                       <div>
-                        <h3 className="text-sm font-medium text-muted-foreground">Additional Notes</h3>
-                        <p className="mt-2 text-base">{caseData.notes}</p>
+                        <h3 className="text-sm font-medium text-foreground">Additional Notes</h3>
+                        <p className="mt-2 text-base text-muted-foreground">{caseData.notes}</p>
                       </div>
                     </>
                   )}
@@ -1119,43 +1220,49 @@ export default function CaseDetailsPage() {
                         {hearings.map((event, idx) => (
                           <li
                             key={event._id || `hearing-${idx}`}
-                            className="rounded-xl border bg-card px-4 py-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between"
+                            className="rounded-xl border bg-card px-4 py-4"
                           >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#03234b]/10 text-sm font-semibold text-[#03234b]">
-                                {idx + 1}
-                              </div>
-                              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#03234b]/5">
-                                <Calendar className="h-5 w-5 text-[#03234b]" />
-                              </div>
-                              <div className="min-w-0">
-                                <div className="font-medium text-base">
-                                  {event.start ? formatDate(event.start) : 'Not set'}
+                            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                              <div className="min-w-0 flex-1 space-y-4">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#03234b]/10 text-sm font-semibold text-[#03234b]">
+                                    {idx + 1}
+                                  </div>
+                                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#03234b]/5">
+                                    <Calendar className="h-5 w-5 text-[#03234b]" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="font-medium text-base">
+                                      {event.start ? formatDate(event.start) : 'Not set'}
+                                    </div>
+                                    <div className="text-sm text-muted-foreground">
+                                      {getOrdinal(idx + 1)} Hearing
+                                    </div>
+                                  </div>
                                 </div>
-                                <div className="text-sm text-muted-foreground">
-                                  {getOrdinal(idx + 1)} Hearing
+
+                                <div className="rounded-lg border bg-muted/30 p-3">
+                                  <p className="text-sm font-medium text-foreground mb-1">
+                                    Proceeding
+                                  </p>
+                                  <p className="text-sm whitespace-pre-wrap text-muted-foreground leading-relaxed">
+                                    {event.outcome || "No proceedings recorded for this hearing."}
+                                  </p>
                                 </div>
                               </div>
-                            </div>
-                            <div className="flex items-center gap-2 md:justify-end">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={isFutureHearing(event.start)}
-                                onClick={() => handleViewOutcome(event, idx)}
-                              >
-                                View
-                              </Button>
-                              {isLawyer && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={isFutureHearing(event.start)}
-                                  onClick={() => handleEditOutcome(event)}
-                                >
-                                  {event.outcome ? "Edit Proceeding" : "Add Proceeding"}
-                                </Button>
-                              )}
+
+                              <div className="flex items-center gap-2 md:justify-end">
+                                {isLawyer && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={isFutureHearing(event.start)}
+                                    onClick={() => handleEditOutcome(event)}
+                                  >
+                                    {event.outcome ? "Edit Proceeding" : "Add Proceeding"}
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           </li>
                         ))}
@@ -1264,7 +1371,7 @@ export default function CaseDetailsPage() {
               )}
             </CardContent>
             {canUploadDocuments && (
-              <CardFooter className="flex flex-col space-y-2">
+              <CardFooter className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Button className="w-full" variant="outline" onClick={() => router.push(`/dashboard/cases/${id}/edit`)}>
                   Edit Case
                 </Button>
@@ -1341,19 +1448,6 @@ export default function CaseDetailsPage() {
               rows={6}
             />
             <Button onClick={handleSaveOutcome}>Save Proceedings</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={showViewOutcomeDialog} onOpenChange={setShowViewOutcomeDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Proceedings{viewingIndex !== null ? ` — ${getOrdinal(viewingIndex + 1)} Hearing` : ''}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="text-sm whitespace-pre-wrap text-foreground leading-relaxed">
-              {viewingEvent?.outcome || "No proceedings recorded for this hearing."}
-            </div>
-            <Button onClick={() => setShowViewOutcomeDialog(false)}>Close</Button>
           </div>
         </DialogContent>
       </Dialog>

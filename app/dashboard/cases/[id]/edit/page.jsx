@@ -202,6 +202,9 @@ export default function EditCasePage() {
           isUrgent: d.isUrgent || false,
           caseStage: d.caseStage || "filing",
           actSections: d.actSections || "",
+          policeStation: d.policeStation || "",
+          firNumber: d.firNumber || "",
+          firYear: d.firYear || "",
           reliefSought: d.reliefSought || "",
           notes: d.notes || "",
           advocates: d.advocates || [],
@@ -494,6 +497,9 @@ export default function EditCasePage() {
           isUrgent: caseData.isUrgent || false,
           caseStage: caseData.caseStage || "filing",
           actSections: caseData.actSections || "",
+          policeStation: normalizeText(caseData.policeStation),
+          firNumber: normalizeText(caseData.firNumber),
+          firYear: normalizeText(caseData.firYear),
           reliefSought: caseData.reliefSought || "",
           notes: caseData.notes || ""
         } : {}),
@@ -652,14 +658,14 @@ export default function EditCasePage() {
 
                         <div className="space-y-2">
                           <Label htmlFor="caseNumberMiddle">
-                            Case Number <span className="text-red-500">*</span>
+                            Filing Number <span className="text-red-500">*</span>
                           </Label>
                           <Input
                             id="caseNumberMiddle"
                             name="caseNumberMiddle"
                             value={caseData.caseNumberMiddle || ""}
                             onChange={handleChange}
-                            placeholder="Case Number"
+                            placeholder="Filing Number"
                             required
                           />
                         </div>
@@ -810,6 +816,43 @@ export default function EditCasePage() {
                         rows={2}
                         placeholder="e.g., IPC Section 302, CrPC Section 161"
                       />
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="policeStation">Police Station</Label>
+                        <Input
+                          id="policeStation"
+                          name="policeStation"
+                          value={caseData.policeStation || ""}
+                          onChange={handleChange}
+                          placeholder="Enter police station"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="firNumber">FIR Number</Label>
+                        <Input
+                          id="firNumber"
+                          name="firNumber"
+                          value={caseData.firNumber || ""}
+                          onChange={handleChange}
+                          placeholder="Enter FIR number"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="firYear">Year</Label>
+                        <Input
+                          id="firYear"
+                          name="firYear"
+                          value={caseData.firYear || ""}
+                          onChange={handleChange}
+                          placeholder="Enter FIR year"
+                          inputMode="numeric"
+                          maxLength={4}
+                        />
+                      </div>
                     </div>
 
                     <div className="space-y-2">

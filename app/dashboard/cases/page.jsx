@@ -432,7 +432,7 @@ export default function CasesPage() {
                     {/* Header */}
                     <div className="flex items-start justify-between gap-2">
                       <div className="space-y-1 min-w-0 flex-1">
-                        {/* Row 1: Case Name (left) | Case No. + Status (right) */}
+                        {/* Row 1: Case Name (left) | Filing Number + Status (right) */}
                         <div className="flex items-start justify-between gap-4">
                           <div>
                             <p className="text-xs text-muted-foreground">Case Name</p>
@@ -447,7 +447,7 @@ export default function CasesPage() {
                             </div>
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <p className="text-xs text-muted-foreground">Case No.</p>
+                            <p className="text-xs text-muted-foreground">Filing Number</p>
                             <p className="text-sm font-semibold text-foreground">{caseItem.number || "N/A"}</p>
                             <div className="flex items-center justify-end gap-1.5 mt-1">
                               <span className="text-xs text-muted-foreground">Status:</span>

@@ -91,14 +91,14 @@ export default function CaseDetailsTab({
 
               <div className="space-y-2">
                 <Label htmlFor="caseNumberMiddle" className={getLabelClassName("caseNumberMiddle")}>
-                  Case Number <span className="text-red-500">*</span>
+                  Filing Number <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="caseNumberMiddle"
                   name="caseNumberMiddle"
                   value={caseData.caseNumberMiddle || ""}
                   onChange={handleChange}
-                  placeholder="Case Number"
+                  placeholder="Filing Number"
                   className={getInputClassName("caseNumberMiddle")}
                   required
                 />
@@ -136,6 +136,28 @@ export default function CaseDetailsTab({
                 ? `Final format: ${caseData.caseCode || "TYPE"}/CASE_NUMBER/${caseData.caseYear || "YEAR"}`
                 : ""}
             </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="cnrNumber" className={getLabelClassName("cnrNumber")}>
+              CNR Number <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="cnrNumber"
+              name="cnrNumber"
+              value={caseData.cnrNumber || ""}
+              onChange={handleChange}
+              placeholder="MHAU019999992015"
+              className={getInputClassName("cnrNumber")}
+              maxLength={16}
+              required
+            />
+            {/* <p className="text-xs text-muted-foreground">
+              Example: MHAU019999992015
+            </p> */}
+            {getFieldError("cnrNumber") && (
+              <p className="text-sm text-red-700">{getFieldError("cnrNumber")}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -263,6 +285,43 @@ export default function CaseDetailsTab({
             {getFieldError("actSections") && (
               <p className="text-sm text-destructive">{getFieldError("actSections")}</p>
             )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="policeStation">Police Station</Label>
+              <Input
+                id="policeStation"
+                name="policeStation"
+                value={caseData.policeStation || ""}
+                onChange={handleChange}
+                placeholder="Enter police station"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="firNumber">FIR Number</Label>
+              <Input
+                id="firNumber"
+                name="firNumber"
+                value={caseData.firNumber || ""}
+                onChange={handleChange}
+                placeholder="Enter FIR number"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="firYear">Year</Label>
+              <Input
+                id="firYear"
+                name="firYear"
+                value={caseData.firYear || ""}
+                onChange={handleChange}
+                placeholder="Enter FIR year"
+                inputMode="numeric"
+                maxLength={4}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">

@@ -55,6 +55,7 @@ const DEFAULT_CASE_YEAR = String(new Date().getFullYear());
 const TAB_ORDER = ["court", "details", "party", "documents", "associatedParties"];
 const LIGHT_ERROR_TOAST_CLASSNAME =
   "!bg-red-50 !text-red-950 !border !border-red-200";
+const CNR_NUMBER_PATTERN = /^[A-Z]{4}\d{12}$/;
 
 const syncDerivedCaseFields = (caseInfo = {}) => {
   const caseYear = caseInfo.caseYear || DEFAULT_CASE_YEAR;
@@ -375,6 +376,7 @@ export default function NewCasePage() {
   const [caseData, setCaseData] = useState(
     syncDerivedCaseFields({
       title: "",
+      cnrNumber: "",
       caseNumber: "",
       caseNumberMiddle: "",
       caseYear: DEFAULT_CASE_YEAR,
@@ -404,6 +406,9 @@ export default function NewCasePage() {
       isUrgent: false,
       caseStage: "filing",
       actSections: "",
+      policeStation: "",
+      firNumber: "",
+      firYear: "",
       reliefSought: "",
       notes: "",
       advocates: [],
@@ -712,8 +717,28 @@ export default function NewCasePage() {
         tab: "details",
         field: "caseNumberMiddle",
         focusId: "caseNumberMiddle",
-        summary: "Case number",
-        message: "Enter case number",
+        summary: "Filing number",
+        message: "Enter filing number",
+      });
+    }
+
+    const normalizedCnrNumber = normalizeValue(caseData.cnrNumber).toUpperCase();
+
+    if (!normalizedCnrNumber) {
+      errors.push({
+        tab: "details",
+        field: "cnrNumber",
+        focusId: "cnrNumber",
+        summary: "CNR number",
+        message: "Enter CNR number",
+      });
+    } else if (!CNR_NUMBER_PATTERN.test(normalizedCnrNumber)) {
+      errors.push({
+        tab: "details",
+        field: "cnrNumber",
+        focusId: "cnrNumber",
+        summary: "CNR number",
+        message: "Enter a valid CNR number like MHAU019999992015",
       });
     }
 
@@ -1152,6 +1177,7 @@ export default function NewCasePage() {
       const formattedData = {
         // Basic case info
         title: normalizeValue(caseData.title),
+        cnrNumber: normalizeValue(caseData.cnrNumber).toUpperCase(),
         caseNumber: normalizeFormattedCaseNumber(caseData.caseNumber),
         caseType: getBackendCaseType(caseData.category),
         caseSubType: normalizeValue(caseData.eCourt?.caseTypeName),
@@ -1211,6 +1237,9 @@ export default function NewCasePage() {
         isUrgent: caseData.isUrgent || false,
         caseStage: caseData.caseStage || "filing",
         actSections: normalizeValue(caseData.actSections),
+        policeStation: normalizeValue(caseData.policeStation),
+        firNumber: normalizeValue(caseData.firNumber),
+        firYear: normalizeValue(caseData.firYear),
         reliefSought: normalizeValue(caseData.reliefSought),
         description: normalizeValue(caseData.description),
         notes: normalizeValue(caseData.notes),
@@ -1414,6 +1443,14 @@ export default function NewCasePage() {
           caseNumberMiddle: normalizeCaseNumber(value),
         })
       );
+      return;
+    }
+
+    if (name === "cnrNumber") {
+      setCaseData((prev) => ({
+        ...prev,
+        cnrNumber: value.toUpperCase(),
+      }));
       return;
     }
 

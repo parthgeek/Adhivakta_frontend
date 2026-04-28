@@ -141,6 +141,7 @@ export default function HearingsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("scheduled");
   const [filterType, setFilterType] = useState("all");
+  const [filterCase, setFilterCase] = useState("all");
   const [activeQuickFilter, setActiveQuickFilter] = useState(null);
   const [sendingReminderFor, setSendingReminderFor] = useState(null);
   const [showProceedingsDialog, setShowProceedingsDialog] = useState(false);
@@ -341,22 +342,35 @@ export default function HearingsPage() {
     });
   }, [hearings, cases]);
 
-  const filteredHearings = useMemo(() => {
-    return normalizedHearings.filter((hearing) => {
-      const lowerSearchTerm = searchTerm.toLowerCase();
-      const matchesSearch =
-        hearing.caseName.toLowerCase().includes(lowerSearchTerm) ||
-        hearing.caseNumber.toLowerCase().includes(lowerSearchTerm) ||
-        hearing.court.toLowerCase().includes(lowerSearchTerm) ||
-        hearing.judge.toLowerCase().includes(lowerSearchTerm);
+  const caseFilterOptions = useMemo(() => {
+    const options = normalizedHearings
+      .filter((hearing) => hearing.caseId)
+      .map((hearing) => ({
+        value: hearing.caseId,
+        label:
+          formatDisplayCaseNumber({ caseNumber: hearing.caseNumber }) ||
+          hearing.caseNumber ||
+          hearing.caseName,
+        secondaryLabel: hearing.caseName,
+      }));
 
-      const matchesStatus =
-        filterStatus === "all" || hearing.status === filterStatus;
-      const matchesType = filterType === "all" || hearing.type === filterType;
+    return Array.from(
+      new Map(options.map((option) => [option.value, option])).values()
+    ).sort((a, b) => {
+      const labelCompare = a.label.localeCompare(b.label, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      });
 
-      return matchesSearch && matchesStatus && matchesType;
+      if (labelCompare !== 0) {
+        return labelCompare;
+      }
+
+      return a.secondaryLabel.localeCompare(b.secondaryLabel, undefined, {
+        sensitivity: "base",
+      });
     });
-  }, [normalizedHearings, searchTerm, filterStatus, filterType]);
+  }, [normalizedHearings]);
 
   const todayHearings = useMemo(() => {
     const today = new Date().toDateString();
@@ -411,12 +425,13 @@ export default function HearingsPage() {
         hearing.court.toLowerCase().includes(lower) ||
         hearing.judge.toLowerCase().includes(lower);
       const matchesType = filterType === "all" || hearing.type === filterType;
+      const matchesCase = filterCase === "all" || hearing.caseId === filterCase;
       const matchesStatus = activeQuickFilter
         ? true
         : filterStatus === "all" || hearing.status === filterStatus;
-      return matchesSearch && matchesType && matchesStatus;
+      return matchesSearch && matchesType && matchesCase && matchesStatus;
     });
-  }, [activeQuickFilter, todayHearings, upcomingHearings, thisMonthHearings, completedHearings, normalizedHearings, searchTerm, filterType, filterStatus]);
+  }, [activeQuickFilter, todayHearings, upcomingHearings, thisMonthHearings, completedHearings, normalizedHearings, searchTerm, filterType, filterCase, filterStatus]);
 
   const handleQuickFilter = (key) => {
     setActiveQuickFilter((prev) => (prev === key ? null : key));
@@ -628,7 +643,7 @@ export default function HearingsPage() {
           <CardTitle className="text-lg">Filter Hearings</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
@@ -662,6 +677,20 @@ export default function HearingsPage() {
                 <SelectItem value="argument">Argument</SelectItem>
                 <SelectItem value="judgment">Judgment</SelectItem>
                 <SelectItem value="case_management">Case Management</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={filterCase} onValueChange={setFilterCase}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filter by Case" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Cases</SelectItem>
+                {caseFilterOptions.map((caseOption) => (
+                  <SelectItem key={caseOption.value} value={caseOption.value}>
+                    {caseOption.label} {caseOption.secondaryLabel ? `- ${caseOption.secondaryLabel}` : ""}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
@@ -712,7 +741,7 @@ export default function HearingsPage() {
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="text-xs text-muted-foreground">Case No.</p>
+                    <p className="text-xs text-muted-foreground">Filing Number</p>
                     <p className="text-sm font-semibold text-foreground">
                       {formatDisplayCaseNumber({ caseNumber: hearing.caseNumber }) || hearing.caseNumber}
                     </p>
@@ -896,6 +925,7 @@ export default function HearingsPage() {
                   setSearchTerm("");
                   setFilterStatus("all");
                   setFilterType("all");
+                  setFilterCase("all");
                   setActiveQuickFilter(null);
                 }}
               >

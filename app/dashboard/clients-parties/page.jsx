@@ -677,7 +677,7 @@ export default function ClientsPartiesPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search clients, lawyers by name, email, contact, case number, or court..."
+              placeholder="Search clients, lawyers by name, email, contact, filing number, or court..."
               className="pl-10"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}

@@ -742,7 +742,7 @@ export default function DocumentsPage() {
                         <CardTitle className="text-lg">{caseGroup.caseTitle}</CardTitle>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Case No.</p>
+                        <p className="text-xs text-muted-foreground">Filing Number</p>
                         <p className="text-sm font-semibold text-foreground">
                           {caseGroup.caseNumber}
                         </p>
@@ -897,7 +897,7 @@ export default function DocumentsPage() {
                               <span className="font-medium">Case Name:</span> {document.caseTitle}
                             </div>
                             <div>
-                              <span className="font-medium">Case No.:</span> {document.caseNumber}
+                              <span className="font-medium">Filing Number:</span> {document.caseNumber}
                             </div>
                             <div>
                               <span className="font-medium">Size:</span> {document.size}
