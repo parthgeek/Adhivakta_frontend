@@ -15,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/components/ui/use-toast";
 import api from "@/services/api";
 import { Badge } from "@/components/ui/badge";
+import TransferHistoryTab from "@/components/cases/TransferHistoryTab";
 import {
   buildCaseNumber,
   getEcourtCaseTypeReference,
@@ -211,6 +212,7 @@ export default function EditCasePage() {
           clients: d.clients || [],
           stakeholders: d.stakeholders || [],
           lawyers: d.lawyers || [],
+          transferHistory: d.transferHistory || [],
         });
       } catch (err) {
         toast({
@@ -613,12 +615,13 @@ export default function EditCasePage() {
       <div className="w-full">
         <div className="w-full">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="details">Case Details</TabsTrigger>
               <TabsTrigger value="court">Court Information</TabsTrigger>
               <TabsTrigger value="party">Party Section</TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>
               <TabsTrigger value="associatedParties">People</TabsTrigger>
+              <TabsTrigger value="transfer">Transfer & FIR</TabsTrigger>
             </TabsList>
 
             {/* --- Case Details Tab --- */}
@@ -821,43 +824,6 @@ export default function EditCasePage() {
                         rows={2}
                         placeholder="e.g., IPC Section 302, CrPC Section 161"
                       />
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                      <div className="space-y-2">
-                        <Label htmlFor="policeStation">Police Station</Label>
-                        <Input
-                          id="policeStation"
-                          name="policeStation"
-                          value={caseData.policeStation || ""}
-                          onChange={handleChange}
-                          placeholder="Enter police station"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="firNumber">FIR Number</Label>
-                        <Input
-                          id="firNumber"
-                          name="firNumber"
-                          value={caseData.firNumber || ""}
-                          onChange={handleChange}
-                          placeholder="Enter FIR number"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="firYear">Year</Label>
-                        <Input
-                          id="firYear"
-                          name="firYear"
-                          value={caseData.firYear || ""}
-                          onChange={handleChange}
-                          placeholder="Enter FIR year"
-                          inputMode="numeric"
-                          maxLength={4}
-                        />
-                      </div>
                     </div>
 
                     <div className="space-y-2">
@@ -1597,10 +1563,23 @@ export default function EditCasePage() {
                 </CardFooter>
               </Card>
             </TabsContent>
+
+            {/* --- Transfer & FIR Tab --- */}
+            <TabsContent value="transfer">
+              <TransferHistoryTab
+                caseId={id}
+                caseData={caseData}
+                setCaseData={setCaseData}
+                handleChange={handleChange}
+                isSubmitting={isSubmitting}
+                handleSubmit={handleSubmit}
+                router={router}
+              />
+            </TabsContent>
           </Tabs>
         </div>
         {/* Optionally, add a Case Filing Guide or sidebar as in the new case page */}
       </div>
     </div>
   );
-} 
+}

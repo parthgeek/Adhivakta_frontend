@@ -387,6 +387,49 @@ const api = {
       });
       return handleResponse(response);
     },
+
+    transfers: {
+      list: async (caseId) => {
+        const response = await fetch(
+          `${API_URL}/cases/${caseId}/transfers`,
+          { method: "GET", headers: createHeaders() }
+        );
+        const data = await handleResponse(response);
+        return data.data || [];
+      },
+      add: async (caseId, payload) => {
+        const response = await fetch(
+          `${API_URL}/cases/${caseId}/transfers`,
+          {
+            method: "POST",
+            headers: createHeaders(),
+            body: JSON.stringify(payload),
+          }
+        );
+        const data = await handleResponse(response);
+        return data.data;
+      },
+      update: async (caseId, transferId, payload) => {
+        const response = await fetch(
+          `${API_URL}/cases/${caseId}/transfers/${transferId}`,
+          {
+            method: "PATCH",
+            headers: createHeaders(),
+            body: JSON.stringify(payload),
+          }
+        );
+        const data = await handleResponse(response);
+        return data.data;
+      },
+      delete: async (caseId, transferId) => {
+        const response = await fetch(
+          `${API_URL}/cases/${caseId}/transfers/${transferId}`,
+          { method: "DELETE", headers: createHeaders() }
+        );
+        const data = await handleResponse(response);
+        return data.data;
+      },
+    },
   },
 
   courtDirectory: {
