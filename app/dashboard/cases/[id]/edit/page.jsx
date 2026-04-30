@@ -208,6 +208,8 @@ export default function EditCasePage() {
           firYear: d.firYear || "",
           reliefSought: d.reliefSought || "",
           notes: d.notes || "",
+          processes: d.processes || [],
+          iaStatuses: d.iaStatuses || [],
           advocates: d.advocates || [],
           clients: d.clients || [],
           stakeholders: d.stakeholders || [],
@@ -508,7 +510,23 @@ export default function EditCasePage() {
           firNumber: normalizeText(caseData.firNumber),
           firYear: normalizeText(caseData.firYear),
           reliefSought: caseData.reliefSought || "",
-          notes: caseData.notes || ""
+          notes: caseData.notes || "",
+          processes: (caseData.processes || []).map((processItem) => ({
+            processId: normalizeText(processItem.processId),
+            processTitle: normalizeText(processItem.processTitle),
+            processDate: processItem.processDate
+              ? new Date(processItem.processDate).toISOString()
+              : null,
+          })),
+          iaStatuses: (caseData.iaStatuses || []).map((iaItem) => ({
+            iaNumber: normalizeText(iaItem.iaNumber),
+            partyName: normalizeText(iaItem.partyName),
+            dateOfFiling: iaItem.dateOfFiling
+              ? new Date(iaItem.dateOfFiling).toISOString()
+              : null,
+            nextDatePurpose: normalizeText(iaItem.nextDatePurpose),
+            status: normalizeText(iaItem.status),
+          }))
         } : {}),
 
         // Include party arrays only when saving party/all
@@ -620,7 +638,7 @@ export default function EditCasePage() {
               <TabsTrigger value="court">Court Information</TabsTrigger>
               <TabsTrigger value="party">Party Section</TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>
-              <TabsTrigger value="transfer">Transfer & FIR</TabsTrigger>
+              <TabsTrigger value="transfer">Others</TabsTrigger>
               <TabsTrigger value="associatedParties">People</TabsTrigger>
             </TabsList>
 

@@ -411,6 +411,8 @@ export default function NewCasePage() {
       firYear: "",
       reliefSought: "",
       notes: "",
+      processes: [],
+      iaStatuses: [],
       advocates: [],
       clients: [],
       stakeholders: [],
@@ -1268,6 +1270,22 @@ export default function NewCasePage() {
           toCourtHall: normalizeValue(t.toCourtHall),
           toJudge: normalizeValue(t.toJudge),
           remarks: normalizeValue(t.remarks),
+        })),
+        processes: (caseData.processes || []).map((processItem) => ({
+          processId: normalizeValue(processItem.processId),
+          processTitle: normalizeValue(processItem.processTitle),
+          processDate: processItem.processDate
+            ? new Date(processItem.processDate).toISOString()
+            : null,
+        })),
+        iaStatuses: (caseData.iaStatuses || []).map((iaItem) => ({
+          iaNumber: normalizeValue(iaItem.iaNumber),
+          partyName: normalizeValue(iaItem.partyName),
+          dateOfFiling: iaItem.dateOfFiling
+            ? new Date(iaItem.dateOfFiling).toISOString()
+            : null,
+          nextDatePurpose: normalizeValue(iaItem.nextDatePurpose),
+          status: normalizeValue(iaItem.status),
         })),
 
         // Role-specific data

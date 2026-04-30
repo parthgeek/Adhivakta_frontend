@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect } from "react"
+import { createContext, useContext, useState, useEffect, useCallback } from "react"
 
 export const SidebarContext = createContext({})
 
@@ -21,12 +21,16 @@ export function SidebarProvider({ children }) {
     }
   }, [collapsed])
 
-  const toggleSidebar = () => {
-    setCollapsed(!collapsed)
-  }
+  const toggleSidebar = useCallback(() => {
+    setCollapsed((prevCollapsed) => !prevCollapsed)
+  }, [])
+
+  const collapseSidebar = useCallback(() => {
+    setCollapsed(true)
+  }, [])
 
   return (
-    <SidebarContext.Provider value={{ collapsed, toggleSidebar }}>
+    <SidebarContext.Provider value={{ collapsed, toggleSidebar, collapseSidebar }}>
       {children}
     </SidebarContext.Provider>
   )

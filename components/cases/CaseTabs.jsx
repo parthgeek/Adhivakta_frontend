@@ -57,7 +57,7 @@ export default function CaseTabs({
         </TabsTrigger>
 
         <TabsTrigger value="transfer" className="relative">
-          <span className="flex items-center">Transfer & FIR</span>
+          <span className="flex items-center">Others</span>
         </TabsTrigger>
 
         <TabsTrigger value="associatedParties" className="relative">

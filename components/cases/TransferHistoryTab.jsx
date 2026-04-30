@@ -46,6 +46,20 @@ const EMPTY_TRANSFER = {
   remarks: "",
 };
 
+const EMPTY_PROCESS = {
+  processId: "",
+  processTitle: "",
+  processDate: null,
+};
+
+const EMPTY_IA_STATUS = {
+  iaNumber: "",
+  partyName: "",
+  dateOfFiling: null,
+  nextDatePurpose: "",
+  status: "",
+};
+
 const formatDate = (d) => {
   if (!d) return "—";
   try {
@@ -66,7 +80,6 @@ export default function TransferHistoryTab({
   handleChange,
   isSubmitting,
   handleSubmit,
-  router,
   handleNext,
   handleBack,
 }) {
@@ -95,7 +108,7 @@ export default function TransferHistoryTab({
             (a, b) => new Date(b.start) - new Date(a.start)
           )
         );
-      } catch (err) {
+      } catch {
         // silent
       } finally {
         setLoadingHearings(false);
@@ -111,6 +124,40 @@ export default function TransferHistoryTab({
       ),
     [transfers]
   );
+
+  const updateCaseCollection = (key, updater) => {
+    setCaseData?.((prev) => {
+      const current = Array.isArray(prev?.[key]) ? prev[key] : [];
+      const next = typeof updater === "function" ? updater(current) : updater;
+      return {
+        ...prev,
+        [key]: next,
+      };
+    });
+  };
+
+  const addCaseCollectionItem = (key, emptyItem) => {
+    updateCaseCollection(key, (current) => [...current, { ...emptyItem }]);
+  };
+
+  const updateCaseCollectionItem = (key, index, field, value) => {
+    updateCaseCollection(key, (current) =>
+      current.map((item, itemIndex) =>
+        itemIndex === index
+          ? {
+              ...item,
+              [field]: value,
+            }
+          : item
+      )
+    );
+  };
+
+  const removeCaseCollectionItem = (key, index) => {
+    updateCaseCollection(key, (current) =>
+      current.filter((_, itemIndex) => itemIndex !== index)
+    );
+  };
 
   const openAdd = (prefill = {}) => {
     setEditingId(null);
@@ -164,6 +211,7 @@ export default function TransferHistoryTab({
       });
       return;
     }
+
     setSaving(true);
     try {
       const payload = {
@@ -173,7 +221,6 @@ export default function TransferHistoryTab({
       };
 
       if (isCreateMode) {
-        // Local-only edit; persisted when parent submits case create.
         const next = [...transfers];
         if (editingIndex !== null && editingIndex !== undefined) {
           next[editingIndex] = { ...next[editingIndex], ...payload };
@@ -190,7 +237,10 @@ export default function TransferHistoryTab({
           court: latest?.toCourt || prev.court,
           courtHall: latest?.toCourtHall || prev.courtHall,
         }));
-        toast({ title: editingIndex !== null ? "Transfer updated" : "Transfer added" });
+        toast({
+          title:
+            editingIndex !== null ? "Transfer updated" : "Transfer added",
+        });
       } else if (editingId) {
         const data = await api.cases.transfers.update(caseId, editingId, payload);
         applyServerResponse(data);
@@ -243,21 +293,21 @@ export default function TransferHistoryTab({
   };
 
   const transferForHearing = (hearingId) =>
-    transfers.find(
-      (t) => (t.hearing?._id || t.hearing) === hearingId
-    );
+    transfers.find((t) => (t.hearing?._id || t.hearing) === hearingId);
+
+  const processItems = caseData?.processes || [];
+  const iaStatusItems = caseData?.iaStatuses || [];
 
   return (
     <div className="space-y-6">
-      {/* FIR & Police Station Block */}
       <Card>
         <CardHeader>
           <CardTitle>FIR & Police Station</CardTitle>
           <CardDescription>
-            Optional. Add or update FIR information for this case.
+            Optional. Add FIR details and any additional case references.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="policeStation">Police Station</Label>
@@ -293,6 +343,230 @@ export default function TransferHistoryTab({
             </div>
           </div>
         </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1 min-w-0 flex-1">
+            <CardTitle>Processes</CardTitle>
+            <CardDescription>
+              Optional. Capture process ID, title, and process date for this
+              case.
+            </CardDescription>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="shrink-0 self-start"
+            onClick={() => addCaseCollectionItem("processes", EMPTY_PROCESS)}
+          >
+            + Add Process
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {processItems.length === 0 ? (
+            <p className="text-sm italic text-muted-foreground">
+              No process entries added yet.
+            </p>
+          ) : (
+            processItems.map((processItem, index) => (
+              <div
+                key={`process-${index}`}
+                className="space-y-4 rounded-md border p-4"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <h4 className="text-sm font-medium">Process {index + 1}</h4>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-600 hover:text-red-700"
+                    onClick={() => removeCaseCollectionItem("processes", index)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label>Process ID</Label>
+                    <Input
+                      value={processItem.processId || ""}
+                      onChange={(e) =>
+                        updateCaseCollectionItem(
+                          "processes",
+                          index,
+                          "processId",
+                          e.target.value
+                        )
+                      }
+                      placeholder="Enter process ID"
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Process Title</Label>
+                    <Input
+                      value={processItem.processTitle || ""}
+                      onChange={(e) =>
+                        updateCaseCollectionItem(
+                          "processes",
+                          index,
+                          "processTitle",
+                          e.target.value
+                        )
+                      }
+                      placeholder="Enter process title"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Process Date</Label>
+                    <DatePicker
+                      selected={
+                        processItem.processDate
+                          ? new Date(processItem.processDate)
+                          : null
+                      }
+                      onSelect={(value) =>
+                        updateCaseCollectionItem(
+                          "processes",
+                          index,
+                          "processDate",
+                          value
+                        )
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1 min-w-0 flex-1">
+            <CardTitle>IA Status</CardTitle>
+            <CardDescription>
+              Optional. Track IA number, party name, filing date, next date or
+              purpose, and status.
+            </CardDescription>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="shrink-0 self-start"
+            onClick={() => addCaseCollectionItem("iaStatuses", EMPTY_IA_STATUS)}
+          >
+            + Add IA Status
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {iaStatusItems.length === 0 ? (
+            <p className="text-sm italic text-muted-foreground">
+              No IA status entries added yet.
+            </p>
+          ) : (
+            iaStatusItems.map((iaItem, index) => (
+              <div
+                key={`ia-status-${index}`}
+                className="space-y-4 rounded-md border p-4"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <h4 className="text-sm font-medium">IA Status {index + 1}</h4>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-600 hover:text-red-700"
+                    onClick={() =>
+                      removeCaseCollectionItem("iaStatuses", index)
+                    }
+                  >
+                    Remove
+                  </Button>
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>IA Number</Label>
+                    <Input
+                      value={iaItem.iaNumber || ""}
+                      onChange={(e) =>
+                        updateCaseCollectionItem(
+                          "iaStatuses",
+                          index,
+                          "iaNumber",
+                          e.target.value
+                        )
+                      }
+                      placeholder="Enter IA number"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Party Name</Label>
+                    <Input
+                      value={iaItem.partyName || ""}
+                      onChange={(e) =>
+                        updateCaseCollectionItem(
+                          "iaStatuses",
+                          index,
+                          "partyName",
+                          e.target.value
+                        )
+                      }
+                      placeholder="Enter party name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Date of Filing</Label>
+                    <DatePicker
+                      selected={
+                        iaItem.dateOfFiling ? new Date(iaItem.dateOfFiling) : null
+                      }
+                      onSelect={(value) =>
+                        updateCaseCollectionItem(
+                          "iaStatuses",
+                          index,
+                          "dateOfFiling",
+                          value
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>IA Status</Label>
+                    <Input
+                      value={iaItem.status || ""}
+                      onChange={(e) =>
+                        updateCaseCollectionItem(
+                          "iaStatuses",
+                          index,
+                          "status",
+                          e.target.value
+                        )
+                      }
+                      placeholder="e.g. Pending"
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Next Date / Purpose</Label>
+                    <Input
+                      value={iaItem.nextDatePurpose || ""}
+                      onChange={(e) =>
+                        updateCaseCollectionItem(
+                          "iaStatuses",
+                          index,
+                          "nextDatePurpose",
+                          e.target.value
+                        )
+                      }
+                      placeholder="Enter next date or purpose"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </CardContent>
         {!isCreateMode && (
           <CardFooter className="flex justify-end">
             <Button
@@ -300,20 +574,19 @@ export default function TransferHistoryTab({
               disabled={isSubmitting}
               onClick={(e) => handleSubmit?.(e, "details")}
             >
-              {isSubmitting ? "Saving..." : "Save FIR Details"}
+              {isSubmitting ? "Saving..." : "Save Other Details"}
             </Button>
           </CardFooter>
         )}
       </Card>
 
-      {/* Transfer History Table */}
       <Card>
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1 min-w-0 flex-1">
             <CardTitle>Case Transfer History</CardTitle>
             <CardDescription>
-              Track every transfer between courts/judges. Latest entry updates
-              the case's current court automatically.
+              Track every transfer between courts and judges. The latest entry
+              updates the case&apos;s current court automatically.
             </CardDescription>
           </div>
           <Button
@@ -326,12 +599,12 @@ export default function TransferHistoryTab({
         </CardHeader>
         <CardContent>
           {sortedTransfers.length === 0 ? (
-            <p className="text-sm text-muted-foreground italic">
+            <p className="text-sm italic text-muted-foreground">
               No transfer entries yet.
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
+              <table className="w-full border-collapse text-sm">
                 <thead>
                   <tr className="border-b text-left">
                     <th className="p-2">Reg. No</th>
@@ -340,7 +613,7 @@ export default function TransferHistoryTab({
                     <th className="p-2">To Court / Hall / Judge</th>
                     <th className="p-2">Linked Hearing</th>
                     <th className="p-2">Remarks</th>
-                    <th className="p-2 w-32">Actions</th>
+                    <th className="w-32 p-2">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -353,14 +626,16 @@ export default function TransferHistoryTab({
                             (h) => h._id === (t.hearing?._id || t.hearing)
                           );
                     return (
-                      <tr key={t._id || `tx-${origIdx}`} className="border-b align-top">
+                      <tr
+                        key={t._id || `tx-${origIdx}`}
+                        className="border-b align-top"
+                      >
                         <td className="p-2">{t.registrationNumber || "—"}</td>
                         <td className="p-2">{formatDate(t.transferDate)}</td>
                         <td className="p-2">
                           <div>{t.fromCourt || "—"}</div>
                           <div className="text-xs text-muted-foreground">
-                            Hall {t.fromCourtHall || "—"} ·{" "}
-                            {t.fromJudge || "—"}
+                            Hall {t.fromCourtHall || "—"} · {t.fromJudge || "—"}
                           </div>
                         </td>
                         <td className="p-2">
@@ -382,14 +657,14 @@ export default function TransferHistoryTab({
                             <span className="text-muted-foreground">—</span>
                           )}
                         </td>
-                        <td className="p-2 max-w-xs">
+                        <td className="max-w-xs p-2">
                           {t.remarks ? (
                             <span className="text-xs">{t.remarks}</span>
                           ) : (
                             "—"
                           )}
                         </td>
-                        <td className="p-2 space-x-1">
+                        <td className="space-x-1 p-2">
                           <Button
                             variant="outline"
                             size="sm"
@@ -400,8 +675,8 @@ export default function TransferHistoryTab({
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDelete(t, origIdx)}
                             className="text-red-600 hover:text-red-700"
+                            onClick={() => handleDelete(t, origIdx)}
                           >
                             Delete
                           </Button>
@@ -416,84 +691,84 @@ export default function TransferHistoryTab({
         </CardContent>
       </Card>
 
-      {/* Hearings list with per-row transfer button (edit mode only) */}
       {!isCreateMode && (
-      <Card>
-        <CardHeader>
-          <CardTitle>Hearings</CardTitle>
-          <CardDescription>
-            Add or update transfer details after each hearing.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loadingHearings ? (
-            <p className="text-sm text-muted-foreground">Loading hearings...</p>
-          ) : hearings.length === 0 ? (
-            <p className="text-sm text-muted-foreground italic">
-              No hearings recorded for this case yet.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {hearings.map((h) => {
-                const linked = transferForHearing(h._id);
-                return (
-                  <div
-                    key={h._id}
-                    className="flex items-center justify-between border rounded-md p-3"
-                  >
-                    <div>
-                      <div className="font-medium text-sm">
-                        {h.title || "Hearing"}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {formatDate(h.start)} · {h.status || "scheduled"}
-                      </div>
-                      {linked && (
-                        <Badge variant="secondary" className="mt-1">
-                          Transfer linked
-                        </Badge>
-                      )}
-                    </div>
-                    <Button
-                      variant={linked ? "outline" : "default"}
-                      size="sm"
-                      onClick={() =>
-                        linked
-                          ? openEdit(linked)
-                          : openAdd({ hearing: h._id })
-                      }
+        <Card>
+          <CardHeader>
+            <CardTitle>Hearings</CardTitle>
+            <CardDescription>
+              Add or update transfer details after each hearing.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingHearings ? (
+              <p className="text-sm text-muted-foreground">Loading hearings...</p>
+            ) : hearings.length === 0 ? (
+              <p className="text-sm italic text-muted-foreground">
+                No hearings recorded for this case yet.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {hearings.map((h) => {
+                  const linked = transferForHearing(h._id);
+                  return (
+                    <div
+                      key={h._id}
+                      className="flex items-center justify-between rounded-md border p-3"
                     >
-                      {linked ? "Edit Transfer" : "Add Transfer"}
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-        <CardFooter className="flex justify-between">
-          {handleBack && (
-            <Button variant="outline" onClick={handleBack}>
-              Back
-            </Button>
-          )}
-          {handleNext && (
-            <Button type="button" onClick={handleNext}>
-              Next
-            </Button>
-          )}
-        </CardFooter>
-      </Card>
+                      <div>
+                        <div className="text-sm font-medium">
+                          {h.title || "Hearing"}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {formatDate(h.start)} · {h.status || "scheduled"}
+                        </div>
+                        {linked && (
+                          <Badge variant="secondary" className="mt-1">
+                            Transfer linked
+                          </Badge>
+                        )}
+                      </div>
+                      <Button
+                        variant={linked ? "outline" : "default"}
+                        size="sm"
+                        onClick={() =>
+                          linked ? openEdit(linked) : openAdd({ hearing: h._id })
+                        }
+                      >
+                        {linked ? "Edit Transfer" : "Add Transfer"}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+          <CardFooter className="flex justify-between">
+            {handleBack ? (
+              <Button variant="outline" onClick={handleBack}>
+                Back
+              </Button>
+            ) : (
+              <span />
+            )}
+            {handleNext && (
+              <Button type="button" onClick={handleNext}>
+                Next
+              </Button>
+            )}
+          </CardFooter>
+        </Card>
       )}
 
-      {/* Create-mode footer nav */}
       {isCreateMode && (handleBack || handleNext) && (
         <div className="flex justify-between">
           {handleBack ? (
             <Button variant="outline" onClick={handleBack}>
               Back
             </Button>
-          ) : <span />}
+          ) : (
+            <span />
+          )}
           {handleNext && (
             <Button type="button" onClick={handleNext}>
               Next
@@ -502,28 +777,27 @@ export default function TransferHistoryTab({
         </div>
       )}
 
-      {/* Add/Edit Transfer Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingId ? "Edit Transfer" : "Add Transfer"}
             </DialogTitle>
             <DialogDescription>
-              Capture court/judge change. Saving updates the case's current
-              court if this is the latest entry.
+              Capture court or judge changes. Saving updates the case&apos;s
+              current court if this is the latest entry.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Registration Number</Label>
                 <Input
                   value={form.registrationNumber}
                   onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
+                    setForm((current) => ({
+                      ...current,
                       registrationNumber: e.target.value,
                     }))
                   }
@@ -534,8 +808,11 @@ export default function TransferHistoryTab({
                 <Label>Transfer Date *</Label>
                 <DatePicker
                   selected={form.transferDate}
-                  onSelect={(d) =>
-                    setForm((f) => ({ ...f, transferDate: d }))
+                  onSelect={(value) =>
+                    setForm((current) => ({
+                      ...current,
+                      transferDate: value,
+                    }))
                   }
                 />
               </div>
@@ -545,8 +822,11 @@ export default function TransferHistoryTab({
               <Label>Linked Hearing</Label>
               <Select
                 value={form.hearing || "none"}
-                onValueChange={(v) =>
-                  setForm((f) => ({ ...f, hearing: v === "none" ? "" : v }))
+                onValueChange={(value) =>
+                  setForm((current) => ({
+                    ...current,
+                    hearing: value === "none" ? "" : value,
+                  }))
                 }
               >
                 <SelectTrigger>
@@ -563,15 +843,18 @@ export default function TransferHistoryTab({
               </Select>
             </div>
 
-            <div className="border rounded-md p-3 space-y-3">
-              <h4 className="font-medium text-sm">From</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="space-y-3 rounded-md border p-3">
+              <h4 className="text-sm font-medium">From</h4>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                 <div className="space-y-1">
                   <Label className="text-xs">Court</Label>
                   <Input
                     value={form.fromCourt}
                     onChange={(e) =>
-                      setForm((f) => ({ ...f, fromCourt: e.target.value }))
+                      setForm((current) => ({
+                        ...current,
+                        fromCourt: e.target.value,
+                      }))
                     }
                   />
                 </div>
@@ -580,8 +863,8 @@ export default function TransferHistoryTab({
                   <Input
                     value={form.fromCourtHall}
                     onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
+                      setForm((current) => ({
+                        ...current,
                         fromCourtHall: e.target.value,
                       }))
                     }
@@ -592,22 +875,28 @@ export default function TransferHistoryTab({
                   <Input
                     value={form.fromJudge}
                     onChange={(e) =>
-                      setForm((f) => ({ ...f, fromJudge: e.target.value }))
+                      setForm((current) => ({
+                        ...current,
+                        fromJudge: e.target.value,
+                      }))
                     }
                   />
                 </div>
               </div>
             </div>
 
-            <div className="border rounded-md p-3 space-y-3">
-              <h4 className="font-medium text-sm">To</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="space-y-3 rounded-md border p-3">
+              <h4 className="text-sm font-medium">To</h4>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                 <div className="space-y-1">
                   <Label className="text-xs">Court</Label>
                   <Input
                     value={form.toCourt}
                     onChange={(e) =>
-                      setForm((f) => ({ ...f, toCourt: e.target.value }))
+                      setForm((current) => ({
+                        ...current,
+                        toCourt: e.target.value,
+                      }))
                     }
                   />
                 </div>
@@ -616,8 +905,8 @@ export default function TransferHistoryTab({
                   <Input
                     value={form.toCourtHall}
                     onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
+                      setForm((current) => ({
+                        ...current,
                         toCourtHall: e.target.value,
                       }))
                     }
@@ -628,7 +917,10 @@ export default function TransferHistoryTab({
                   <Input
                     value={form.toJudge}
                     onChange={(e) =>
-                      setForm((f) => ({ ...f, toJudge: e.target.value }))
+                      setForm((current) => ({
+                        ...current,
+                        toJudge: e.target.value,
+                      }))
                     }
                   />
                 </div>
@@ -640,7 +932,10 @@ export default function TransferHistoryTab({
               <Textarea
                 value={form.remarks}
                 onChange={(e) =>
-                  setForm((f) => ({ ...f, remarks: e.target.value }))
+                  setForm((current) => ({
+                    ...current,
+                    remarks: e.target.value,
+                  }))
                 }
                 rows={3}
                 placeholder="Reason for transfer or other notes"

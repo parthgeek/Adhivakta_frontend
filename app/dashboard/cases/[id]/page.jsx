@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/context/auth-context"
+import { useSidebar } from "@/context/sidebar-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -81,6 +82,7 @@ export default function CaseDetailsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
+  const { collapseSidebar } = useSidebar()
   const [caseData, setCaseData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -103,6 +105,10 @@ export default function CaseDetailsPage() {
   const [deleting, setDeleting] = useState(false)
   const requestedTab = searchParams.get("tab")
   const activeTab = CASE_TAB_VALUES.has(requestedTab) ? requestedTab : "details"
+
+  useEffect(() => {
+    collapseSidebar()
+  }, [collapseSidebar])
 
   const handleTabChange = (nextTab) => {
     const params = new URLSearchParams(searchParams.toString())
@@ -612,7 +618,7 @@ export default function CaseDetailsPage() {
               <TabsTrigger value="people">People</TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>
               <TabsTrigger value="hearings">Hearings</TabsTrigger>
-              <TabsTrigger value="transfer">Transfer & FIR</TabsTrigger>
+              <TabsTrigger value="transfer">Others</TabsTrigger>
             </TabsList>
 
             <TabsContent value="details">
@@ -1303,7 +1309,7 @@ export default function CaseDetailsPage() {
                   <CardDescription>FIR details linked to this case</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-3">
                     <div>
                       <h3 className="text-sm font-medium text-muted-foreground">Police Station</h3>
                       <p>{caseData.policeStation || "—"}</p>
@@ -1317,6 +1323,82 @@ export default function CaseDetailsPage() {
                       <p>{caseData.firYear || "—"}</p>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle>Processes</CardTitle>
+                  <CardDescription>Processes recorded against this case</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {(caseData.processes?.length || 0) === 0 ? (
+                    <p className="text-sm italic text-muted-foreground">No process entries.</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse text-sm">
+                        <thead>
+                          <tr className="border-b text-left">
+                            <th className="p-2">Process ID</th>
+                            <th className="p-2">Process Title</th>
+                            <th className="p-2">Process Date</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {caseData.processes.map((processItem, index) => (
+                            <tr
+                              key={`${processItem.processId || "process"}-${index}`}
+                              className="border-b align-top"
+                            >
+                              <td className="p-2">{processItem.processId || "—"}</td>
+                              <td className="p-2">{processItem.processTitle || "—"}</td>
+                              <td className="p-2">{formatTransferDate(processItem.processDate)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle>IA Status</CardTitle>
+                  <CardDescription>Interlocutory application details linked to this case</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {(caseData.iaStatuses?.length || 0) === 0 ? (
+                    <p className="text-sm italic text-muted-foreground">No IA status entries.</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse text-sm">
+                        <thead>
+                          <tr className="border-b text-left">
+                            <th className="p-2">IA Number</th>
+                            <th className="p-2">Party Name</th>
+                            <th className="p-2">Date of Filing</th>
+                            <th className="p-2">Next Date / Purpose</th>
+                            <th className="p-2">IA Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {caseData.iaStatuses.map((iaItem, index) => (
+                            <tr
+                              key={`${iaItem.iaNumber || "ia-status"}-${index}`}
+                              className="border-b align-top"
+                            >
+                              <td className="p-2">{iaItem.iaNumber || "—"}</td>
+                              <td className="p-2">{iaItem.partyName || "—"}</td>
+                              <td className="p-2">{formatTransferDate(iaItem.dateOfFiling)}</td>
+                              <td className="p-2">{iaItem.nextDatePurpose || "—"}</td>
+                              <td className="p-2">{iaItem.status || "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
