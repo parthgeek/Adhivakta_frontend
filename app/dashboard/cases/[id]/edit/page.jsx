@@ -620,8 +620,8 @@ export default function EditCasePage() {
               <TabsTrigger value="court">Court Information</TabsTrigger>
               <TabsTrigger value="party">Party Section</TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>
-              <TabsTrigger value="associatedParties">People</TabsTrigger>
               <TabsTrigger value="transfer">Transfer & FIR</TabsTrigger>
+              <TabsTrigger value="associatedParties">People</TabsTrigger>
             </TabsList>
 
             {/* --- Case Details Tab --- */}

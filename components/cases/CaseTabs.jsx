@@ -4,6 +4,7 @@ import CourtInfoTab from "./CourtInfoTab";
 import PartySectionTab from "./PartySectionTab";
 import DocumentsTab from "./DocumentsTab";
 import AssociatedPartiesTab from "./AssociatedPartiesTab";
+import TransferHistoryTab from "./TransferHistoryTab";
 
 export default function CaseTabs({
   caseData,
@@ -38,7 +39,7 @@ export default function CaseTabs({
 }) {
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-      <TabsList className="grid w-full grid-cols-5">
+      <TabsList className="grid w-full grid-cols-6">
         <TabsTrigger value="court" className="relative">
           <span className="flex items-center">Court Info</span>
         </TabsTrigger>
@@ -46,15 +47,19 @@ export default function CaseTabs({
         <TabsTrigger value="details" className="relative">
           <span className="flex items-center">Case Details</span>
         </TabsTrigger>
-        
+
         <TabsTrigger value="party" className="relative">
           <span className="flex items-center">Party Section</span>
         </TabsTrigger>
-        
+
         <TabsTrigger value="documents" className="relative">
           <span className="flex items-center">Documents</span>
         </TabsTrigger>
-        
+
+        <TabsTrigger value="transfer" className="relative">
+          <span className="flex items-center">Transfer & FIR</span>
+        </TabsTrigger>
+
         <TabsTrigger value="associatedParties" className="relative">
           <span className="flex items-center">People</span>
         </TabsTrigger>
@@ -144,6 +149,20 @@ export default function CaseTabs({
           handleBack={handleBack}
           isLastTab={true}
           validationErrors={validationErrors.associatedParties}
+        />
+      </TabsContent>
+
+      <TabsContent value="transfer">
+        <TransferHistoryTab
+          caseId={caseData?._id || null}
+          caseData={caseData}
+          setCaseData={setCaseData}
+          handleChange={handleChange}
+          isSubmitting={isSubmitting}
+          handleSubmit={handleSubmit}
+          router={router}
+          handleNext={handleNext}
+          handleBack={handleBack}
         />
       </TabsContent>
     </Tabs>

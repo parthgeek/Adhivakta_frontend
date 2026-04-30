@@ -287,43 +287,6 @@ export default function CaseDetailsTab({
             )}
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="policeStation">Police Station</Label>
-              <Input
-                id="policeStation"
-                name="policeStation"
-                value={caseData.policeStation || ""}
-                onChange={handleChange}
-                placeholder="Enter police station"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="firNumber">FIR Number</Label>
-              <Input
-                id="firNumber"
-                name="firNumber"
-                value={caseData.firNumber || ""}
-                onChange={handleChange}
-                placeholder="Enter FIR number"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="firYear">Year</Label>
-              <Input
-                id="firYear"
-                name="firYear"
-                value={caseData.firYear || ""}
-                onChange={handleChange}
-                placeholder="Enter FIR year"
-                inputMode="numeric"
-                maxLength={4}
-              />
-            </div>
-          </div>
-
           <div className="space-y-2">
             <Label htmlFor="reliefSought" className={getLabelClassName("reliefSought")}>
               Relief Sought <span className="text-red-500">*</span>

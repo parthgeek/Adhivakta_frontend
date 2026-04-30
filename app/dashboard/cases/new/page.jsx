@@ -52,7 +52,7 @@ const EMPTY_COURT_DIRECTORY_LOADING = {
 };
 
 const DEFAULT_CASE_YEAR = String(new Date().getFullYear());
-const TAB_ORDER = ["court", "details", "party", "documents", "associatedParties"];
+const TAB_ORDER = ["court", "details", "party", "documents", "transfer", "associatedParties"];
 const LIGHT_ERROR_TOAST_CLASSNAME =
   "!bg-red-50 !text-red-950 !border !border-red-200";
 const CNR_NUMBER_PATTERN = /^[A-Z]{4}\d{12}$/;
@@ -415,6 +415,7 @@ export default function NewCasePage() {
       clients: [],
       stakeholders: [],
       lawyers: [],
+      transferHistory: [],
     })
   );
 
@@ -1253,6 +1254,21 @@ export default function NewCasePage() {
         reliefSought: normalizeValue(caseData.reliefSought),
         description: normalizeValue(caseData.description),
         notes: normalizeValue(caseData.notes),
+
+        transferHistory: (caseData.transferHistory || []).map((t) => ({
+          hearing: t.hearing || null,
+          transferDate: t.transferDate
+            ? new Date(t.transferDate).toISOString()
+            : new Date().toISOString(),
+          registrationNumber: normalizeValue(t.registrationNumber),
+          fromCourt: normalizeValue(t.fromCourt),
+          fromCourtHall: normalizeValue(t.fromCourtHall),
+          fromJudge: normalizeValue(t.fromJudge),
+          toCourt: normalizeValue(t.toCourt),
+          toCourtHall: normalizeValue(t.toCourtHall),
+          toJudge: normalizeValue(t.toJudge),
+          remarks: normalizeValue(t.remarks),
+        })),
 
         // Role-specific data
         ...(isLawyer

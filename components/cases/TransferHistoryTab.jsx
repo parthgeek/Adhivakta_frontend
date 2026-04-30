@@ -70,11 +70,13 @@ export default function TransferHistoryTab({
   handleNext,
   handleBack,
 }) {
+  const isCreateMode = !caseId;
   const [transfers, setTransfers] = useState(caseData?.transferHistory || []);
   const [hearings, setHearings] = useState([]);
   const [loadingHearings, setLoadingHearings] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [editingIndex, setEditingIndex] = useState(null);
   const [form, setForm] = useState(EMPTY_TRANSFER);
   const [saving, setSaving] = useState(false);
 
@@ -83,7 +85,7 @@ export default function TransferHistoryTab({
   }, [caseData?.transferHistory]);
 
   useEffect(() => {
-    if (!caseId) return;
+    if (isCreateMode) return;
     const load = async () => {
       setLoadingHearings(true);
       try {
@@ -100,7 +102,7 @@ export default function TransferHistoryTab({
       }
     };
     load();
-  }, [caseId]);
+  }, [caseId, isCreateMode]);
 
   const sortedTransfers = useMemo(
     () =>
@@ -112,6 +114,7 @@ export default function TransferHistoryTab({
 
   const openAdd = (prefill = {}) => {
     setEditingId(null);
+    setEditingIndex(null);
     setForm({
       ...EMPTY_TRANSFER,
       fromCourt: caseData?.court || "",
@@ -123,8 +126,9 @@ export default function TransferHistoryTab({
     setDialogOpen(true);
   };
 
-  const openEdit = (entry) => {
-    setEditingId(entry._id);
+  const openEdit = (entry, idx = null) => {
+    setEditingId(entry._id || null);
+    setEditingIndex(idx);
     setForm({
       hearing: entry.hearing?._id || entry.hearing || "",
       transferDate: entry.transferDate ? new Date(entry.transferDate) : null,
@@ -167,7 +171,27 @@ export default function TransferHistoryTab({
         hearing: form.hearing || null,
         transferDate: new Date(form.transferDate).toISOString(),
       };
-      if (editingId) {
+
+      if (isCreateMode) {
+        // Local-only edit; persisted when parent submits case create.
+        const next = [...transfers];
+        if (editingIndex !== null && editingIndex !== undefined) {
+          next[editingIndex] = { ...next[editingIndex], ...payload };
+        } else {
+          next.push(payload);
+        }
+        setTransfers(next);
+        const latest = [...next].sort(
+          (a, b) => new Date(b.transferDate) - new Date(a.transferDate)
+        )[0];
+        setCaseData?.((prev) => ({
+          ...prev,
+          transferHistory: next,
+          court: latest?.toCourt || prev.court,
+          courtHall: latest?.toCourtHall || prev.courtHall,
+        }));
+        toast({ title: editingIndex !== null ? "Transfer updated" : "Transfer added" });
+      } else if (editingId) {
         const data = await api.cases.transfers.update(caseId, editingId, payload);
         applyServerResponse(data);
         toast({ title: "Transfer updated" });
@@ -188,9 +212,24 @@ export default function TransferHistoryTab({
     }
   };
 
-  const handleDelete = async (entry) => {
+  const handleDelete = async (entry, idx) => {
     if (!confirm("Delete this transfer entry?")) return;
     try {
+      if (isCreateMode) {
+        const next = transfers.filter((_, i) => i !== idx);
+        setTransfers(next);
+        const latest = [...next].sort(
+          (a, b) => new Date(b.transferDate) - new Date(a.transferDate)
+        )[0];
+        setCaseData?.((prev) => ({
+          ...prev,
+          transferHistory: next,
+          court: latest?.toCourt || prev.court,
+          courtHall: latest?.toCourtHall || prev.courtHall,
+        }));
+        toast({ title: "Transfer deleted" });
+        return;
+      }
       const data = await api.cases.transfers.delete(caseId, entry._id);
       applyServerResponse(data);
       toast({ title: "Transfer deleted" });
@@ -254,28 +293,34 @@ export default function TransferHistoryTab({
             </div>
           </div>
         </CardContent>
-        <CardFooter className="flex justify-end">
-          <Button
-            type="button"
-            disabled={isSubmitting}
-            onClick={(e) => handleSubmit?.(e, "details")}
-          >
-            {isSubmitting ? "Saving..." : "Save FIR Details"}
-          </Button>
-        </CardFooter>
+        {!isCreateMode && (
+          <CardFooter className="flex justify-end">
+            <Button
+              type="button"
+              disabled={isSubmitting}
+              onClick={(e) => handleSubmit?.(e, "details")}
+            >
+              {isSubmitting ? "Saving..." : "Save FIR Details"}
+            </Button>
+          </CardFooter>
+        )}
       </Card>
 
       {/* Transfer History Table */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1 min-w-0 flex-1">
             <CardTitle>Case Transfer History</CardTitle>
             <CardDescription>
               Track every transfer between courts/judges. Latest entry updates
               the case's current court automatically.
             </CardDescription>
           </div>
-          <Button type="button" onClick={() => openAdd()}>
+          <Button
+            type="button"
+            onClick={() => openAdd()}
+            className="shrink-0 self-start"
+          >
             + Add Transfer
           </Button>
         </CardHeader>
@@ -300,6 +345,7 @@ export default function TransferHistoryTab({
                 </thead>
                 <tbody>
                   {sortedTransfers.map((t) => {
+                    const origIdx = transfers.indexOf(t);
                     const hearing =
                       typeof t.hearing === "object" && t.hearing
                         ? t.hearing
@@ -307,7 +353,7 @@ export default function TransferHistoryTab({
                             (h) => h._id === (t.hearing?._id || t.hearing)
                           );
                     return (
-                      <tr key={t._id} className="border-b align-top">
+                      <tr key={t._id || `tx-${origIdx}`} className="border-b align-top">
                         <td className="p-2">{t.registrationNumber || "—"}</td>
                         <td className="p-2">{formatDate(t.transferDate)}</td>
                         <td className="p-2">
@@ -347,14 +393,14 @@ export default function TransferHistoryTab({
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => openEdit(t)}
+                            onClick={() => openEdit(t, origIdx)}
                           >
                             Edit
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDelete(t)}
+                            onClick={() => handleDelete(t, origIdx)}
                             className="text-red-600 hover:text-red-700"
                           >
                             Delete
@@ -370,7 +416,8 @@ export default function TransferHistoryTab({
         </CardContent>
       </Card>
 
-      {/* Hearings list with per-row transfer button */}
+      {/* Hearings list with per-row transfer button (edit mode only) */}
+      {!isCreateMode && (
       <Card>
         <CardHeader>
           <CardTitle>Hearings</CardTitle>
@@ -437,6 +484,23 @@ export default function TransferHistoryTab({
           )}
         </CardFooter>
       </Card>
+      )}
+
+      {/* Create-mode footer nav */}
+      {isCreateMode && (handleBack || handleNext) && (
+        <div className="flex justify-between">
+          {handleBack ? (
+            <Button variant="outline" onClick={handleBack}>
+              Back
+            </Button>
+          ) : <span />}
+          {handleNext && (
+            <Button type="button" onClick={handleNext}>
+              Next
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Add/Edit Transfer Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

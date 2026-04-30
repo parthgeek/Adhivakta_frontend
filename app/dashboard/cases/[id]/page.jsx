@@ -21,8 +21,22 @@ import { Calendar as CalendarIcon } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 import { formatCaseTypeLabel, formatDisplayCaseNumber } from "@/lib/caseTypeUtils"
 import { getDocumentOpenUrl } from "@/lib/document-url"
+import CaseTimeline from "@/components/cases/CaseTimeline"
 
-const CASE_TAB_VALUES = new Set(["details", "people", "documents", "hearings"])
+const CASE_TAB_VALUES = new Set(["details", "people", "documents", "hearings", "transfer"])
+
+const formatTransferDate = (d) => {
+  if (!d) return "—"
+  try {
+    return new Date(d).toLocaleDateString("en-IN", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    })
+  } catch {
+    return "—"
+  }
+}
 
 const personMatchesUser = (person, currentUser) => {
   if (!person || !currentUser) return false
@@ -590,14 +604,15 @@ export default function CaseDetailsPage() {
         </div>
       </div>
 
-      <div className="space-y-6">
-        <div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="details">Case Details</TabsTrigger>
               <TabsTrigger value="people">People</TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>
               <TabsTrigger value="hearings">Hearings</TabsTrigger>
+              <TabsTrigger value="transfer">Transfer & FIR</TabsTrigger>
             </TabsList>
 
             <TabsContent value="details">
@@ -755,35 +770,6 @@ export default function CaseDetailsPage() {
                       <div>
                         <h3 className="text-sm font-medium text-foreground">Act & Sections</h3>
                         <p className="mt-2 text-base text-muted-foreground">{caseData.actSections}</p>
-                      </div>
-                    </>
-                  )}
-
-                  {(caseData.policeStation || caseData.firNumber || caseData.firYear) && (
-                    <>
-                      <Separator />
-                      <div>
-                        <h3 className="text-sm font-medium text-foreground">FIR Details</h3>
-                        <div className="mt-2 grid grid-cols-1 gap-3 md:grid-cols-3">
-                          <div>
-                            <p className="text-sm font-medium text-foreground">Police Station</p>
-                            <p className="mt-1 text-base text-muted-foreground">
-                              {caseData.policeStation || "Not specified"}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-foreground">FIR Number</p>
-                            <p className="mt-1 text-base text-muted-foreground">
-                              {caseData.firNumber || "Not specified"}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-foreground">Year</p>
-                            <p className="mt-1 text-base text-muted-foreground">
-                              {caseData.firYear || "Not specified"}
-                            </p>
-                          </div>
-                        </div>
                       </div>
                     </>
                   )}
@@ -1309,10 +1295,106 @@ export default function CaseDetailsPage() {
                 )}
               </Card>
             </TabsContent>
+
+            <TabsContent value="transfer">
+              <Card>
+                <CardHeader>
+                  <CardTitle>FIR & Police Station</CardTitle>
+                  <CardDescription>FIR details linked to this case</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground">Police Station</h3>
+                      <p>{caseData.policeStation || "—"}</p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground">FIR Number</h3>
+                      <p>{caseData.firNumber || "—"}</p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground">FIR Year</h3>
+                      <p>{caseData.firYear || "—"}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle>Case Transfer History</CardTitle>
+                  <CardDescription>
+                    Every transfer between courts or judges. Latest entry reflects current court.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {(caseData.transferHistory?.length || 0) === 0 ? (
+                    <p className="text-sm text-muted-foreground italic">No transfer entries.</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm border-collapse">
+                        <thead>
+                          <tr className="border-b text-left">
+                            <th className="p-2">Reg. No</th>
+                            <th className="p-2">Date</th>
+                            <th className="p-2">From Court / Hall / Judge</th>
+                            <th className="p-2">To Court / Hall / Judge</th>
+                            <th className="p-2">Linked Hearing</th>
+                            <th className="p-2">Remarks</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[...caseData.transferHistory]
+                            .sort((a, b) => new Date(b.transferDate) - new Date(a.transferDate))
+                            .map((t) => {
+                              const hearing =
+                                typeof t.hearing === "object" && t.hearing ? t.hearing : null
+                              return (
+                                <tr key={t._id} className="border-b align-top">
+                                  <td className="p-2">{t.registrationNumber || "—"}</td>
+                                  <td className="p-2">{formatTransferDate(t.transferDate)}</td>
+                                  <td className="p-2">
+                                    <div>{t.fromCourt || "—"}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                      Hall {t.fromCourtHall || "—"} · {t.fromJudge || "—"}
+                                    </div>
+                                  </td>
+                                  <td className="p-2">
+                                    <div>{t.toCourt || "—"}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                      Hall {t.toCourtHall || "—"} · {t.toJudge || "—"}
+                                    </div>
+                                  </td>
+                                  <td className="p-2 text-xs">
+                                    {hearing ? (
+                                      <>
+                                        {hearing.title || "Hearing"}
+                                        <br />
+                                        <span className="text-muted-foreground">
+                                          {formatTransferDate(hearing.start)}
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <span className="text-muted-foreground">—</span>
+                                    )}
+                                  </td>
+                                  <td className="p-2 max-w-xs text-xs">{t.remarks || "—"}</td>
+                                </tr>
+                              )
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
           </Tabs>
         </div>
 
-        <div>
+        <div className="space-y-6 lg:col-span-1">
+          <CaseTimeline caseData={caseData} />
+
           <Card>
             <CardHeader>
               <CardTitle>Case Summary</CardTitle>
