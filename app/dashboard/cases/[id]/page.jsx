@@ -103,6 +103,7 @@ export default function CaseDetailsPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState("")
   const [deleting, setDeleting] = useState(false)
+  const [selectedHistoryRecord, setSelectedHistoryRecord] = useState(null)
   const requestedTab = searchParams.get("tab")
   const activeTab = CASE_TAB_VALUES.has(requestedTab) ? requestedTab : "details"
 
@@ -464,6 +465,7 @@ export default function CaseDetailsPage() {
   const hearingHistory = useMemo(() => {
     return hearings.map((event, idx) => {
       const hearingStart = event.start || event.date
+      const nextEvent = hearings[idx + 1] || null
       const defaultPurpose = idx === 0 && event.isVirtualFirst
         ? "First hearing scheduled during case creation"
         : "Hearing"
@@ -479,12 +481,74 @@ export default function CaseDetailsPage() {
           (!genericTitle ? event.title : "") ||
           defaultPurpose,
         proceedings: event.outcome || "",
+        nextHearingDate: nextEvent?.start || nextEvent?.date || null,
+        nextHearingPurpose:
+          nextEvent?.description ||
+          (typeof nextEvent?.title === "string" && !/^hearing for\b/i.test(nextEvent.title.trim())
+            ? nextEvent.title
+            : "") ||
+          null,
+        location: event.location || caseData?.court || "",
+        title: event.title || "",
+        description: event.description || "",
+        sourceEvent: event,
         status:
           event.status ||
           (event.outcome ? "completed" : isFutureHearing(hearingStart) ? "scheduled" : "completed"),
       }
     })
+  }, [caseData?.court, hearings])
+
+  const firstHearingDate = useMemo(() => {
+    if (hearings.length === 0) return null
+
+    return hearings.reduce((earliest, event) => {
+      const eventDate = toDate(event.start || event.date)
+      if (!eventDate) return earliest
+      if (!earliest || eventDate < earliest) return eventDate
+      return earliest
+    }, null)
   }, [hearings])
+
+  const nextHearingDate = useMemo(() => {
+    const now = Date.now()
+
+    const upcomingHearings = hearings
+      .map((event) => toDate(event.start || event.date))
+      .filter((eventDate) => eventDate && eventDate.getTime() > now)
+      .sort((a, b) => a.getTime() - b.getTime())
+
+    return upcomingHearings[0] || null
+  }, [hearings])
+
+  const caseDisplayNumber = useMemo(() => {
+    return (
+      formatDisplayCaseNumber({
+        caseNumber: caseData?.caseNumber,
+        caseTypeName: caseData?.caseSubType || caseData?.caseType || "",
+        caseTypeCode: caseData?.eCourt?.caseTypeCode || caseData?.caseCode || "",
+      }) ||
+      caseData?.caseNumber ||
+      "Not available"
+    )
+  }, [caseData])
+
+  const caseVersusTitle = useMemo(() => {
+    const petitioners =
+      caseData?.petitionerNames?.filter(Boolean) ||
+      caseData?.parties?.petitioner?.map((party) => party?.name).filter(Boolean) ||
+      []
+    const respondents =
+      caseData?.opposingPartyNames?.filter(Boolean) ||
+      caseData?.parties?.respondent?.map((party) => party?.name).filter(Boolean) ||
+      []
+
+    if (petitioners.length > 0 && respondents.length > 0) {
+      return `${petitioners.join(", ")} vs ${respondents.join(", ")}`
+    }
+
+    return caseData?.title || "Case details"
+  }, [caseData])
 
   const handleDeleteCase = async () => {
     if (deleteConfirmation !== caseData.title) {
@@ -598,6 +662,10 @@ export default function CaseDetailsPage() {
     },
   ]
 
+  const openHistoryRecord = (hearing) => {
+    setSelectedHistoryRecord(hearing)
+  }
+
 
   return (
     <div className="space-y-6">
@@ -665,7 +733,7 @@ export default function CaseDetailsPage() {
 
                   <Separator />
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
                       <h3 className="text-sm font-medium text-foreground">Filing Date</h3>
                       <p className="text-base text-muted-foreground flex items-center">
@@ -677,7 +745,14 @@ export default function CaseDetailsPage() {
                       <h3 className="text-sm font-medium text-foreground">First Hearing</h3>
                       <p className="text-base text-muted-foreground flex items-center">
                         <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
-                        {formatDate(caseData.nextHearingDate || caseData.hearingDate)}
+                        {formatDate(firstHearingDate)}
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground">Next Hearing</h3>
+                      <p className="text-base text-muted-foreground flex items-center">
+                        <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
+                        {formatDate(nextHearingDate)}
                       </p>
                     </div>
                     <div>
@@ -740,7 +815,19 @@ export default function CaseDetailsPage() {
                           </TableHeader>
                           <TableBody>
                             {hearingHistory.map((hearing) => (
-                              <TableRow key={hearing.id}>
+                              <TableRow
+                                key={hearing.id}
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => openHistoryRecord(hearing)}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter" || event.key === " ") {
+                                    event.preventDefault()
+                                    openHistoryRecord(hearing)
+                                  }
+                                }}
+                                className="cursor-pointer transition-colors hover:bg-[#03234b]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#03234b]/20"
+                              >
                                 <TableCell className="font-medium">{hearing.serialNumber}</TableCell>
                                 <TableCell>{formatDate(hearing.date)}</TableCell>
                                 <TableCell className="text-muted-foreground">
@@ -1501,7 +1588,11 @@ export default function CaseDetailsPage() {
                 </div>
                 <div className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-4 gap-y-1">
                   <h3 className="text-sm font-medium">First Hearing</h3>
-                  <span className="text-sm text-right">{formatDate(caseData.nextHearingDate || caseData.hearingDate)}</span>
+                  <span className="text-sm text-right">{formatDate(firstHearingDate)}</span>
+                </div>
+                <div className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-4 gap-y-1">
+                  <h3 className="text-sm font-medium">Next Hearing</h3>
+                  <span className="text-sm text-right">{formatDate(nextHearingDate)}</span>
                 </div>
                 {caseData.court && (
                   <div className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-start gap-x-4 gap-y-1">
@@ -1694,6 +1785,130 @@ export default function CaseDetailsPage() {
             />
             <Button onClick={handleSaveOutcome}>Save Proceedings</Button>
           </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={Boolean(selectedHistoryRecord)} onOpenChange={(open) => !open && setSelectedHistoryRecord(null)}>
+        <DialogContent className="max-h-[88vh] overflow-y-auto border-[#03234b]/10 bg-[#fcfcfb] p-0 sm:max-w-4xl">
+          {selectedHistoryRecord && (
+            <div className="overflow-hidden rounded-xl">
+              <DialogHeader className="sr-only">
+                <DialogTitle>
+                  Hearing record for {caseData.title || caseDisplayNumber}
+                </DialogTitle>
+                <DialogDescription>
+                  Details for hearing {selectedHistoryRecord.serialNumber}, including proceedings, case metadata, and next hearing information.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="border-b border-[#03234b]/10 bg-gradient-to-b from-[#03234b]/[0.04] to-transparent px-6 py-6 sm:px-8">
+                <div className="space-y-2 text-center">
+                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#03234b]/65">
+                    hearing record
+                  </p>
+                  <h2 className="text-xl font-semibold tracking-tight text-[#03234b]">
+                    {caseData.court || "Court details not available"}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {caseData.courtComplex || caseData.district || "Case hearing details"}
+                  </p>
+                </div>
+
+                <div className="mt-6 grid gap-4 rounded-2xl border border-[#03234b]/10 bg-white/90 p-4 shadow-sm sm:grid-cols-2">
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">CNR number</p>
+                      <p className="mt-1 font-mono text-sm text-foreground">{caseData.cnrNumber || "Not available"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Case number</p>
+                      <p className="mt-1 font-mono text-sm text-foreground">{caseDisplayNumber}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-3 text-left sm:text-right">
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Hearing date</p>
+                      <p className="mt-1 text-sm font-semibold text-foreground">{formatDate(selectedHistoryRecord.date)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Status</p>
+                      <div className="mt-1">
+                        <Badge className={getStatusColor(selectedHistoryRecord.status)}>
+                          {selectedHistoryRecord.status?.charAt(0).toUpperCase() + selectedHistoryRecord.status?.slice(1)}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-5 text-center">
+                  <p className="text-lg font-semibold leading-snug text-foreground">{caseVersusTitle}</p>
+                </div>
+              </div>
+
+              <div className="space-y-6 px-6 py-6 sm:px-8">
+                <div className="grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(260px,0.75fr)]">
+                  <section className="space-y-4">
+                    <div className="rounded-2xl border border-[#03234b]/10 bg-white p-5 shadow-sm">
+                      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Purpose</p>
+                      <p className="mt-2 text-sm leading-7 text-foreground">
+                        {selectedHistoryRecord.purpose || "Not specified"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-[#03234b]/10 bg-white p-5 shadow-sm">
+                      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Proceedings / business</p>
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-foreground">
+                        {selectedHistoryRecord.proceedings || "No proceedings were recorded for this hearing."}
+                      </p>
+                    </div>
+                  </section>
+
+                  <aside className="space-y-4">
+                    <div className="rounded-2xl border border-[#03234b]/10 bg-[#03234b]/[0.03] p-5">
+                      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Hearing summary</p>
+                      <dl className="mt-3 space-y-3 text-sm">
+                        <div className="flex items-start justify-between gap-4">
+                          <dt className="text-muted-foreground">Serial</dt>
+                          <dd className="text-right font-medium text-foreground">{selectedHistoryRecord.serialNumber}</dd>
+                        </div>
+                        <div className="flex items-start justify-between gap-4">
+                          <dt className="text-muted-foreground">Stage</dt>
+                          <dd className="text-right font-medium text-foreground capitalize">
+                            {caseData.caseStage?.replace(/_/g, " ") || "Not specified"}
+                          </dd>
+                        </div>
+                        <div className="flex items-start justify-between gap-4">
+                          <dt className="text-muted-foreground">Location</dt>
+                          <dd className="text-right font-medium text-foreground">{selectedHistoryRecord.location || "Not specified"}</dd>
+                        </div>
+                        <div className="flex items-start justify-between gap-4">
+                          <dt className="text-muted-foreground">Filed on</dt>
+                          <dd className="text-right font-medium text-foreground">{formatDate(caseData.filingDate)}</dd>
+                        </div>
+                      </dl>
+                    </div>
+
+                    <div className="rounded-2xl border border-dashed border-[#03234b]/20 bg-white p-5">
+                      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Next hearing</p>
+                      {selectedHistoryRecord.nextHearingDate ? (
+                        <div className="mt-3 space-y-2">
+                          <p className="text-base font-semibold text-[#03234b]">
+                            {formatDate(selectedHistoryRecord.nextHearingDate)}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {selectedHistoryRecord.nextHearingPurpose || "Purpose not specified yet"}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="mt-3 text-sm text-muted-foreground">
+                          No next hearing has been recorded after this hearing yet.
+                        </p>
+                      )}
+                    </div>
+                  </aside>
+                </div>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
