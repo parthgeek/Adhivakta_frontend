@@ -18,6 +18,7 @@ export function middleware(req: NextRequest) {
     });
   }
 
+  
   const [, encoded] = auth.split(" ");
   const decoded = Buffer.from(encoded, "base64").toString();
   const [user, pass] = decoded.split(":");
