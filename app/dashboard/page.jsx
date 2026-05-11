@@ -136,8 +136,8 @@ const hearingStatusStyles = {
 const DashboardSkeleton = () => (
   <div className="min-h-screen bg-gray-50 p-6 space-y-6">
     <div className="h-40 rounded-2xl bg-gray-200 animate-pulse" />
-    <div className="grid grid-cols-5 gap-4">
-      {[...Array(5)].map((_, i) => (
+    <div className="grid grid-cols-4 gap-4">
+      {[...Array(4)].map((_, i) => (
         <div key={i} className="h-28 rounded-xl bg-gray-200 animate-pulse" />
       ))}
     </div>
@@ -946,15 +946,6 @@ const NewDashboard = () => {
       href: "/dashboard/cases?filter=urgent",
     },
     {
-      title: "Documents",
-      value: stats.documents,
-      sub: `+${Math.max(1, Math.floor(stats.documents * 0.07))} this month`,
-      icon: FileText,
-      iconBg: "bg-sky-50",
-      iconColor: "text-sky-500",
-      href: "/dashboard/documents",
-    },
-    {
       title: "Closed Cases",
       value: stats.closedCases,
       sub: `+${Math.max(1, Math.floor(stats.closedCases * 0.18))} from last month`,
@@ -981,8 +972,8 @@ const NewDashboard = () => {
         {/* Welcome Banner */}
         <WelcomeBanner user={user} todayHearings={todayHearings} overdueTasks={overdueTasks} />
 
-        {/* Stats Row — 5 cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        {/* Stats Row — 4 cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {statsCards.map((card) => (
             <StatsCard key={card.title} {...card} />
           ))}

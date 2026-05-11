@@ -157,6 +157,7 @@ export default function CaseTabs({
           caseId={caseData?._id || null}
           caseData={caseData}
           setCaseData={setCaseData}
+          selectedFiles={selectedFiles}
           handleChange={handleChange}
           isSubmitting={isSubmitting}
           handleSubmit={handleSubmit}

@@ -60,6 +60,14 @@ const EMPTY_IA_STATUS = {
   status: "",
 };
 
+const EMPTY_INTERIM_ORDER = {
+  orderNumber: "",
+  orderDate: null,
+  orderDetails: "Copy of order",
+  documentId: "",
+  documentName: "",
+};
+
 const formatDate = (d) => {
   if (!d) return "—";
   try {
@@ -77,6 +85,7 @@ export default function TransferHistoryTab({
   caseId,
   caseData,
   setCaseData,
+  selectedFiles = [],
   handleChange,
   isSubmitting,
   handleSubmit,
@@ -86,6 +95,7 @@ export default function TransferHistoryTab({
   const isCreateMode = !caseId;
   const [transfers, setTransfers] = useState(caseData?.transferHistory || []);
   const [hearings, setHearings] = useState([]);
+  const [documents, setDocuments] = useState([]);
   const [loadingHearings, setLoadingHearings] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -102,12 +112,16 @@ export default function TransferHistoryTab({
     const load = async () => {
       setLoadingHearings(true);
       try {
-        const events = await api.events.getByCaseId(caseId);
+        const [events, caseDocuments] = await Promise.all([
+          api.events.getByCaseId(caseId),
+          api.documents.getByCaseId(caseId),
+        ]);
         setHearings(
           (events || []).filter((e) => e.type === "hearing").sort(
             (a, b) => new Date(b.start) - new Date(a.start)
           )
         );
+        setDocuments(Array.isArray(caseDocuments) ? caseDocuments : []);
       } catch {
         // silent
       } finally {
@@ -297,6 +311,23 @@ export default function TransferHistoryTab({
 
   const processItems = caseData?.processes || [];
   const iaStatusItems = caseData?.iaStatuses || [];
+  const interimOrderItems = caseData?.interimOrders || [];
+  const availableOrderDocuments = useMemo(() => {
+    if (isCreateMode) {
+      return selectedFiles.map((file) => ({
+        value: file.name,
+        label: file.name,
+        isExistingDocument: false,
+      }));
+    }
+
+    return documents.map((document) => ({
+      value: document._id || document.id,
+      label: document.originalName || document.name || "Document",
+      isExistingDocument: true,
+      raw: document,
+    }));
+  }, [documents, isCreateMode, selectedFiles]);
 
   return (
     <div className="space-y-6">
@@ -572,12 +603,169 @@ export default function TransferHistoryTab({
             <Button
               type="button"
               disabled={isSubmitting}
-              onClick={(e) => handleSubmit?.(e, "details")}
+              onClick={(e) => handleSubmit?.(e, "transfer")}
             >
               {isSubmitting ? "Saving..." : "Save Other Details"}
             </Button>
           </CardFooter>
         )}
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1 min-w-0 flex-1">
+            <CardTitle>Interim orders</CardTitle>
+            <CardDescription>
+              Track interim orders and link them to uploaded order documents.
+            </CardDescription>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="shrink-0 self-start"
+            onClick={() => addCaseCollectionItem("interimOrders", EMPTY_INTERIM_ORDER)}
+          >
+            + Add Interim Order
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {interimOrderItems.length === 0 ? (
+            <p className="text-sm italic text-muted-foreground">
+              No interim orders added yet.
+            </p>
+          ) : (
+            interimOrderItems.map((orderItem, index) => (
+              <div
+                key={`interim-order-${index}`}
+                className="space-y-4 rounded-md border p-4"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <h4 className="text-sm font-medium">Interim Order {index + 1}</h4>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-600 hover:text-red-700"
+                    onClick={() => removeCaseCollectionItem("interimOrders", index)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label>Order Number</Label>
+                    <Input
+                      value={orderItem.orderNumber || ""}
+                      onChange={(e) =>
+                        updateCaseCollectionItem(
+                          "interimOrders",
+                          index,
+                          "orderNumber",
+                          e.target.value
+                        )
+                      }
+                      placeholder="Enter order number"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Order Date</Label>
+                    <DatePicker
+                      selected={orderItem.orderDate ? new Date(orderItem.orderDate) : null}
+                      onSelect={(value) =>
+                        updateCaseCollectionItem(
+                          "interimOrders",
+                          index,
+                          "orderDate",
+                          value
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Order Details Label</Label>
+                    <Input
+                      value={orderItem.orderDetails || ""}
+                      onChange={(e) =>
+                        updateCaseCollectionItem(
+                          "interimOrders",
+                          index,
+                          "orderDetails",
+                          e.target.value
+                        )
+                      }
+                      placeholder="e.g. Copy of order"
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-3">
+                    <Label>Linked Order Document</Label>
+                    <Select
+                      value={
+                        isCreateMode
+                          ? orderItem.documentName || "none"
+                          : orderItem.documentId || orderItem.documentName || "none"
+                      }
+                      onValueChange={(value) => {
+                        if (value === "none") {
+                          updateCaseCollection("interimOrders", (current) =>
+                            current.map((item, itemIndex) =>
+                              itemIndex === index
+                                ? {
+                                    ...item,
+                                    documentId: "",
+                                    documentName: "",
+                                  }
+                                : item
+                            )
+                          );
+                          return;
+                        }
+
+                        const selectedDocument = availableOrderDocuments.find(
+                          (document) => document.value === value
+                        );
+
+                        updateCaseCollection("interimOrders", (current) =>
+                          current.map((item, itemIndex) =>
+                            itemIndex === index
+                              ? {
+                                  ...item,
+                                  documentId: selectedDocument?.isExistingDocument ? value : "",
+                                  documentName: selectedDocument?.label || value,
+                                }
+                              : item
+                          )
+                        );
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={
+                            isCreateMode
+                              ? "Select a file from the Documents tab"
+                              : "Select an uploaded order document"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">— None —</SelectItem>
+                        {availableOrderDocuments.map((document) => (
+                          <SelectItem key={document.value} value={document.value}>
+                            {document.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {isCreateMode
+                        ? "Upload the order file in the Documents tab first, then link it here by filename."
+                        : "This link is used on the case details page when the user clicks Order Details."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </CardContent>
       </Card>
 
       <Card>

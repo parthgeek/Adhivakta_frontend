@@ -190,6 +190,11 @@ export default function EditCasePage() {
           courtHall: d.courtHall || "",
           courtComplex: d.courtComplex || "",
           filingDate: d.filingDate ? new Date(d.filingDate) : new Date(),
+          registrationDate: d.registrationDate ? new Date(d.registrationDate) : null,
+          registrationNumber: d.registrationNumber || "",
+          registrationSameAsFilingDate:
+            Boolean(d.registrationDate && d.filingDate) &&
+            new Date(d.registrationDate).toDateString() === new Date(d.filingDate).toDateString(),
           nextHearingDate: d.nextHearingDate ? new Date(d.nextHearingDate) : null,
           petitionerRole: d.petitionerRole || "Petitioner",
           petitionerType: d.petitionerType || "Individual",
@@ -210,6 +215,7 @@ export default function EditCasePage() {
           notes: d.notes || "",
           processes: d.processes || [],
           iaStatuses: d.iaStatuses || [],
+          interimOrders: d.interimOrders || [],
           advocates: d.advocates || [],
           clients: d.clients || [],
           stakeholders: d.stakeholders || [],
@@ -313,12 +319,39 @@ export default function EditCasePage() {
         }
       }
 
+      if (name === "filingDate" && value && prev.registrationSameAsFilingDate) {
+        newData.registrationDate = value;
+      }
+
+      if (name === "registrationDate" && value) {
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+        if (new Date(value) > today) {
+          toast({
+            title: "Validation Error",
+            description: "Registration date cannot be in the future",
+            variant: "destructive",
+          });
+          return prev;
+        }
+      }
+
       return newData;
     });
   };
 
   const handleCheckboxChange = (name, value) => {
-    setCaseData((prev) => ({ ...prev, [name]: value }));
+    setCaseData((prev) => {
+      if (name === "registrationSameAsFilingDate") {
+        return {
+          ...prev,
+          registrationSameAsFilingDate: Boolean(value),
+          registrationDate: value ? prev.filingDate || new Date() : prev.registrationDate,
+        };
+      }
+
+      return { ...prev, [name]: value };
+    });
   };
 
   const uploadDocuments = async (caseId) => {
@@ -486,7 +519,7 @@ export default function EditCasePage() {
       // Build formattedData but include only relevant sections for smaller saves
       const formattedData = {
         // Always include basic fields only when saving details/all
-        ...(section === 'all' || section === 'details' ? {
+        ...(section === 'all' || section === 'details' || section === 'transfer' ? {
           title: caseData.title,
           caseNumber: normalizedCaseNumber,
           caseType: caseData.caseType,
@@ -500,6 +533,8 @@ export default function EditCasePage() {
           courtHall: caseData.courtHall,
           courtComplex: caseData.courtComplex,
           filingDate: caseData.filingDate ? new Date(caseData.filingDate).toISOString() : null,
+          registrationDate: caseData.registrationDate ? new Date(caseData.registrationDate).toISOString() : null,
+          registrationNumber: caseData.registrationNumber || "",
           nextHearingDate: caseData.nextHearingDate ? new Date(caseData.nextHearingDate).toISOString() : null,
           description: normalizedDescription,
           priority: caseData.priority || "normal",
@@ -526,6 +561,15 @@ export default function EditCasePage() {
               : null,
             nextDatePurpose: normalizeText(iaItem.nextDatePurpose),
             status: normalizeText(iaItem.status),
+          })),
+          interimOrders: (caseData.interimOrders || []).map((orderItem) => ({
+            orderNumber: normalizeText(orderItem.orderNumber),
+            orderDate: orderItem.orderDate
+              ? new Date(orderItem.orderDate).toISOString()
+              : null,
+            orderDetails: normalizeText(orderItem.orderDetails),
+            documentId: normalizeText(orderItem.documentId),
+            documentName: normalizeText(orderItem.documentName),
           }))
         } : {}),
 
@@ -755,6 +799,39 @@ export default function EditCasePage() {
                           selected={caseData.filingDate}
                           onSelect={(date) => handleDateChange("filingDate", date)}
                         />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="registrationNumber">Registration Number</Label>
+                        <Input
+                          id="registrationNumber"
+                          name="registrationNumber"
+                          value={caseData.registrationNumber || ""}
+                          onChange={handleChange}
+                          placeholder="Enter registration number"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="registrationDate">Registration Date</Label>
+                        <DatePicker
+                          id="registrationDate"
+                          selected={caseData.registrationDate}
+                          onSelect={(date) => handleDateChange("registrationDate", date)}
+                          disabled={caseData.registrationSameAsFilingDate}
+                        />
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="registrationSameAsFilingDate"
+                            checked={caseData.registrationSameAsFilingDate}
+                            onCheckedChange={(checked) =>
+                              handleCheckboxChange("registrationSameAsFilingDate", checked)
+                            }
+                          />
+                          <Label htmlFor="registrationSameAsFilingDate">Same as filing date</Label>
+                        </div>
                       </div>
 
                       <div className="space-y-2">

@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { ArrowLeft, Calendar, Clock, FileText, MapPin, User, Users, AlertTriangle, ShieldCheck } from "lucide-react"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import api from "@/services/api"
 import PartyDetails from "@/components/ui/party-details"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
@@ -77,6 +78,57 @@ const isFutureHearing = (value) => {
   return Boolean(date && date.getTime() > Date.now())
 }
 
+const toDateInputValue = (value) => {
+  const date = toDate(value)
+  if (!date) return ""
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+const proceedingFormFromEvent = (event) => ({
+  judge: event?.judge || "",
+  businessDate: toDateInputValue(event?.businessDate || event?.start || event?.date),
+  purpose: event?.purpose || event?.description || "",
+  outcome: event?.outcome || "",
+  nextPurpose: event?.nextPurpose || "",
+  nextHearingDate: toDateInputValue(event?.nextHearingDate),
+})
+
+const buildActRows = (value = "") =>
+  String(value)
+    .split(/\n|;/)
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      const [actName, sectionText = ""] = entry.split(/section[s]?:/i)
+      return {
+        act: actName.replace(/^under act\(s\)\s*/i, "").trim(),
+        sections: sectionText.trim() || "—",
+      }
+    })
+
+const resolveOrderDocument = (order, documents = []) => {
+  const documentId = String(order?.documentId || "")
+  const documentName = String(order?.documentName || "").trim().toLowerCase()
+
+  return (
+    documents.find((document) => String(document._id || document.id || "") === documentId) ||
+    documents.find((document) => {
+      const candidates = [
+        document?.name,
+        document?.originalName,
+      ]
+        .filter(Boolean)
+        .map((value) => String(value).trim().toLowerCase())
+
+      return documentName && candidates.includes(documentName)
+    }) ||
+    null
+  )
+}
+
 export default function CaseDetailsPage() {
   const { id } = useParams()
   const router = useRouter()
@@ -99,7 +151,9 @@ export default function CaseDetailsPage() {
   const [scheduling, setScheduling] = useState(false)
   const [showOutcomeDialog, setShowOutcomeDialog] = useState(false)
   const [editingEvent, setEditingEvent] = useState(null)
-  const [outcomeValue, setOutcomeValue] = useState("")
+  const [proceedingForm, setProceedingForm] = useState(() =>
+    proceedingFormFromEvent(null)
+  )
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState("")
   const [deleting, setDeleting] = useState(false)
@@ -360,7 +414,7 @@ export default function CaseDetailsPage() {
 
   const handleEditOutcome = (event) => {
     setEditingEvent(event);
-    setOutcomeValue(event.outcome || "");
+    setProceedingForm(proceedingFormFromEvent(event));
     setShowOutcomeDialog(true);
   };
 
@@ -369,18 +423,30 @@ export default function CaseDetailsPage() {
     try {
       const hearingStart = editingEvent.start || editingEvent.date;
       const hearingStartDate = toDate(hearingStart);
+      const nextHearingDate = proceedingForm.nextHearingDate
+        ? new Date(`${proceedingForm.nextHearingDate}T00:00:00`)
+        : null;
       const hearingEnd =
         editingEvent.end ||
         (hearingStartDate
           ? new Date(hearingStartDate.getTime() + 60 * 60 * 1000).toISOString()
           : undefined);
+      const eventPayload = {
+        ...editingEvent,
+        judge: proceedingForm.judge.trim(),
+        businessDate: proceedingForm.businessDate
+          ? new Date(`${proceedingForm.businessDate}T00:00:00`).toISOString()
+          : null,
+        purpose: proceedingForm.purpose.trim(),
+        description: proceedingForm.purpose.trim(),
+        outcome: proceedingForm.outcome,
+        nextPurpose: proceedingForm.nextPurpose.trim(),
+        nextHearingDate: nextHearingDate ? nextHearingDate.toISOString() : null,
+        case: editingEvent.case?._id || editingEvent.case || caseData?._id || caseData?.id,
+      };
 
       if (editingEvent._id && !editingEvent.isVirtualFirst) {
-        await api.events.update(editingEvent._id, {
-          ...editingEvent,
-          outcome: outcomeValue,
-          case: editingEvent.case?._id || editingEvent.case || caseData?._id || caseData?.id,
-        });
+        await api.events.update(editingEvent._id, eventPayload);
       } else {
         if (!hearingStartDate || !caseData) {
           throw new Error("Hearing details are incomplete.");
@@ -393,15 +459,32 @@ export default function CaseDetailsPage() {
           type: "hearing",
           case: caseData._id || caseData.id,
           location: editingEvent.location || caseData.court || "Courtroom",
-          description: editingEvent.description || "",
-          outcome: outcomeValue,
+          description: proceedingForm.purpose.trim(),
+          outcome: proceedingForm.outcome,
+          judge: proceedingForm.judge.trim(),
+          businessDate: proceedingForm.businessDate
+            ? new Date(`${proceedingForm.businessDate}T00:00:00`).toISOString()
+            : null,
+          purpose: proceedingForm.purpose.trim(),
+          nextPurpose: proceedingForm.nextPurpose.trim(),
+          nextHearingDate: nextHearingDate ? nextHearingDate.toISOString() : null,
           status: editingEvent.status || "completed",
         });
       }
 
       setShowOutcomeDialog(false);
       setEditingEvent(null);
-      setOutcomeValue("");
+      setProceedingForm(proceedingFormFromEvent(null));
+      setCaseData((prev) =>
+        prev
+          ? {
+              ...prev,
+              nextHearingDate: nextHearingDate
+                ? nextHearingDate.toISOString()
+                : prev.nextHearingDate,
+            }
+          : prev
+      );
       await fetchCaseEvents();
       toast({ title: "Success", description: "Outcome updated." });
     } catch (err) {
@@ -476,13 +559,18 @@ export default function CaseDetailsPage() {
         id: event._id || `hearing-history-${idx}`,
         serialNumber: idx + 1,
         date: hearingStart,
+        businessDate: event.businessDate || hearingStart,
+        judge: event.judge || caseData?.judge || caseData?.assignedJudge || "",
         purpose:
+          event.purpose ||
           event.description ||
           (!genericTitle ? event.title : "") ||
           defaultPurpose,
         proceedings: event.outcome || "",
-        nextHearingDate: nextEvent?.start || nextEvent?.date || null,
-        nextHearingPurpose:
+        nextHearingDate: event.nextHearingDate || nextEvent?.start || nextEvent?.date || null,
+        nextPurpose:
+          event.nextPurpose ||
+          nextEvent?.purpose ||
           nextEvent?.description ||
           (typeof nextEvent?.title === "string" && !/^hearing for\b/i.test(nextEvent.title.trim())
             ? nextEvent.title
@@ -549,6 +637,25 @@ export default function CaseDetailsPage() {
 
     return caseData?.title || "Case details"
   }, [caseData])
+
+  const actRows = useMemo(
+    () => buildActRows(caseData?.actSections || ""),
+    [caseData?.actSections]
+  )
+
+  const interimOrders = useMemo(() => {
+    return (caseData?.interimOrders || []).map((order, index) => ({
+      id: `${order?.documentId || order?.documentName || "order"}-${index}`,
+      orderNumber: order?.orderNumber || String(index + 1),
+      orderDate: order?.orderDate || null,
+      orderDetails: order?.orderDetails || "Copy of order",
+      document: resolveOrderDocument(order, documents),
+      documentName: order?.documentName || "",
+    }))
+  }, [caseData?.interimOrders, documents])
+
+  const petitionerList = caseData?.parties?.petitioner || []
+  const respondentList = caseData?.parties?.respondent || []
 
   const handleDeleteCase = async () => {
     if (deleteConfirmation !== caseData.title) {
@@ -690,204 +797,294 @@ export default function CaseDetailsPage() {
             </TabsList>
 
             <TabsContent value="details">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Case Information</CardTitle>
-                  <CardDescription>Details and status of the case</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground">Filing Number</h3>
-                      <p className="text-base">{formatDisplayCaseNumber({ caseNumber: caseData.caseNumber, caseTypeName: caseData.caseSubType || caseData.caseType || "", caseTypeCode: caseData.eCourt?.caseTypeCode || caseData.caseCode || "" }) || caseData.caseNumber}</p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground">CNR Number</h3>
-                      <p className="text-base">{caseData.cnrNumber || "Not available"}</p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground">Case Type</h3>
-                      <p className="text-base">
-                        {formatCaseTypeLabel(caseData.caseSubType || caseData.caseType)}
+              <div className="space-y-5">
+                <Card className="overflow-hidden border-[#d6deeb] shadow-sm">
+                  <CardContent className="space-y-4 p-4 sm:p-5">
+                    <div className="rounded-2xl border border-[#d6deeb] bg-[#f6f9fc] px-5 py-4 text-center">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#6b7a90]">
+                        {String(caseData.courtType || "Civil Court").replace(/_/g, " ")}
                       </p>
+                      <h2 className="mt-1 text-xl font-semibold tracking-[-0.02em] text-[#1e2b3d]">
+                        {caseData.court || "Court not specified"}
+                      </h2>
                     </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
-                      <Badge className={getStatusColor(caseData.status)}>
-                        {caseData.status?.charAt(0).toUpperCase() + caseData.status?.slice(1)}
-                      </Badge>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground">Priority</h3>
-                      <Badge className={getPriorityColor(caseData.priority)}>
-                        {caseData.priority?.charAt(0).toUpperCase() + caseData.priority?.slice(1) || "Normal"}
-                      </Badge>
-                      {caseData.isUrgent && (
-                        <Badge className="ml-2 bg-red-100 text-red-800">
-                          <AlertTriangle className="mr-1 h-3 w-3" />
-                          Urgent
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
 
-                  <Separator />
+                    <div className="overflow-hidden rounded-2xl border border-[#d9e2ef]">
+                      <div className="grid grid-cols-1 divide-y divide-[#d9e2ef] text-sm md:grid-cols-2 md:divide-y-0 md:[&>*:nth-child(odd)]:border-r md:[&>*]:border-[#d9e2ef]">
+                        {[
+                          ["Case Type", formatCaseTypeLabel(caseData.caseSubType || caseData.caseType)],
+                          ["Filing Number", caseDisplayNumber],
+                          ["Filing Date", formatDate(caseData.filingDate)],
+                          ["Registration Number", caseData.registrationNumber || "—"],
+                          ["Registration Date", formatDate(caseData.registrationDate)],
+                          ["CNR Number", caseData.cnrNumber || "—"],
+                          ["Case Status", caseData.status?.charAt(0).toUpperCase() + caseData.status?.slice(1)],
+                          ["Case Stage", caseData.caseStage?.replace(/_/g, " ") || "Not specified"],
+                        ].map(([label, value]) => (
+                          <div key={label} className="grid grid-cols-[180px_minmax(0,1fr)]">
+                            <div className="bg-[#eef3f9] px-4 py-3 font-medium text-[#516076]">{label}</div>
+                            <div className="px-4 py-3 font-medium text-[#243246]">{value}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div>
-                      <h3 className="text-sm font-medium text-foreground">Filing Date</h3>
-                      <p className="text-base text-muted-foreground flex items-center">
-                        <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
-                        {formatDate(caseData.filingDate)}
-                      </p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-foreground">First Hearing</h3>
-                      <p className="text-base text-muted-foreground flex items-center">
-                        <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
-                        {formatDate(firstHearingDate)}
-                      </p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-foreground">Next Hearing</h3>
-                      <p className="text-base text-muted-foreground flex items-center">
-                        <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
-                        {formatDate(nextHearingDate)}
-                      </p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-foreground">Case Stage</h3>
-                      <p className="text-base text-muted-foreground capitalize">
-                        {caseData.caseStage?.replace(/_/g, " ") || "Not specified"}
-                      </p>
-                    </div>
-                  </div>
+                <Accordion type="multiple" defaultValue={["status", "parties", "acts", "processes", "history", "orders"]} className="space-y-4">
+                  <AccordionItem value="status" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
+                    <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
+                      Case status
+                    </AccordionTrigger>
+                    <AccordionContent className="px-5 pb-5">
+                      <div className="overflow-hidden rounded-2xl border border-[#d9e2ef]">
+                        <div className="grid grid-cols-1 divide-y divide-[#d9e2ef] text-sm">
+                          {[
+                            ["First Hearing Date", formatDate(firstHearingDate)],
+                            ["Next Hearing Date", formatDate(nextHearingDate)],
+                            ["Case Stage", caseData.caseStage?.replace(/_/g, " ") || "Not specified"],
+                            [
+                              "Court Number and Judge",
+                              `${caseData.courtHall ? `Hall ${caseData.courtHall}` : "Hall —"}${hearingHistory[0]?.judge ? ` · ${hearingHistory[0].judge}` : ""}`,
+                            ],
+                          ].map(([label, value]) => (
+                            <div key={label} className="grid grid-cols-[220px_minmax(0,1fr)]">
+                              <div className="bg-[#fdf0f1] px-4 py-3 font-medium text-[#cc6f76]">{label}</div>
+                              <div className="px-4 py-3 font-medium text-[#4a3d42]">{value}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
 
-                  <Separator />
-
-                  <div>
-                    <h3 className="text-sm font-medium text-foreground">Court Information</h3>
-                    <div className="mt-2 space-y-2">
-                      <p className="text-base text-muted-foreground flex items-center">
-                        <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
-                        {caseData.court || "Not specified"}
-                        {caseData.courtHall && `, Hall ${caseData.courtHall}`}
-                      </p>
-                      {caseData.district && (
-                        <p className="text-sm text-muted-foreground pl-6">
-                          District: {caseData.district?.replace(/_/g, " ")}
+                  <AccordionItem value="parties" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
+                    <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
+                      Petitioner and advocate
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-4 px-5 pb-5">
+                      <div className="rounded-2xl border border-[#d9e2ef] bg-[#f7f9fc] p-4">
+                        {petitionerList.length > 0 ? (
+                          petitionerList.map((party, index) => (
+                            <div key={`petitioner-sheet-${index}`} className="rounded-xl bg-white/70 px-4 py-3">
+                              <p className="text-sm font-semibold uppercase tracking-[0.08em] text-[#243246]">
+                                {index + 1}) {party.name}
+                              </p>
+                              <p className="mt-1 text-sm text-[#6a778a]">
+                                Advocate - {caseData.advocates?.[0]?.name || caseData.lawyers?.[0]?.name || "Not assigned"}
+                              </p>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-muted-foreground">No petitioner information available.</p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c]">
+                          Respondent and advocate
                         </p>
+                        <div className="rounded-2xl border border-[#d9e2ef] bg-[#f7f9fc] p-4">
+                          {respondentList.length > 0 ? (
+                            respondentList.map((party, index) => (
+                              <div key={`respondent-sheet-${index}`} className="rounded-xl bg-white/70 px-4 py-3">
+                                <p className="text-sm font-semibold uppercase tracking-[0.08em] text-[#243246]">
+                                  {index + 1}) {party.name}
+                                </p>
+                                <p className="mt-1 text-sm text-[#6a778a]">
+                                  Advocate - {party.opposingCounsel || "Not specified"}
+                                </p>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-sm text-muted-foreground">No respondent information available.</p>
+                          )}
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  <AccordionItem value="acts" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
+                    <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
+                      Acts
+                    </AccordionTrigger>
+                    <AccordionContent className="px-5 pb-5">
+                      {actRows.length > 0 ? (
+                        <div className="overflow-hidden rounded-2xl border border-[#d9e2ef]">
+                          <table className="w-full text-sm">
+                            <thead className="bg-[#eef3f9] text-left text-[#516076]">
+                              <tr>
+                                <th className="px-4 py-3 font-medium">Under Act(s)</th>
+                                <th className="px-4 py-3 font-medium">Under Section(s)</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {actRows.map((row, index) => (
+                                <tr key={`${row.act}-${index}`} className="border-t border-[#d9e2ef]">
+                                  <td className="px-4 py-3 text-[#243246]">{row.act || "—"}</td>
+                                  <td className="px-4 py-3 text-[#243246]">{row.sections || "—"}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No acts or sections recorded.</p>
                       )}
-                      {caseData.courtComplex && (
-                        <p className="text-sm text-muted-foreground pl-6">Complex: {caseData.courtComplex}</p>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  <AccordionItem value="processes" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
+                    <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
+                      Processes
+                    </AccordionTrigger>
+                    <AccordionContent className="px-5 pb-5">
+                      {caseData.processes?.length > 0 ? (
+                        <div className="overflow-hidden rounded-2xl border border-[#d9e2ef]">
+                          <table className="w-full text-sm">
+                            <thead className="bg-[#eef3f9] text-left text-[#516076]">
+                              <tr>
+                                <th className="px-4 py-3 font-medium">Process ID</th>
+                                <th className="px-4 py-3 font-medium">Process Title</th>
+                                <th className="px-4 py-3 font-medium">Process Date</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {caseData.processes.map((processItem, index) => (
+                                <tr key={`process-sheet-${index}`} className="border-t border-[#d9e2ef]">
+                                  <td className="px-4 py-3 text-[#243246]">{processItem.processId || "—"}</td>
+                                  <td className="px-4 py-3 text-[#243246]">{processItem.processTitle || "—"}</td>
+                                  <td className="px-4 py-3 text-[#243246]">{formatDate(processItem.processDate)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No processes recorded.</p>
                       )}
-                    </div>
-                  </div>
+                    </AccordionContent>
+                  </AccordionItem>
 
-                  <Separator />
-   <div>
-                      <h3 className="text-sm font-medium text-foreground">Case Description</h3>
-                      <p className="mt-2 text-base text-muted-foreground">
-                        {caseData.description || "No case description provided yet."}
-                      </p>
-                    </div>
-                                        <Separator />
+                  <AccordionItem value="history" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
+                    <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
+                      Case history
+                    </AccordionTrigger>
+                    <AccordionContent className="px-5 pb-5">
+                      {hearingHistory.length > 0 ? (
+                        <div className="overflow-hidden rounded-2xl border border-[#d9e2ef]">
+                          <table className="w-full text-sm">
+                            <thead className="bg-[#eef3f9] text-left text-[#516076]">
+                              <tr>
+                                <th className="px-4 py-3 font-medium">Judge</th>
+                                <th className="px-4 py-3 font-medium">Business on Date</th>
+                                <th className="px-4 py-3 font-medium">Hearing Date</th>
+                                <th className="px-4 py-3 font-medium">Purpose of Hearing</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {hearingHistory.map((hearing) => (
+                                <tr key={hearing.id} className="border-t border-[#d9e2ef]">
+                                  <td className="px-4 py-3 text-[#243246]">{hearing.judge || "Not specified"}</td>
+                                  <td className="px-4 py-3">
+                                    <button
+                                      type="button"
+                                      onClick={() => openHistoryRecord(hearing)}
+                                      className="font-medium text-[#5775ac] underline-offset-4 hover:underline"
+                                    >
+                                      {formatDate(hearing.businessDate)}
+                                    </button>
+                                  </td>
+                                  <td className="px-4 py-3 text-[#243246]">{formatDate(hearing.date)}</td>
+                                  <td className="px-4 py-3 text-[#243246]">{hearing.purpose || "Not specified"}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No hearing history is available for this case yet.</p>
+                      )}
+                    </AccordionContent>
+                  </AccordionItem>
 
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-sm font-medium text-foreground">Case History</h3>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Hearing dates, purpose, proceedings, and current status.
-                      </p>
-                    </div>
+                  <AccordionItem value="orders" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
+                    <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
+                      Interim orders
+                    </AccordionTrigger>
+                    <AccordionContent className="px-5 pb-5">
+                      {interimOrders.length > 0 ? (
+                        <div className="overflow-hidden rounded-2xl border border-[#d9e2ef]">
+                          <table className="w-full text-sm">
+                            <thead className="bg-[#eef3f9] text-left text-[#516076]">
+                              <tr>
+                                <th className="px-4 py-3 font-medium">Order Number</th>
+                                <th className="px-4 py-3 font-medium">Order Date</th>
+                                <th className="px-4 py-3 font-medium">Order Details</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {interimOrders.map((order) => (
+                                <tr key={order.id} className="border-t border-[#d9e2ef]">
+                                  <td className="px-4 py-3 text-[#243246]">{order.orderNumber}</td>
+                                  <td className="px-4 py-3 text-[#243246]">{formatDate(order.orderDate)}</td>
+                                  <td className="px-4 py-3">
+                                    {order.document ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const documentUrl = getDocumentOpenUrl(order.document)
+                                          if (documentUrl) {
+                                            window.open(documentUrl, "_blank", "noopener,noreferrer")
+                                          }
+                                        }}
+                                        className="font-medium text-[#5775ac] underline-offset-4 hover:underline"
+                                      >
+                                        {order.orderDetails}
+                                      </button>
+                                    ) : (
+                                      <span className="text-muted-foreground">
+                                        {order.orderDetails || order.documentName || "Document not linked"}
+                                      </span>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No interim orders linked to this case.</p>
+                      )}
+                    </AccordionContent>
+                  </AccordionItem>
 
-                    {hearingHistory.length > 0 ? (
-                      <div className="rounded-lg border">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="w-14">#</TableHead>
-                              <TableHead className="min-w-[140px]">Hearing Date</TableHead>
-                              <TableHead className="min-w-[220px]">Purpose of Hearing</TableHead>
-                              <TableHead className="min-w-[280px]">Proceedings</TableHead>
-                              <TableHead className="min-w-[140px]">Status</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {hearingHistory.map((hearing) => (
-                              <TableRow
-                                key={hearing.id}
-                                role="button"
-                                tabIndex={0}
-                                onClick={() => openHistoryRecord(hearing)}
-                                onKeyDown={(event) => {
-                                  if (event.key === "Enter" || event.key === " ") {
-                                    event.preventDefault()
-                                    openHistoryRecord(hearing)
-                                  }
-                                }}
-                                className="cursor-pointer transition-colors hover:bg-[#03234b]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#03234b]/20"
-                              >
-                                <TableCell className="font-medium">{hearing.serialNumber}</TableCell>
-                                <TableCell>{formatDate(hearing.date)}</TableCell>
-                                <TableCell className="text-muted-foreground">
-                                  {hearing.purpose || "Not specified"}
-                                </TableCell>
-                                <TableCell className="max-w-[420px] whitespace-pre-wrap text-muted-foreground">
-                                  {hearing.proceedings || "No proceedings recorded yet."}
-                                </TableCell>
-                                <TableCell>
-                                  <Badge className={getStatusColor(hearing.status)}>
-                                    {hearing.status?.charAt(0).toUpperCase() + hearing.status?.slice(1)}
-                                  </Badge>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    ) : (
-                      <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                        No hearing history is available for this case yet.
-                      </div>
-                    )}
-                  </div>
-
-                  <>
-                 
-                  </>
-
-                  {caseData.actSections && (
-                    <>
-                      <Separator />
+                  <AccordionItem value="notes" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
+                    <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
+                      Notes and relief
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-4 px-5 pb-5">
                       <div>
-                        <h3 className="text-sm font-medium text-foreground">Act & Sections</h3>
-                        <p className="mt-2 text-base text-muted-foreground">{caseData.actSections}</p>
+                        <p className="text-sm font-medium text-[#243246]">Case description</p>
+                        <p className="mt-2 text-sm leading-7 text-[#6a778a]">
+                          {caseData.description || "No case description provided yet."}
+                        </p>
                       </div>
-                    </>
-                  )}
-
-                  {caseData.reliefSought && (
-                    <>
-                      <Separator />
-                      <div>
-                        <h3 className="text-sm font-medium text-foreground">Relief Sought</h3>
-                        <p className="mt-2 text-base text-muted-foreground">{caseData.reliefSought}</p>
-                      </div>
-                    </>
-                  )}
-
-                  {caseData.notes && (
-                    <>
-                      <Separator />
-                      <div>
-                        <h3 className="text-sm font-medium text-foreground">Additional Notes</h3>
-                        <p className="mt-2 text-base text-muted-foreground">{caseData.notes}</p>
-                      </div>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
+                      {caseData.reliefSought && (
+                        <div>
+                          <p className="text-sm font-medium text-[#243246]">Relief sought</p>
+                          <p className="mt-2 text-sm leading-7 text-[#6a778a]">{caseData.reliefSought}</p>
+                        </div>
+                      )}
+                      {caseData.notes && (
+                        <div>
+                          <p className="text-sm font-medium text-[#243246]">Additional notes</p>
+                          <p className="mt-2 text-sm leading-7 text-[#6a778a]">{caseData.notes}</p>
+                        </div>
+                      )}
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </div>
             </TabsContent>
 
             <TabsContent value="people">
@@ -1587,6 +1784,14 @@ export default function CaseDetailsPage() {
                   <span className="text-sm text-right">{formatDate(caseData.filingDate)}</span>
                 </div>
                 <div className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-4 gap-y-1">
+                  <h3 className="text-sm font-medium">Registration Date</h3>
+                  <span className="text-sm text-right">{formatDate(caseData.registrationDate)}</span>
+                </div>
+                <div className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-4 gap-y-1">
+                  <h3 className="text-sm font-medium">Registration No.</h3>
+                  <span className="text-sm text-right">{caseData.registrationNumber || "Not available"}</span>
+                </div>
+                <div className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-4 gap-y-1">
                   <h3 className="text-sm font-medium">First Hearing</h3>
                   <span className="text-sm text-right">{formatDate(firstHearingDate)}</span>
                 </div>
@@ -1773,16 +1978,81 @@ export default function CaseDetailsPage() {
           <DialogHeader>
             <DialogTitle>Record Hearing Proceedings</DialogTitle>
             <DialogDescription>
-              Document what happened at this hearing — orders passed, adjournments, arguments made, etc.
+              Capture the judge, business date, hearing purpose, business, and next listing details.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <Textarea
-              placeholder="Describe what happened at this hearing..."
-              value={outcomeValue}
-              onChange={e => setOutcomeValue(e.target.value)}
-              rows={6}
-            />
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="proceeding-judge">Judge</Label>
+                <Input
+                  id="proceeding-judge"
+                  value={proceedingForm.judge}
+                  onChange={(event) =>
+                    setProceedingForm((prev) => ({ ...prev, judge: event.target.value }))
+                  }
+                  placeholder="Enter judge name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="proceeding-business-date">Business on Date</Label>
+                <Input
+                  id="proceeding-business-date"
+                  type="date"
+                  value={proceedingForm.businessDate}
+                  onChange={(event) =>
+                    setProceedingForm((prev) => ({ ...prev, businessDate: event.target.value }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="proceeding-purpose">Purpose of Hearing</Label>
+              <Input
+                id="proceeding-purpose"
+                value={proceedingForm.purpose}
+                onChange={(event) =>
+                  setProceedingForm((prev) => ({ ...prev, purpose: event.target.value }))
+                }
+                placeholder="Enter purpose of hearing"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="proceeding-business">Business</Label>
+              <Textarea
+                id="proceeding-business"
+                placeholder="Describe what happened at this hearing..."
+                value={proceedingForm.outcome}
+                onChange={(event) =>
+                  setProceedingForm((prev) => ({ ...prev, outcome: event.target.value }))
+                }
+                rows={6}
+              />
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="proceeding-next-purpose">Next Purpose</Label>
+                <Input
+                  id="proceeding-next-purpose"
+                  value={proceedingForm.nextPurpose}
+                  onChange={(event) =>
+                    setProceedingForm((prev) => ({ ...prev, nextPurpose: event.target.value }))
+                  }
+                  placeholder="Enter next purpose"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="proceeding-next-hearing-date">Next Hearing Date</Label>
+                <Input
+                  id="proceeding-next-hearing-date"
+                  type="date"
+                  value={proceedingForm.nextHearingDate}
+                  onChange={(event) =>
+                    setProceedingForm((prev) => ({ ...prev, nextHearingDate: event.target.value }))
+                  }
+                />
+              </div>
+            </div>
             <Button onClick={handleSaveOutcome}>Save Proceedings</Button>
           </div>
         </DialogContent>
@@ -1802,18 +2072,19 @@ export default function CaseDetailsPage() {
               <div className="border-b border-[#03234b]/10 bg-gradient-to-b from-[#03234b]/[0.04] to-transparent px-6 py-6 sm:px-8">
                 <div className="space-y-2 text-center">
                   <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#03234b]/65">
-                    hearing record
+                    Daily Status
                   </p>
                   <h2 className="text-xl font-semibold tracking-tight text-[#03234b]">
                     {caseData.court || "Court details not available"}
                   </h2>
-                  <p className="text-sm text-muted-foreground">
-                    {caseData.courtComplex || caseData.district || "Case hearing details"}
-                  </p>
                 </div>
 
                 <div className="mt-6 grid gap-4 rounded-2xl border border-[#03234b]/10 bg-white/90 p-4 shadow-sm sm:grid-cols-2">
                   <div className="space-y-3">
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">In the court of</p>
+                      <p className="mt-1 text-sm text-foreground">{selectedHistoryRecord.judge || "Not available"}</p>
+                    </div>
                     <div>
                       <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">CNR number</p>
                       <p className="mt-1 font-mono text-sm text-foreground">{caseData.cnrNumber || "Not available"}</p>
@@ -1825,16 +2096,8 @@ export default function CaseDetailsPage() {
                   </div>
                   <div className="space-y-3 text-left sm:text-right">
                     <div>
-                      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Hearing date</p>
-                      <p className="mt-1 text-sm font-semibold text-foreground">{formatDate(selectedHistoryRecord.date)}</p>
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Status</p>
-                      <div className="mt-1">
-                        <Badge className={getStatusColor(selectedHistoryRecord.status)}>
-                          {selectedHistoryRecord.status?.charAt(0).toUpperCase() + selectedHistoryRecord.status?.slice(1)}
-                        </Badge>
-                      </div>
+                      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Date</p>
+                      <p className="mt-1 text-sm font-semibold text-foreground">{formatDate(selectedHistoryRecord.businessDate || selectedHistoryRecord.date)}</p>
                     </div>
                   </div>
                 </div>
@@ -1855,7 +2118,7 @@ export default function CaseDetailsPage() {
                     </div>
 
                     <div className="rounded-2xl border border-[#03234b]/10 bg-white p-5 shadow-sm">
-                      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Proceedings / business</p>
+                      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Business</p>
                       <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-foreground">
                         {selectedHistoryRecord.proceedings || "No proceedings were recorded for this hearing."}
                       </p>
@@ -1884,20 +2147,26 @@ export default function CaseDetailsPage() {
                           <dt className="text-muted-foreground">Filed on</dt>
                           <dd className="text-right font-medium text-foreground">{formatDate(caseData.filingDate)}</dd>
                         </div>
+                        <div className="flex items-start justify-between gap-4">
+                          <dt className="text-muted-foreground">Hearing date</dt>
+                          <dd className="text-right font-medium text-foreground">{formatDate(selectedHistoryRecord.date)}</dd>
+                        </div>
                       </dl>
                     </div>
 
                     <div className="rounded-2xl border border-dashed border-[#03234b]/20 bg-white p-5">
-                      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Next hearing</p>
+                      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Next purpose</p>
+                      <p className="mt-3 text-sm text-muted-foreground">
+                        {selectedHistoryRecord.nextPurpose || "Purpose not specified yet"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-dashed border-[#03234b]/20 bg-white p-5">
+                      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Next hearing date</p>
                       {selectedHistoryRecord.nextHearingDate ? (
-                        <div className="mt-3 space-y-2">
-                          <p className="text-base font-semibold text-[#03234b]">
-                            {formatDate(selectedHistoryRecord.nextHearingDate)}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {selectedHistoryRecord.nextHearingPurpose || "Purpose not specified yet"}
-                          </p>
-                        </div>
+                        <p className="mt-3 text-base font-semibold text-[#03234b]">
+                          {formatDate(selectedHistoryRecord.nextHearingDate)}
+                        </p>
                       ) : (
                         <p className="mt-3 text-sm text-muted-foreground">
                           No next hearing has been recorded after this hearing yet.

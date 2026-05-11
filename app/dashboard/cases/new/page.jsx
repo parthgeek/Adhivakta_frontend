@@ -394,6 +394,9 @@ export default function NewCasePage() {
       courtComplex: "",
       eCourt: DEFAULT_ECOURT_SELECTION,
       filingDate: new Date(),
+      registrationDate: null,
+      registrationNumber: "",
+      registrationSameAsFilingDate: false,
       nextHearingDate: null,
       petitionerRole: "Petitioner",
       petitionerType: "Individual",
@@ -413,6 +416,7 @@ export default function NewCasePage() {
       notes: "",
       processes: [],
       iaStatuses: [],
+      interimOrders: [],
       advocates: [],
       clients: [],
       stakeholders: [],
@@ -1221,6 +1225,10 @@ export default function NewCasePage() {
         filingDate: caseData.filingDate
           ? new Date(caseData.filingDate).toISOString()
           : new Date().toISOString(),
+        registrationDate: caseData.registrationDate
+          ? new Date(caseData.registrationDate).toISOString()
+          : null,
+        registrationNumber: normalizeValue(caseData.registrationNumber),
         nextHearingDate: caseData.nextHearingDate
           ? new Date(caseData.nextHearingDate).toISOString()
           : null,
@@ -1286,6 +1294,15 @@ export default function NewCasePage() {
             : null,
           nextDatePurpose: normalizeValue(iaItem.nextDatePurpose),
           status: normalizeValue(iaItem.status),
+        })),
+        interimOrders: (caseData.interimOrders || []).map((orderItem) => ({
+          orderNumber: normalizeValue(orderItem.orderNumber),
+          orderDate: orderItem.orderDate
+            ? new Date(orderItem.orderDate).toISOString()
+            : null,
+          orderDetails: normalizeValue(orderItem.orderDetails),
+          documentId: normalizeValue(orderItem.documentId),
+          documentName: normalizeValue(orderItem.documentName),
         })),
 
         // Role-specific data
@@ -1780,6 +1797,23 @@ export default function NewCasePage() {
           });
           return prev;
         }
+
+        if (prev.registrationSameAsFilingDate) {
+          newData.registrationDate = date;
+        }
+      }
+
+      if (name === "registrationDate" && date) {
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+        if (new Date(date) > today) {
+          toast({
+            title: "Validation Error",
+            description: "Registration date cannot be in the future",
+            variant: "destructive",
+          });
+          return prev;
+        }
       }
 
       return newData;
@@ -1787,7 +1821,17 @@ export default function NewCasePage() {
   };
 
   const handleCheckboxChange = (name, checked) => {
-    setCaseData((prev) => ({ ...prev, [name]: checked }));
+    setCaseData((prev) => {
+      if (name === "registrationSameAsFilingDate") {
+        return {
+          ...prev,
+          registrationSameAsFilingDate: Boolean(checked),
+          registrationDate: checked ? prev.filingDate || new Date() : prev.registrationDate,
+        };
+      }
+
+      return { ...prev, [name]: checked };
+    });
   };
 
   const handleFileChange = (e) => {

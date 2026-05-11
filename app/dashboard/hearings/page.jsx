@@ -7,6 +7,7 @@ import api from "@/services/api";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -131,6 +132,26 @@ const isFutureHearing = (value) => {
   return Boolean(date && date.getTime() > Date.now());
 };
 
+const toDateInputValue = (value) => {
+  const date = toDate(value);
+  if (!date) {
+    return "";
+  }
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const proceedingFormFromHearing = (hearing) => ({
+  judge: hearing?.judge || "",
+  businessDate: toDateInputValue(hearing?.businessDate || hearing?.start || hearing?.date),
+  purpose: hearing?.purpose || hearing?.description || "",
+  outcome: hearing?.outcome || "",
+  nextPurpose: hearing?.nextPurpose || "",
+  nextHearingDate: toDateInputValue(hearing?.nextHearingDate),
+});
+
 export default function HearingsPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -147,7 +168,9 @@ export default function HearingsPage() {
   const [showProceedingsDialog, setShowProceedingsDialog] = useState(false);
   const [showViewProceedingsDialog, setShowViewProceedingsDialog] = useState(false);
   const [selectedHearing, setSelectedHearing] = useState(null);
-  const [proceedingsValue, setProceedingsValue] = useState("");
+  const [proceedingForm, setProceedingForm] = useState(() =>
+    proceedingFormFromHearing(null)
+  );
   const [savingProceedings, setSavingProceedings] = useState(false);
 
   const isLawyer = user?.role === "lawyer" || user?.role === "admin";
@@ -233,6 +256,7 @@ export default function HearingsPage() {
         id: event._id || event.id,
         sourceId: event._id || event.id,
         caseId,
+        cnrNumber: caseObj?.cnrNumber || "",
         isCaseHearing: false,
         caseNumber: event.caseNumber || caseObj?.caseNumber || caseObj?.number || "N/A",
         caseName: defaultCaseName,
@@ -253,6 +277,10 @@ export default function HearingsPage() {
         advocate,
         client,
         notes: event.description || "",
+        purpose: event.purpose || event.description || "",
+        businessDate: event.businessDate || event.start,
+        nextPurpose: event.nextPurpose || "",
+        nextHearingDate: event.nextHearingDate || null,
         description: event.description || "",
         outcome: event.outcome || "",
         start: event.start,
@@ -296,6 +324,7 @@ export default function HearingsPage() {
         id: `case-${caseId}`,
         sourceId: null,
         caseId,
+        cnrNumber: caseItem.cnrNumber || "",
         isCaseHearing: true,
         caseNumber: caseItem.caseNumber || caseItem.number || "N/A",
         caseName:
@@ -322,6 +351,10 @@ export default function HearingsPage() {
         advocate,
         client,
         notes: "Hearing scheduled from case timeline.",
+        purpose: "Hearing scheduled from case timeline.",
+        businessDate: nextHearing,
+        nextPurpose: "",
+        nextHearingDate: null,
         description: "Hearing scheduled from case timeline.",
         outcome: "",
         start: nextHearing,
@@ -472,7 +505,7 @@ export default function HearingsPage() {
 
   const handleEditProceedings = (hearing) => {
     setSelectedHearing(hearing);
-    setProceedingsValue(hearing.outcome || "");
+    setProceedingForm(proceedingFormFromHearing(hearing));
     setShowProceedingsDialog(true);
   };
 
@@ -499,6 +532,9 @@ export default function HearingsPage() {
     setSavingProceedings(true);
 
     try {
+      const nextHearingDate = proceedingForm.nextHearingDate
+        ? new Date(`${proceedingForm.nextHearingDate}T00:00:00`)
+        : null;
       const payload = {
         title: selectedHearing.eventTitle || `Hearing for ${selectedHearing.caseName}`,
         start: hearingStart.toISOString(),
@@ -508,8 +544,19 @@ export default function HearingsPage() {
         type: "hearing",
         case: selectedHearing.caseId,
         location: selectedHearing.location || selectedHearing.court || "Courtroom",
-        description: selectedHearing.description || selectedHearing.notes || "Recorded from hearings page",
-        outcome: proceedingsValue,
+        description:
+          proceedingForm.purpose.trim() ||
+          selectedHearing.description ||
+          selectedHearing.notes ||
+          "Recorded from hearings page",
+        outcome: proceedingForm.outcome,
+        judge: proceedingForm.judge.trim(),
+        businessDate: proceedingForm.businessDate
+          ? new Date(`${proceedingForm.businessDate}T00:00:00`).toISOString()
+          : null,
+        purpose: proceedingForm.purpose.trim(),
+        nextPurpose: proceedingForm.nextPurpose.trim(),
+        nextHearingDate: nextHearingDate ? nextHearingDate.toISOString() : null,
         status: selectedHearing.status || "completed",
       };
 
@@ -521,7 +568,7 @@ export default function HearingsPage() {
 
       setShowProceedingsDialog(false);
       setSelectedHearing(null);
-      setProceedingsValue("");
+      setProceedingForm(proceedingFormFromHearing(null));
       await fetchHearingsAndCases();
       toast({
         title: "Success",
@@ -943,16 +990,81 @@ export default function HearingsPage() {
               {selectedHearing?.outcome ? "Edit Proceeding" : "Add Proceeding"}
             </DialogTitle>
             <DialogDescription>
-              Record what happened during this hearing.
+              Capture the judge, business date, purpose, business, and next listing details.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <Textarea
-              rows={6}
-              placeholder="Describe what happened during this hearing..."
-              value={proceedingsValue}
-              onChange={(event) => setProceedingsValue(event.target.value)}
-            />
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="hearing-proceeding-judge">Judge</Label>
+                <Input
+                  id="hearing-proceeding-judge"
+                  value={proceedingForm.judge}
+                  onChange={(event) =>
+                    setProceedingForm((prev) => ({ ...prev, judge: event.target.value }))
+                  }
+                  placeholder="Enter judge name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="hearing-proceeding-business-date">Business on Date</Label>
+                <Input
+                  id="hearing-proceeding-business-date"
+                  type="date"
+                  value={proceedingForm.businessDate}
+                  onChange={(event) =>
+                    setProceedingForm((prev) => ({ ...prev, businessDate: event.target.value }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="hearing-proceeding-purpose">Purpose of Hearing</Label>
+              <Input
+                id="hearing-proceeding-purpose"
+                value={proceedingForm.purpose}
+                onChange={(event) =>
+                  setProceedingForm((prev) => ({ ...prev, purpose: event.target.value }))
+                }
+                placeholder="Enter purpose of hearing"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="hearing-proceeding-business">Business</Label>
+              <Textarea
+                id="hearing-proceeding-business"
+                rows={6}
+                placeholder="Describe what happened during this hearing..."
+                value={proceedingForm.outcome}
+                onChange={(event) =>
+                  setProceedingForm((prev) => ({ ...prev, outcome: event.target.value }))
+                }
+              />
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="hearing-proceeding-next-purpose">Next Purpose</Label>
+                <Input
+                  id="hearing-proceeding-next-purpose"
+                  value={proceedingForm.nextPurpose}
+                  onChange={(event) =>
+                    setProceedingForm((prev) => ({ ...prev, nextPurpose: event.target.value }))
+                  }
+                  placeholder="Enter next purpose"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="hearing-proceeding-next-hearing-date">Next Hearing Date</Label>
+                <Input
+                  id="hearing-proceeding-next-hearing-date"
+                  type="date"
+                  value={proceedingForm.nextHearingDate}
+                  onChange={(event) =>
+                    setProceedingForm((prev) => ({ ...prev, nextHearingDate: event.target.value }))
+                  }
+                />
+              </div>
+            </div>
             <Button onClick={handleSaveProceedings} disabled={savingProceedings}>
               {savingProceedings ? "Saving..." : "Save Proceedings"}
             </Button>
@@ -966,13 +1078,44 @@ export default function HearingsPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Proceedings</DialogTitle>
+            <DialogTitle>Daily Status</DialogTitle>
             <DialogDescription>
               {selectedHearing?.caseName || "Hearing details"}
             </DialogDescription>
           </DialogHeader>
-          <div className="text-sm whitespace-pre-wrap text-foreground leading-relaxed">
-            {selectedHearing?.outcome || "No proceedings recorded for this hearing."}
+          <div className="space-y-4 text-sm text-foreground">
+            <div>
+              <p className="font-medium">{selectedHearing?.court || "Court details not available"}</p>
+              <p className="text-muted-foreground">In the court of: {selectedHearing?.judge || "Not available"}</p>
+            </div>
+            <div className="grid gap-2 md:grid-cols-2">
+              <p>CNR Number: {selectedHearing?.cnrNumber || "Not available"}</p>
+              <p>Case Number: {formatDisplayCaseNumber({ caseNumber: selectedHearing?.caseNumber }) || selectedHearing?.caseNumber || "Not available"}</p>
+              <p>Date: {selectedHearing?.businessDate ? new Date(selectedHearing.businessDate).toLocaleDateString() : "Not available"}</p>
+              <p>Hearing Date: {selectedHearing?.date ? new Date(selectedHearing.date).toLocaleDateString() : "Not available"}</p>
+            </div>
+            <div>
+              <p className="font-medium">Purpose</p>
+              <p className="text-muted-foreground">{selectedHearing?.purpose || "Not specified"}</p>
+            </div>
+            <div>
+              <p className="font-medium">Business</p>
+              <p className="whitespace-pre-wrap text-muted-foreground">
+                {selectedHearing?.outcome || "No proceedings recorded for this hearing."}
+              </p>
+            </div>
+            <div>
+              <p className="font-medium">Next Purpose</p>
+              <p className="text-muted-foreground">{selectedHearing?.nextPurpose || "Not specified"}</p>
+            </div>
+            <div>
+              <p className="font-medium">Next Hearing Date</p>
+              <p className="text-muted-foreground">
+                {selectedHearing?.nextHearingDate
+                  ? new Date(selectedHearing.nextHearingDate).toLocaleDateString()
+                  : "Not available"}
+              </p>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

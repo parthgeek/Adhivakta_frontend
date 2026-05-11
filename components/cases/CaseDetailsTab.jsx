@@ -197,6 +197,51 @@ export default function CaseDetailsTab({
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="registrationNumber" className={getLabelClassName("registrationNumber")}>
+                Registration Number
+              </Label>
+              <Input
+                id="registrationNumber"
+                name="registrationNumber"
+                value={caseData.registrationNumber || ""}
+                onChange={handleChange}
+                placeholder="Enter registration number"
+                className={getInputClassName("registrationNumber")}
+              />
+              {getFieldError("registrationNumber") && (
+                <p className="text-sm text-red-700">{getFieldError("registrationNumber")}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="registrationDate" className={getLabelClassName("registrationDate")}>
+                Registration Date
+              </Label>
+              <DatePicker
+                id="registrationDate"
+                selected={caseData.registrationDate}
+                onSelect={(date) => handleDateChange("registrationDate", date)}
+                disabled={caseData.registrationSameAsFilingDate}
+                className={getInputClassName("registrationDate")}
+              />
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="registrationSameAsFilingDate"
+                  checked={caseData.registrationSameAsFilingDate}
+                  onCheckedChange={(checked) =>
+                    handleCheckboxChange("registrationSameAsFilingDate", checked)
+                  }
+                />
+                <Label htmlFor="registrationSameAsFilingDate">Same as filing date</Label>
+              </div>
+              {getFieldError("registrationDate") && (
+                <p className="text-sm text-red-700">{getFieldError("registrationDate")}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="nextHearingDate" className={getLabelClassName("nextHearingDate")}>
                 First Hearing Date <span className="text-red-500">*</span>
               </Label>
