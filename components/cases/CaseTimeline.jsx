@@ -88,6 +88,7 @@ function EventText({ ev, align }) {
 
 export default function CaseTimeline({ caseData }) {
   const events = useMemo(() => buildEvents(caseData), [caseData]);
+  const displayEvents = useMemo(() => [...events].reverse(), [events]);
   const [open, setOpen] = useState(true);
 
   return (
@@ -101,9 +102,9 @@ export default function CaseTimeline({ caseData }) {
             <CardTitle className="text-sm">Case Timeline</CardTitle>
             {open && (
               <CardDescription className="text-xs mt-0.5">
-                {events.length === 0
+                {displayEvents.length === 0
                   ? "No events yet."
-                  : "Key events from filing to current status."}
+                  : "Latest event at the top, filing point at the bottom."}
               </CardDescription>
             )}
           </div>
@@ -114,13 +115,19 @@ export default function CaseTimeline({ caseData }) {
         </div>
       </CardHeader>
 
-      {open && events.length > 0 && (
+      {open && displayEvents.length > 0 && (
         <CardContent className="pt-0">
           <div className="relative py-2">
             <div className="absolute left-1/2 top-0 bottom-0 w-px -translate-x-1/2 bg-border" />
             <ul className="space-y-4">
-              {events.map((ev, idx) => {
+              {displayEvents.map((ev, idx) => {
                 const left = idx % 2 === 0;
+                const markerClassName =
+                  ev.key === "closed"
+                    ? "bg-red-500"
+                    : ev.key === "filing"
+                      ? "bg-green-500"
+                      : "bg-[#03234b]";
                 return (
                   <li
                     key={ev.key}
@@ -128,8 +135,7 @@ export default function CaseTimeline({ caseData }) {
                   >
                     {left ? <EventText ev={ev} align="right" /> : <div />}
                     <div
-                      className="relative z-10 h-3 w-3 rounded-full ring-2 ring-white"
-                      style={{ backgroundColor: "#03234b" }}
+                      className={`relative z-10 h-3 w-3 rounded-full ring-2 ring-white ${markerClassName}`}
                     />
                     {!left ? <EventText ev={ev} align="left" /> : <div />}
                   </li>

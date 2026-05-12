@@ -17,6 +17,14 @@ import api from "@/services/api";
 import { Badge } from "@/components/ui/badge";
 import TransferHistoryTab from "@/components/cases/TransferHistoryTab";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   buildCaseNumber,
   getEcourtCaseTypeReference,
   normalizeFormattedCaseNumber,
@@ -126,6 +134,7 @@ export default function EditCasePage() {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploadProgress, setUploadProgress] = useState({});
   const [hasEditAccess, setHasEditAccess] = useState(false);
+  const [showFinalOrderPrompt, setShowFinalOrderPrompt] = useState(false);
   useEffect(() => {
     if (user) {
       setIsLawyer(user?.role === 'lawyer' || user?.role === 'admin');
@@ -213,9 +222,11 @@ export default function EditCasePage() {
           firYear: d.firYear || "",
           reliefSought: d.reliefSought || "",
           notes: d.notes || "",
+          closedAt: d.closedAt ? new Date(d.closedAt) : null,
           processes: d.processes || [],
           iaStatuses: d.iaStatuses || [],
           interimOrders: d.interimOrders || [],
+          finalOrders: d.finalOrders || [],
           advocates: d.advocates || [],
           clients: d.clients || [],
           stakeholders: d.stakeholders || [],
@@ -283,6 +294,21 @@ export default function EditCasePage() {
   };
 
   const handleSelectChange = (name, value) => {
+    if (name === "status" && value === "closed" && caseData?.status !== "closed") {
+      setShowFinalOrderPrompt(true);
+      return;
+    }
+
+    if (name === "status" && value !== "closed") {
+      setCaseData((prev) => ({
+        ...prev,
+        status: value,
+        closedAt: null,
+        ...(name === "caseType" ? { caseSubType: "" } : {}),
+      }));
+      return;
+    }
+
     if (name === "caseYear") {
       setCaseData((prev) => ({
         ...prev,
@@ -301,6 +327,20 @@ export default function EditCasePage() {
       [name]: value,
       ...(name === "caseType" ? { caseSubType: "" } : {}),
     }));
+  };
+
+  const handleCloseStatusConfirm = () => {
+    setCaseData((prev) => ({
+      ...prev,
+      status: "closed",
+      closedAt: prev.closedAt || new Date(),
+    }));
+    setShowFinalOrderPrompt(false);
+    setActiveTab("transfer");
+    toast({
+      title: "Add final judgment",
+      description: "Complete the Final order / judgment section before saving the closed case.",
+    });
   };
 
   const handleDateChange = (name, value) => {
@@ -417,6 +457,16 @@ export default function EditCasePage() {
     if (e && e.preventDefault) e.preventDefault();
     if (!caseData) return;
 
+    if (caseData.status === "closed" && (!caseData.finalOrders || caseData.finalOrders.length === 0)) {
+      setActiveTab("transfer");
+      toast({
+        title: "Final judgment required",
+        description: "Add at least one Final order / judgment entry before saving a closed case.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const normalizedDescription = normalizeText(caseData.description);
     const normalizedCaseNumber = normalizeFormattedCaseNumber(caseData.caseNumber);
     if (!normalizedDescription) {
@@ -525,6 +575,12 @@ export default function EditCasePage() {
           caseType: caseData.caseType,
           caseSubType: caseData.caseSubType || "",
           status: caseData.status || "active",
+          closedAt:
+            caseData.status === "closed"
+              ? caseData.closedAt
+                ? new Date(caseData.closedAt).toISOString()
+                : new Date().toISOString()
+              : null,
           courtState: caseData.courtState,
           district: caseData.district,
           bench: caseData.bench,
@@ -563,6 +619,15 @@ export default function EditCasePage() {
             status: normalizeText(iaItem.status),
           })),
           interimOrders: (caseData.interimOrders || []).map((orderItem) => ({
+            orderNumber: normalizeText(orderItem.orderNumber),
+            orderDate: orderItem.orderDate
+              ? new Date(orderItem.orderDate).toISOString()
+              : null,
+            orderDetails: normalizeText(orderItem.orderDetails),
+            documentId: normalizeText(orderItem.documentId),
+            documentName: normalizeText(orderItem.documentName),
+          })),
+          finalOrders: (caseData.finalOrders || []).map((orderItem) => ({
             orderNumber: normalizeText(orderItem.orderNumber),
             orderDate: orderItem.orderDate
               ? new Date(orderItem.orderDate).toISOString()
@@ -1675,6 +1740,22 @@ export default function EditCasePage() {
         </div>
         {/* Optionally, add a Case Filing Guide or sidebar as in the new case page */}
       </div>
+      <Dialog open={showFinalOrderPrompt} onOpenChange={setShowFinalOrderPrompt}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Case is being closed</DialogTitle>
+            <DialogDescription>
+              Closed cases require a Final order / judgment entry. Continue to the judgment section now.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowFinalOrderPrompt(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCloseStatusConfirm}>Add Judgment</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

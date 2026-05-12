@@ -98,6 +98,10 @@ function parseActRows(actsValue = "") {
 
 function buildCasePDF(raw) {
   const legalTeam = getCaseLegalTeam(raw);
+  const logoSrc =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/images/adhi_logo_main.png`
+      : "/images/adhi_logo_main.png";
 
   // ── Core fields ───────────────────────────────────────────────────
   const title = raw.title || "Untitled Case";
@@ -260,13 +264,27 @@ function buildCasePDF(raw) {
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11.5px; color: #1a1a1a; background: #fff; }
-    .page { padding: 36px 40px; max-width: 940px; margin: 0 auto; }
+    .page { position: relative; padding: 36px 40px 72px; max-width: 940px; margin: 0 auto; }
 
     .doc-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 16px; border-bottom: 2.5px solid #1a2332; margin-bottom: 20px; }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .brand-logo { width: 52px; height: 52px; object-fit: contain; }
     .brand-name { font-size: 22px; font-weight: 800; color: #1a2332; letter-spacing: 1px; }
     .brand-sub  { font-size: 10px; color: #888; font-weight: 400; margin-top: 2px; letter-spacing: 0.5px; }
     .doc-meta   { text-align: right; font-size: 10px; color: #666; line-height: 1.7; }
     .doc-meta strong { color: #1a2332; }
+    .watermark {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 320px;
+      height: 320px;
+      transform: translate(-50%, -50%);
+      opacity: 0.06;
+      z-index: 0;
+      object-fit: contain;
+      pointer-events: none;
+    }
 
     .case-title-block { background: #f4f6fb; border-left: 4px solid #1a2332; padding: 14px 18px; border-radius: 0 6px 6px 0; margin-bottom: 24px; }
     .case-title-block h1 { font-size: 16px; font-weight: 700; color: #1a2332; line-height: 1.3; }
@@ -277,7 +295,7 @@ function buildCasePDF(raw) {
     .status-closed   { background: #f1f5f9; color: #475569; }
     .status-disposed { background: #fee2e2; color: #991b1b; }
 
-    .section { margin-bottom: 22px; page-break-inside: avoid; }
+    .section { position: relative; z-index: 1; margin-bottom: 22px; page-break-inside: avoid; }
     .section-title { font-size: 10px; font-weight: 700; color: #1a2332; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; padding-bottom: 4px; border-bottom: 1px solid #e2e8f0; }
 
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; }
@@ -300,23 +318,44 @@ function buildCasePDF(raw) {
     .htable tr.even td { background: #f8f9fb; }
     .htable tr.odd  td { background: #fff; }
 
-    .doc-footer { margin-top: 32px; padding-top: 12px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 9.5px; color: #bbb; }
+    .doc-header,
+    .case-title-block,
+    .doc-footer { position: relative; z-index: 1; }
+    .doc-footer { margin-top: 32px; padding-top: 12px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 9.5px; color: #6b7280; }
+    .print-footer {
+      position: fixed;
+      left: 12mm;
+      right: 12mm;
+      bottom: 6mm;
+      display: flex;
+      justify-content: center;
+      font-size: 9px;
+      color: #6b7280;
+      border-top: 1px solid #dbe1ea;
+      padding-top: 6px;
+      background: #fff;
+      z-index: 2;
+    }
 
     @media print {
       body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .page { padding: 20px 24px; }
+      .page { padding: 20px 24px 64px; }
       @page { margin: 12mm; size: A4 portrait; }
       .section { page-break-inside: avoid; }
     }
   </style>
 </head>
 <body>
+<img class="watermark" src="${logoSrc}" alt="Adhivakta watermark" />
 <div class="page">
 
   <div class="doc-header">
-    <div>
-      <div class="brand-name">ADHIVAKTA</div>
-      <div class="brand-sub">LEGAL CASE MANAGEMENT</div>
+    <div class="brand">
+      <img class="brand-logo" src="${logoSrc}" alt="Adhivakta logo" />
+      <div>
+        <div class="brand-name">ADHIVAKTA</div>
+        <div class="brand-sub">LEGAL CASE MANAGEMENT</div>
+      </div>
     </div>
     <div class="doc-meta">
       <div><strong>Case Information Report</strong></div>
@@ -377,11 +416,12 @@ function buildCasePDF(raw) {
   ${transferHistory.length ? section("Transfer History", transferHtml) : ""}
 
   <div class="doc-footer">
-    <span>Adhivakta Legal Case Management</span>
+    <span>&copy; ${new Date().getFullYear()} Adhivakta</span>
     <span>${title} &mdash; ${number}</span>
   </div>
 
 </div>
+<div class="print-footer">&copy; ${new Date().getFullYear()} Adhivakta. All rights reserved.</div>
 <script>window.onload = () => { window.print(); }</script>
 </body>
 </html>`;
@@ -616,9 +656,36 @@ export default function CasesPage() {
 
   const handleExportCase = (raw) => {
     const html = buildCasePDF(raw);
-    const win = window.open("", "_blank");
-    win.document.write(html);
-    win.document.close();
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    iframe.setAttribute("aria-hidden", "true");
+
+    const cleanup = () => {
+      window.setTimeout(() => {
+        iframe.remove();
+      }, 1000);
+    };
+
+    iframe.onload = () => {
+      const frameWindow = iframe.contentWindow;
+      if (!frameWindow) {
+        cleanup();
+        return;
+      }
+
+      frameWindow.onafterprint = cleanup;
+      frameWindow.focus();
+      frameWindow.print();
+    };
+
+    iframe.srcdoc = html;
+    document.body.appendChild(iframe);
+
     setExportOpen(false);
     setExportSearch("");
   };

@@ -109,6 +109,18 @@ const buildActRows = (value = "") =>
       }
     })
 
+const getPersonDisplayName = (person) => {
+  if (!person) return "—"
+  if (typeof person === "string") return person.trim() || "—"
+  return person.name || person.fullName || "—"
+}
+
+const joinNames = (people = []) => {
+  if (!Array.isArray(people) || people.length === 0) return "—"
+  const names = people.map((person) => getPersonDisplayName(person)).filter(Boolean)
+  return names.length > 0 ? names.join(", ") : "—"
+}
+
 const resolveOrderDocument = (order, documents = []) => {
   const documentId = String(order?.documentId || "")
   const documentName = String(order?.documentName || "").trim().toLowerCase()
@@ -654,8 +666,26 @@ export default function CaseDetailsPage() {
     }))
   }, [caseData?.interimOrders, documents])
 
+  const finalOrders = useMemo(() => {
+    return (caseData?.finalOrders || []).map((order, index) => ({
+      id: `${order?.documentId || order?.documentName || "final-order"}-${index}`,
+      orderNumber: order?.orderNumber || String(index + 1),
+      orderDate: order?.orderDate || null,
+      orderDetails: order?.orderDetails || "Final judgment copy",
+      document: resolveOrderDocument(order, documents),
+      documentName: order?.documentName || "",
+    }))
+  }, [caseData?.finalOrders, documents])
+
   const petitionerList = caseData?.parties?.petitioner || []
   const respondentList = caseData?.parties?.respondent || []
+  const petitionerAdvocate = caseData?.advocates?.[0]?.name || caseData?.lawyers?.[0]?.name || "Not assigned"
+  const respondentAdvocateNames = respondentList
+    .map((party) => party?.opposingCounsel)
+    .filter(Boolean)
+  const respondentAdvocate = respondentAdvocateNames.length > 0
+    ? Array.from(new Set(respondentAdvocateNames)).join(", ")
+    : "Not specified"
 
   const handleDeleteCase = async () => {
     if (deleteConfirmation !== caseData.title) {
@@ -860,46 +890,45 @@ export default function CaseDetailsPage() {
 
                   <AccordionItem value="parties" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
                     <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
-                      Petitioner and advocate
+                      Parties and advocates
                     </AccordionTrigger>
-                    <AccordionContent className="space-y-4 px-5 pb-5">
-                      <div className="rounded-2xl border border-[#d9e2ef] bg-[#f7f9fc] p-4">
-                        {petitionerList.length > 0 ? (
-                          petitionerList.map((party, index) => (
-                            <div key={`petitioner-sheet-${index}`} className="rounded-xl bg-white/70 px-4 py-3">
-                              <p className="text-sm font-semibold uppercase tracking-[0.08em] text-[#243246]">
-                                {index + 1}) {party.name}
-                              </p>
-                              <p className="mt-1 text-sm text-[#6a778a]">
-                                Advocate - {caseData.advocates?.[0]?.name || caseData.lawyers?.[0]?.name || "Not assigned"}
-                              </p>
-                            </div>
-                          ))
-                        ) : (
-                          <p className="text-sm text-muted-foreground">No petitioner information available.</p>
-                        )}
-                      </div>
-                      <div>
-                        <p className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c]">
-                          Respondent and advocate
-                        </p>
-                        <div className="rounded-2xl border border-[#d9e2ef] bg-[#f7f9fc] p-4">
-                          {respondentList.length > 0 ? (
-                            respondentList.map((party, index) => (
-                              <div key={`respondent-sheet-${index}`} className="rounded-xl bg-white/70 px-4 py-3">
-                                <p className="text-sm font-semibold uppercase tracking-[0.08em] text-[#243246]">
-                                  {index + 1}) {party.name}
-                                </p>
-                                <p className="mt-1 text-sm text-[#6a778a]">
-                                  Advocate - {party.opposingCounsel || "Not specified"}
-                                </p>
-                              </div>
-                            ))
-                          ) : (
-                            <p className="text-sm text-muted-foreground">No respondent information available.</p>
-                          )}
+                    <AccordionContent className="px-5 pb-5">
+                      {petitionerList.length > 0 || respondentList.length > 0 ? (
+                        <div className="overflow-hidden rounded-2xl border border-[#d9e2ef]">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-[#eef3f9] hover:bg-[#eef3f9]">
+                                <TableHead className="w-[28%] text-[#516076]">Petitioner</TableHead>
+                                <TableHead className="w-[28%] text-[#516076]">Advocate</TableHead>
+                                <TableHead className="w-20 text-center text-[#516076]">VS</TableHead>
+                                <TableHead className="w-[28%] text-[#516076]">Respondent</TableHead>
+                                <TableHead className="w-[28%] text-[#516076]">Advocate</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              <TableRow>
+                                <TableCell className="align-top font-medium text-[#243246]">
+                                  {joinNames(petitionerList)}
+                                </TableCell>
+                                <TableCell className="align-top text-[#243246]">
+                                  {petitionerAdvocate}
+                                </TableCell>
+                                <TableCell className="align-top text-center font-semibold uppercase tracking-[0.18em] text-[#5775ac]">
+                                  vs
+                                </TableCell>
+                                <TableCell className="align-top font-medium text-[#243246]">
+                                  {joinNames(respondentList)}
+                                </TableCell>
+                                <TableCell className="align-top text-[#243246]">
+                                  {respondentAdvocate}
+                                </TableCell>
+                              </TableRow>
+                            </TableBody>
+                          </Table>
                         </div>
-                      </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No party information available.</p>
+                      )}
                     </AccordionContent>
                   </AccordionItem>
 
@@ -1057,6 +1086,59 @@ export default function CaseDetailsPage() {
                       )}
                     </AccordionContent>
                   </AccordionItem>
+
+                  {caseData.status === "closed" && (
+                    <AccordionItem value="final-orders" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
+                      <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
+                        Final order / judgment
+                      </AccordionTrigger>
+                      <AccordionContent className="px-5 pb-5">
+                        {finalOrders.length > 0 ? (
+                          <div className="overflow-hidden rounded-2xl border border-[#d9e2ef]">
+                            <table className="w-full text-sm">
+                              <thead className="bg-[#eef3f9] text-left text-[#516076]">
+                                <tr>
+                                  <th className="px-4 py-3 font-medium">Order Number</th>
+                                  <th className="px-4 py-3 font-medium">Order Date</th>
+                                  <th className="px-4 py-3 font-medium">Order Details</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {finalOrders.map((order) => (
+                                  <tr key={order.id} className="border-t border-[#d9e2ef]">
+                                    <td className="px-4 py-3 text-[#243246]">{order.orderNumber}</td>
+                                    <td className="px-4 py-3 text-[#243246]">{formatDate(order.orderDate)}</td>
+                                    <td className="px-4 py-3">
+                                      {order.document ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const documentUrl = getDocumentOpenUrl(order.document)
+                                            if (documentUrl) {
+                                              window.open(documentUrl, "_blank", "noopener,noreferrer")
+                                            }
+                                          }}
+                                          className="font-medium text-[#5775ac] underline-offset-4 hover:underline"
+                                        >
+                                          {order.orderDetails}
+                                        </button>
+                                      ) : (
+                                        <span className="text-muted-foreground">
+                                          {order.orderDetails || order.documentName || "Document not linked"}
+                                        </span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">No final order or judgment linked to this closed case.</p>
+                        )}
+                      </AccordionContent>
+                    </AccordionItem>
+                  )}
 
                   <AccordionItem value="notes" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
                     <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
@@ -1282,78 +1364,78 @@ export default function CaseDetailsPage() {
                   {(caseData.parties?.petitioner?.length > 0 || caseData.parties?.respondent?.length > 0) && (
                     <div className="mb-6">
                       <h3 className="text-md font-semibold mb-3 text-gray-700">Case Parties</h3>
-                      
-                      {/* Petitioners */}
-                      {caseData.parties.petitioner?.length > 0 && (
-                        <div className="mb-4">
-                          <h4 className="text-sm font-medium mb-2 text-gray-600">Petitioners</h4>
-                          <div className="space-y-2">
-                            {caseData.parties.petitioner.map((party, index) => (
-                              <div key={`petitioner-${index}`} className="p-3 border rounded-lg bg-white shadow-sm">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <User className="h-4 w-4 text-purple-600" />
-                                      <p className="font-medium text-sm">{party.name}</p>
-                                      <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
-                                        {party.role}
-                                      </Badge>
-                                    </div>
-                                    <div className="ml-6 space-y-1">
-                                      <p className="text-xs text-gray-600">Type: {party.type}</p>
-                                      {party.email && (
-                                        <p className="text-xs text-gray-600">Email: {party.email}</p>
-                                      )}
-                                      {party.contact && (
-                                        <p className="text-xs text-gray-600">Contact: {party.contact}</p>
-                                      )}
-                                      {party.address && (
-                                        <p className="text-xs text-gray-600">Address: {party.address}</p>
-                                      )}
-                                    </div>
+                      <div className="overflow-hidden rounded-xl border border-[#d9e2ef] bg-white">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-[#f8fafc] hover:bg-[#f8fafc]">
+                              <TableHead className="w-[45%] text-gray-600">Petitioner</TableHead>
+                              <TableHead className="w-16 text-center text-gray-600">VS</TableHead>
+                              <TableHead className="w-[45%] text-gray-600">Respondent</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            <TableRow>
+                              <TableCell className="align-top">
+                                {petitionerList.length > 0 ? (
+                                  <div className="space-y-3">
+                                    {petitionerList.map((party, index) => (
+                                      <div key={`petitioner-${index}`} className="rounded-lg border bg-[#03234b]/5 p-3">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <User className="h-4 w-4 text-[#03234b]" />
+                                          <p className="font-medium text-sm text-gray-900">{party.name || "—"}</p>
+                                          {party.role && (
+                                            <Badge variant="outline" className="text-xs bg-[#03234b]/10 text-[#03234b] border-[#03234b]/20">
+                                              {party.role}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        <div className="ml-6 space-y-1">
+                                          <p className="text-xs text-gray-600">Type: {party.type || "—"}</p>
+                                          {party.email && <p className="text-xs text-gray-600">Email: {party.email}</p>}
+                                          {party.contact && <p className="text-xs text-gray-600">Contact: {party.contact}</p>}
+                                          {party.address && <p className="text-xs text-gray-600">Address: {party.address}</p>}
+                                        </div>
+                                      </div>
+                                    ))}
                                   </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Respondents */}
-                      {caseData.parties.respondent?.length > 0 && (
-                        <div className="mb-4">
-                          <h4 className="text-sm font-medium mb-2 text-gray-600">Respondents</h4>
-                          <div className="space-y-2">
-                            {caseData.parties.respondent.map((party, index) => (
-                              <div key={`respondent-${index}`} className="p-3 border rounded-lg bg-white shadow-sm">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <User className="h-4 w-4 text-red-600" />
-                                      <p className="font-medium text-sm">{party.name}</p>
-                                      <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
-                                        {party.role}
-                                      </Badge>
-                                    </div>
-                                    <div className="ml-6 space-y-1">
-                                      <p className="text-xs text-gray-600">Type: {party.type}</p>
-                                      {party.email && (
-                                        <p className="text-xs text-gray-600">Email: {party.email}</p>
-                                      )}
-                                      {party.contact && (
-                                        <p className="text-xs text-gray-600">Contact: {party.contact}</p>
-                                      )}
-                                      {party.address && (
-                                        <p className="text-xs text-gray-600">Address: {party.address}</p>
-                                      )}
-                                    </div>
+                                ) : (
+                                  <p className="text-sm text-muted-foreground">No petitioners added.</p>
+                                )}
+                              </TableCell>
+                              <TableCell className="align-top text-center font-semibold uppercase tracking-[0.18em] text-[#5775ac]">
+                                vs
+                              </TableCell>
+                              <TableCell className="align-top">
+                                {respondentList.length > 0 ? (
+                                  <div className="space-y-3">
+                                    {respondentList.map((party, index) => (
+                                      <div key={`respondent-${index}`} className="rounded-lg border bg-[#fff7f7] p-3">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <User className="h-4 w-4 text-red-600" />
+                                          <p className="font-medium text-sm text-gray-900">{party.name || "—"}</p>
+                                          {party.role && (
+                                            <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
+                                              {party.role}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        <div className="ml-6 space-y-1">
+                                          <p className="text-xs text-gray-600">Type: {party.type || "—"}</p>
+                                          {party.email && <p className="text-xs text-gray-600">Email: {party.email}</p>}
+                                          {party.contact && <p className="text-xs text-gray-600">Contact: {party.contact}</p>}
+                                          {party.address && <p className="text-xs text-gray-600">Address: {party.address}</p>}
+                                        </div>
+                                      </div>
+                                    ))}
                                   </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                                ) : (
+                                  <p className="text-sm text-muted-foreground">No respondents added.</p>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                      </div>
                     </div>
                   )}
 
@@ -1759,8 +1841,6 @@ export default function CaseDetailsPage() {
         </div>
 
         <div className="space-y-6 lg:col-span-1">
-          <CaseTimeline caseData={caseData} />
-
           <Card>
             <CardHeader>
               <CardTitle>Case Summary</CardTitle>
@@ -1881,6 +1961,8 @@ export default function CaseDetailsPage() {
               </CardFooter>
             )}
           </Card>
+
+          <CaseTimeline caseData={caseData} />
         </div>
       </div>
       <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>

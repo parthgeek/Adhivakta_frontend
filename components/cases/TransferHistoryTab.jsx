@@ -68,6 +68,14 @@ const EMPTY_INTERIM_ORDER = {
   documentName: "",
 };
 
+const EMPTY_FINAL_ORDER = {
+  orderNumber: "",
+  orderDate: null,
+  orderDetails: "Final judgment copy",
+  documentId: "",
+  documentName: "",
+};
+
 const formatDate = (d) => {
   if (!d) return "—";
   try {
@@ -312,6 +320,7 @@ export default function TransferHistoryTab({
   const processItems = caseData?.processes || [];
   const iaStatusItems = caseData?.iaStatuses || [];
   const interimOrderItems = caseData?.interimOrders || [];
+  const finalOrderItems = caseData?.finalOrders || [];
   const availableOrderDocuments = useMemo(() => {
     if (isCreateMode) {
       return selectedFiles.map((file) => ({
@@ -473,6 +482,176 @@ export default function TransferHistoryTab({
         </CardContent>
       </Card>
 
+      {caseData?.status === "closed" && (
+        <Card>
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1 min-w-0 flex-1">
+              <CardTitle>Final order / judgment</CardTitle>
+              <CardDescription>
+                Add the final order or judgment details for closed cases and link the judgment document.
+              </CardDescription>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="shrink-0 self-start"
+              onClick={() => addCaseCollectionItem("finalOrders", EMPTY_FINAL_ORDER)}
+            >
+              + Add Final Order
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {finalOrderItems.length === 0 ? (
+              <p className="text-sm italic text-muted-foreground">
+                No final order or judgment added yet.
+              </p>
+            ) : (
+              finalOrderItems.map((orderItem, index) => (
+                <div
+                  key={`final-order-${index}`}
+                  className="space-y-4 rounded-md border p-4"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <h4 className="text-sm font-medium">Final Order {index + 1}</h4>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700"
+                      onClick={() => removeCaseCollectionItem("finalOrders", index)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label>Order Number</Label>
+                      <Input
+                        value={orderItem.orderNumber || ""}
+                        onChange={(e) =>
+                          updateCaseCollectionItem(
+                            "finalOrders",
+                            index,
+                            "orderNumber",
+                            e.target.value
+                          )
+                        }
+                        placeholder="Enter judgment number"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Order Date</Label>
+                      <DatePicker
+                        selected={orderItem.orderDate ? new Date(orderItem.orderDate) : null}
+                        onSelect={(value) =>
+                          updateCaseCollectionItem(
+                            "finalOrders",
+                            index,
+                            "orderDate",
+                            value
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Order Details Label</Label>
+                      <Input
+                        value={orderItem.orderDetails || ""}
+                        onChange={(e) =>
+                          updateCaseCollectionItem(
+                            "finalOrders",
+                            index,
+                            "orderDetails",
+                            e.target.value
+                          )
+                        }
+                        placeholder="e.g. Final judgment copy"
+                      />
+                    </div>
+                    <div className="space-y-2 md:col-span-3">
+                      <Label>Linked Judgment Document</Label>
+                      <Select
+                        value={
+                          isCreateMode
+                            ? orderItem.documentName || "none"
+                            : orderItem.documentId || orderItem.documentName || "none"
+                        }
+                        onValueChange={(value) => {
+                          if (value === "none") {
+                            updateCaseCollection("finalOrders", (current) =>
+                              current.map((item, itemIndex) =>
+                                itemIndex === index
+                                  ? {
+                                      ...item,
+                                      documentId: "",
+                                      documentName: "",
+                                    }
+                                  : item
+                              )
+                            );
+                            return;
+                          }
+
+                          const selectedDocument = availableOrderDocuments.find(
+                            (document) => document.value === value
+                          );
+
+                          updateCaseCollection("finalOrders", (current) =>
+                            current.map((item, itemIndex) =>
+                              itemIndex === index
+                                ? {
+                                    ...item,
+                                    documentId: selectedDocument?.isExistingDocument ? value : "",
+                                    documentName: selectedDocument?.label || value,
+                                  }
+                                : item
+                            )
+                          );
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue
+                            placeholder={
+                              isCreateMode
+                                ? "Select a file from the Documents tab"
+                                : "Select an uploaded judgment document"
+                            }
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">— None —</SelectItem>
+                          {availableOrderDocuments.map((document) => (
+                            <SelectItem key={document.value} value={document.value}>
+                              {document.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        {isCreateMode
+                          ? "Upload the judgment file in the Documents tab first, then link it here by filename."
+                          : "This link is used on the case details page when the user clicks Final Order Details."}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+          {!isCreateMode && (
+            <CardFooter className="flex justify-end">
+              <Button
+                type="button"
+                disabled={isSubmitting}
+                onClick={(e) => handleSubmit?.(e, "transfer")}
+              >
+                {isSubmitting ? "Saving..." : "Save Final Order / Judgment"}
+              </Button>
+            </CardFooter>
+          )}
+        </Card>
+      )}
+
       <Card>
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1 min-w-0 flex-1">
@@ -598,17 +777,6 @@ export default function TransferHistoryTab({
             ))
           )}
         </CardContent>
-        {!isCreateMode && (
-          <CardFooter className="flex justify-end">
-            <Button
-              type="button"
-              disabled={isSubmitting}
-              onClick={(e) => handleSubmit?.(e, "transfer")}
-            >
-              {isSubmitting ? "Saving..." : "Save Other Details"}
-            </Button>
-          </CardFooter>
-        )}
       </Card>
 
       <Card>
@@ -878,6 +1046,18 @@ export default function TransferHistoryTab({
           )}
         </CardContent>
       </Card>
+
+      {!isCreateMode && (
+        <CardFooter className="justify-end border rounded-lg bg-white px-6 py-4">
+          <Button
+            type="button"
+            disabled={isSubmitting}
+            onClick={(e) => handleSubmit?.(e, "all")}
+          >
+            {isSubmitting ? "Saving..." : "Save All"}
+          </Button>
+        </CardFooter>
+      )}
 
       {!isCreateMode && (
         <Card>

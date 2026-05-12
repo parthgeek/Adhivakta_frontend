@@ -6,6 +6,15 @@ import { useAuth } from "@/context/auth-context";
 import CaseTabs from "@/components/cases/CaseTabs";
 import SidebarGuide from "@/components/cases/SidebarGuide";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import {
   buildCaseNumber,
   getBackendCaseType,
   getEcourtCaseTypeReference,
@@ -373,6 +382,7 @@ export default function NewCasePage() {
   const pageTopRef = useRef(null);
   const [validationErrors, setValidationErrors] = useState({});
   const [pendingFocusTarget, setPendingFocusTarget] = useState(null);
+  const [showFinalOrderPrompt, setShowFinalOrderPrompt] = useState(false);
   const [caseData, setCaseData] = useState(
     syncDerivedCaseFields({
       title: "",
@@ -414,9 +424,11 @@ export default function NewCasePage() {
       firYear: "",
       reliefSought: "",
       notes: "",
+      closedAt: null,
       processes: [],
       iaStatuses: [],
       interimOrders: [],
+      finalOrders: [],
       advocates: [],
       clients: [],
       stakeholders: [],
@@ -1129,6 +1141,17 @@ export default function NewCasePage() {
     e.preventDefault();
 
     try {
+      if (caseData.status === "closed" && (!caseData.finalOrders || caseData.finalOrders.length === 0)) {
+        setActiveTab("transfer");
+        toast({
+          title: "Final judgment required",
+          description: "Add at least one Final order / judgment entry before saving a closed case.",
+          variant: "destructive",
+          className: LIGHT_ERROR_TOAST_CLASSNAME,
+        });
+        return;
+      }
+
       // Perform comprehensive validation
       const errors = validateAllFields();
 
@@ -1199,6 +1222,12 @@ export default function NewCasePage() {
         caseType: getBackendCaseType(caseData.category),
         caseSubType: normalizeValue(caseData.eCourt?.caseTypeName),
         status: caseData.status || "active",
+        closedAt:
+          caseData.status === "closed"
+            ? caseData.closedAt
+              ? new Date(caseData.closedAt).toISOString()
+              : new Date().toISOString()
+            : null,
 
         // Court information
         courtState: normalizeValue(caseData.eCourt?.state || caseData.courtState),
@@ -1296,6 +1325,15 @@ export default function NewCasePage() {
           status: normalizeValue(iaItem.status),
         })),
         interimOrders: (caseData.interimOrders || []).map((orderItem) => ({
+          orderNumber: normalizeValue(orderItem.orderNumber),
+          orderDate: orderItem.orderDate
+            ? new Date(orderItem.orderDate).toISOString()
+            : null,
+          orderDetails: normalizeValue(orderItem.orderDetails),
+          documentId: normalizeValue(orderItem.documentId),
+          documentName: normalizeValue(orderItem.documentName),
+        })),
+        finalOrders: (caseData.finalOrders || []).map((orderItem) => ({
           orderNumber: normalizeValue(orderItem.orderNumber),
           orderDate: orderItem.orderDate
             ? new Date(orderItem.orderDate).toISOString()
@@ -1522,6 +1560,20 @@ export default function NewCasePage() {
   };
 
   const handleSelectChange = async (name, value) => {
+    if (name === "status" && value === "closed" && caseData.status !== "closed") {
+      setShowFinalOrderPrompt(true);
+      return;
+    }
+
+    if (name === "status" && value !== "closed") {
+      setCaseData((prev) => ({
+        ...prev,
+        status: value,
+        closedAt: null,
+      }));
+      return;
+    }
+
     if (name === "category") {
       setCaseData((prev) => ({
         ...prev,
@@ -1769,6 +1821,20 @@ export default function NewCasePage() {
     setCaseData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleCloseStatusConfirm = () => {
+    setCaseData((prev) => ({
+      ...prev,
+      status: "closed",
+      closedAt: prev.closedAt || new Date(),
+    }));
+    setShowFinalOrderPrompt(false);
+    setActiveTab("transfer");
+    toast({
+      title: "Add final judgment",
+      description: "Complete the Final order / judgment section before saving the closed case.",
+    });
+  };
+
   const handleDateChange = (name, date) => {
     setCaseData((prev) => {
       const newData = { ...prev, [name]: date };
@@ -1943,6 +2009,23 @@ export default function NewCasePage() {
           <SidebarGuide />
         </div>
       </div>
+
+      <Dialog open={showFinalOrderPrompt} onOpenChange={setShowFinalOrderPrompt}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Case is being closed</DialogTitle>
+            <DialogDescription>
+              Closed cases require a Final order / judgment entry. Continue to the judgment section now.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowFinalOrderPrompt(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCloseStatusConfirm}>Add Judgment</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

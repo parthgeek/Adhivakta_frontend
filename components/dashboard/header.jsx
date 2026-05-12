@@ -269,7 +269,7 @@ export default function Header({ onMenuClick }) {
         </button>
       </div>
 
-      <div className="flex flex-1 items-center px-4 md:px-6 gap-4">
+      <div className="flex flex-1 items-center px-4 md:grid md:grid-cols-[1fr_minmax(340px,560px)_1fr] md:items-center md:gap-6 md:px-6">
         <div className="flex items-center gap-2 md:hidden">
           {onMenuClick && (
             <Button variant="ghost" size="icon" onClick={onMenuClick}>
@@ -288,7 +288,7 @@ export default function Header({ onMenuClick }) {
           </button>
         </div>
 
-        <div className="hidden md:block w-full max-w-[450px] ml-20">
+        <div className="hidden md:block md:col-start-2 md:w-full">
           <div ref={searchRef} className="relative w-full">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground h-5 w-5" />
             <Input
@@ -386,7 +386,7 @@ export default function Header({ onMenuClick }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 md:gap-4 ml-auto">
+        <div className="flex items-center gap-2 ml-auto md:ml-0 md:justify-self-end md:gap-4">
           <Button
             variant="ghost"
             size="icon"
