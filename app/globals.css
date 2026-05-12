@@ -213,3 +213,7 @@ body {
   border: 2px solid hsl(var(--primary));
   border-radius: 0.375rem;
 }
+
+.grecaptcha-badge {
+  visibility: hidden !important;
+}

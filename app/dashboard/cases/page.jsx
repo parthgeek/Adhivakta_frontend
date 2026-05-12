@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
@@ -62,8 +62,7 @@ function formatHearingDate(dateStr) {
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return null;
   const date = d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-  const time = d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }).toUpperCase();
-  return { date, time };
+  return { date };
 }
 
 function fmtDate(val) {
@@ -405,6 +404,83 @@ function StatCard({ icon, value, label, iconBg }) {
 }
 
 const STATUS_TABS = ["All Cases", "Ongoing", "Pending", "Disposal", "Closed"];
+const CASES_PER_PAGE = 7;
+
+function getCaseId(raw = {}) {
+  return raw._id || raw.id || raw.caseNumber || raw.number || raw.title;
+}
+
+function getCaseHearingTime(raw = {}) {
+  const value = raw.nextHearingDate || raw.nextHearing || raw.hearingDate;
+  if (!value) return null;
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.getTime();
+}
+
+function getUpcomingHearingTime(raw = {}, nowTime = Date.now()) {
+  const hearingTime = getCaseHearingTime(raw);
+  const today = new Date(nowTime);
+  const hearingDate = hearingTime ? new Date(hearingTime) : null;
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const hearingDayStart = hearingDate
+    ? new Date(hearingDate.getFullYear(), hearingDate.getMonth(), hearingDate.getDate()).getTime()
+    : null;
+
+  if (!hearingDayStart || hearingDayStart < todayStart || getTabStatus(raw) === "Closed") {
+    return null;
+  }
+  return hearingDayStart;
+}
+
+function buildPriorityCaseIds(caseList = []) {
+  const priorityIds = new Set();
+
+  caseList.forEach((raw) => {
+    const id = getCaseId(raw);
+    if (id && isPriorityAlertCase(getCasePriority(raw))) {
+      priorityIds.add(id);
+    }
+  });
+
+  if (priorityIds.size > 0) {
+    return priorityIds;
+  }
+
+  const nowTime = Date.now();
+  const upcoming = caseList
+    .map((raw) => ({
+      id: getCaseId(raw),
+      time: getUpcomingHearingTime(raw, nowTime),
+    }))
+    .filter((item) => item.id && item.time);
+
+  if (upcoming.length === 0) {
+    return priorityIds;
+  }
+
+  const soonestTime = Math.min(...upcoming.map((item) => item.time));
+  upcoming
+    .filter((item) => item.time === soonestTime)
+    .forEach((item) => priorityIds.add(item.id));
+
+  return priorityIds;
+}
+
+function compareCasesByPriorityAndHearing(a, b, priorityIds) {
+  const aIsPriority = priorityIds.has(getCaseId(a));
+  const bIsPriority = priorityIds.has(getCaseId(b));
+  if (aIsPriority !== bIsPriority) return aIsPriority ? -1 : 1;
+
+  const nowTime = Date.now();
+  const aTime = getUpcomingHearingTime(a, nowTime) ?? Number.POSITIVE_INFINITY;
+  const bTime = getUpcomingHearingTime(b, nowTime) ?? Number.POSITIVE_INFINITY;
+  if (aTime !== bTime) return aTime - bTime;
+
+  const aTitle = (a.title || "").toLowerCase();
+  const bTitle = (b.title || "").toLowerCase();
+  return aTitle.localeCompare(bTitle);
+}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -414,6 +490,7 @@ export default function CasesPage() {
   const [isLawyer, setIsLawyer] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("All Cases");
+  const [currentPage, setCurrentPage] = useState(1);
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -442,12 +519,25 @@ export default function CasesPage() {
     fetchCases();
   }, [isLawyer, searchTerm]);
 
-  const mapCase = (raw) => {
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchTerm]);
+
+  const uniqueCases = useMemo(
+    () => Array.from(new Map(cases.map((c) => [getCaseId(c), c])).values()),
+    [cases]
+  );
+
+  const priorityCaseIds = useMemo(
+    () => buildPriorityCaseIds(uniqueCases),
+    [uniqueCases]
+  );
+
+  const mapCase = useCallback((raw) => {
     const legalTeam = getCaseLegalTeam(raw);
     const lead = getLeadLegalTeamMember(legalTeam);
-    const priority = getCasePriority(raw);
     return {
-      id: raw._id || raw.id,
+      id: getCaseId(raw),
       title: raw.title || "Untitled Case",
       number: formatDisplayCaseNumber({
         caseNumber: raw.caseNumber || raw.number,
@@ -459,15 +549,10 @@ export default function CasesPage() {
       stage: raw.caseStage?.replace(/_/g, " ") || raw.stage || raw.currentStage || raw.hearingStage || "—",
       nextHearing: raw.nextHearingDate || raw.nextHearing || raw.hearingDate,
       advocateName: lead?.name || raw.assignedTo?.name || null,
-      isHighPriority: isPriorityAlertCase(priority),
+      isHighPriority: priorityCaseIds.has(getCaseId(raw)),
       tabStatus: getTabStatus(raw),
     };
-  };
-
-  const uniqueCases = useMemo(
-    () => Array.from(new Map(cases.map((c) => [c._id || c.id, c])).values()),
-    [cases]
-  );
+  }, [priorityCaseIds]);
 
   const tabCounts = useMemo(() => ({
     "All Cases": uniqueCases.length,
@@ -481,23 +566,40 @@ export default function CasesPage() {
     total:        uniqueCases.length,
     ongoing:      tabCounts["Ongoing"],
     withHearings: uniqueCases.filter((c) => !!(c.nextHearingDate || c.nextHearing || c.hearingDate)).length,
-    highPriority: uniqueCases.filter((c) => isPriorityAlertCase(getCasePriority(c))).length,
-  }), [uniqueCases, tabCounts]);
+    highPriority: priorityCaseIds.size,
+  }), [uniqueCases, tabCounts, priorityCaseIds]);
 
-  const filtered = useMemo(() => uniqueCases.filter((raw) => {
-    const c = mapCase(raw);
-    if (activeTab !== "All Cases" && c.tabStatus !== activeTab) return false;
-    if (searchTerm) {
-      const q = searchTerm.toLowerCase();
-      return (
-        c.title.toLowerCase().includes(q) ||
-        c.number.toLowerCase().includes(q) ||
-        c.court.toLowerCase().includes(q) ||
-        c.category.toLowerCase().includes(q)
-      );
-    }
-    return true;
-  }), [uniqueCases, activeTab, searchTerm]);
+  const filtered = useMemo(() => {
+    return uniqueCases
+      .filter((raw) => {
+        const c = mapCase(raw);
+        if (activeTab !== "All Cases" && c.tabStatus !== activeTab) return false;
+        if (searchTerm) {
+          const q = searchTerm.toLowerCase();
+          return (
+            c.title.toLowerCase().includes(q) ||
+            c.number.toLowerCase().includes(q) ||
+            c.court.toLowerCase().includes(q) ||
+            c.category.toLowerCase().includes(q)
+          );
+        }
+        return true;
+      })
+      .sort((a, b) => compareCasesByPriorityAndHearing(a, b, priorityCaseIds));
+  }, [uniqueCases, activeTab, searchTerm, priorityCaseIds, mapCase]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / CASES_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const visibleStart = filtered.length === 0 ? 0 : (safeCurrentPage - 1) * CASES_PER_PAGE + 1;
+  const visibleEnd = Math.min(safeCurrentPage * CASES_PER_PAGE, filtered.length);
+  const paginatedCases = useMemo(() => {
+    const start = (safeCurrentPage - 1) * CASES_PER_PAGE;
+    return filtered.slice(start, start + CASES_PER_PAGE);
+  }, [filtered, safeCurrentPage]);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
 
   const exportFilteredList = useMemo(() => {
     if (!exportSearch.trim()) return uniqueCases;
@@ -510,7 +612,7 @@ export default function CasesPage() {
         c.court.toLowerCase().includes(q)
       );
     });
-  }, [uniqueCases, exportSearch]);
+  }, [uniqueCases, exportSearch, mapCase]);
 
   const handleExportCase = (raw) => {
     const html = buildCasePDF(raw);
@@ -633,7 +735,7 @@ export default function CasesPage() {
                 </td>
               </tr>
             ) : (
-              filtered.map((raw) => {
+              paginatedCases.map((raw) => {
                 const c = mapCase(raw);
                 const hearing = formatHearingDate(c.nextHearing);
                 return (
@@ -668,7 +770,6 @@ export default function CasesPage() {
                       {hearing ? (
                         <div>
                           <p className="text-sm text-foreground whitespace-nowrap">{hearing.date}</p>
-                          <p className="text-xs text-muted-foreground">{hearing.time}</p>
                         </div>
                       ) : (
                         <span className="text-muted-foreground">—</span>
@@ -693,11 +794,34 @@ export default function CasesPage() {
           </tbody>
         </table>
 
-        <div className="flex items-center justify-between px-4 py-3 border-t text-sm text-muted-foreground">
-          <span>Showing {filtered.length} of {uniqueCases.length} cases</span>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled>Previous</Button>
-            <Button variant="outline" size="sm" disabled>Next</Button>
+        <div className="flex flex-col gap-3 px-4 py-3 border-t text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+          <span>
+            {filtered.length <= CASES_PER_PAGE
+              ? `Showing ${filtered.length} of ${filtered.length} cases`
+              : `Showing ${visibleStart}-${visibleEnd} of ${filtered.length} cases`}
+          </span>
+          <div className="flex items-center gap-2">
+            {totalPages > 1 && (
+              <span className="mr-1 text-xs text-muted-foreground/80">
+                Page {safeCurrentPage} of {totalPages}
+              </span>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={safeCurrentPage === 1 || filtered.length === 0}
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={safeCurrentPage === totalPages || filtered.length === 0}
+              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+            >
+              Next
+            </Button>
           </div>
         </div>
       </div>
