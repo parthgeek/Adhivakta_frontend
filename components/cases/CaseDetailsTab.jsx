@@ -22,6 +22,7 @@ export default function CaseDetailsTab({
   handleBack,
   isLastTab,
   validationErrors,
+  allowClosedStatus = true,
 }) {
   const currentYear = new Date().getFullYear();
   const caseYearOptions = Array.from({ length: 21 }, (_, index) =>
@@ -174,7 +175,7 @@ export default function CaseDetailsTab({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="closed">Closed</SelectItem>
+                {allowClosedStatus && <SelectItem value="closed">Closed</SelectItem>}
               </SelectContent>
             </Select>
             {getFieldError("status") && (

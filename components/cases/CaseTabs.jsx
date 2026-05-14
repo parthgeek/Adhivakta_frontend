@@ -35,7 +35,8 @@ export default function CaseTabs({
   setActiveTab,
   handleNext,
   handleBack,
-  validationErrors = {}
+  validationErrors = {},
+  allowClosedStatus = true,
 }) {
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -98,6 +99,7 @@ export default function CaseTabs({
           handleBack={handleBack}
           isLastTab={false}
           validationErrors={validationErrors.details}
+          allowClosedStatus={allowClosedStatus}
         />
       </TabsContent>
 

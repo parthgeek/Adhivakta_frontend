@@ -109,18 +109,6 @@ const buildActRows = (value = "") =>
       }
     })
 
-const getPersonDisplayName = (person) => {
-  if (!person) return "—"
-  if (typeof person === "string") return person.trim() || "—"
-  return person.name || person.fullName || "—"
-}
-
-const joinNames = (people = []) => {
-  if (!Array.isArray(people) || people.length === 0) return "—"
-  const names = people.map((person) => getPersonDisplayName(person)).filter(Boolean)
-  return names.length > 0 ? names.join(", ") : "—"
-}
-
 const resolveOrderDocument = (order, documents = []) => {
   const documentId = String(order?.documentId || "")
   const documentName = String(order?.documentName || "").trim().toLowerCase()
@@ -894,33 +882,67 @@ export default function CaseDetailsPage() {
                     </AccordionTrigger>
                     <AccordionContent className="px-5 pb-5">
                       {petitionerList.length > 0 || respondentList.length > 0 ? (
-                        <div className="overflow-hidden rounded-2xl border border-[#d9e2ef]">
+                        <div className="overflow-hidden rounded-xl border border-[#d9e2ef] bg-white">
                           <Table>
                             <TableHeader>
-                              <TableRow className="bg-[#eef3f9] hover:bg-[#eef3f9]">
-                                <TableHead className="w-[28%] text-[#516076]">Petitioner</TableHead>
-                                <TableHead className="w-[28%] text-[#516076]">Advocate</TableHead>
-                                <TableHead className="w-20 text-center text-[#516076]">VS</TableHead>
-                                <TableHead className="w-[28%] text-[#516076]">Respondent</TableHead>
-                                <TableHead className="w-[28%] text-[#516076]">Advocate</TableHead>
+                              <TableRow className="bg-[#f8fafc] hover:bg-[#f8fafc]">
+                                <TableHead className="w-1/4 text-gray-600">Petitioner</TableHead>
+                                <TableHead className="w-1/4 text-gray-600">Advocate</TableHead>
+                                <TableHead className="w-1/4 border-l border-[#d9e2ef] text-gray-600">Respondent</TableHead>
+                                <TableHead className="w-1/4 text-gray-600">Advocate</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
                               <TableRow>
-                                <TableCell className="align-top font-medium text-[#243246]">
-                                  {joinNames(petitionerList)}
+                                <TableCell className="align-top">
+                                  {petitionerList.length > 0 ? (
+                                    <div className="space-y-3">
+                                      {petitionerList.map((party, index) => (
+                                        <div key={`details-petitioner-${index}`} className="flex items-center gap-2">
+                                          <User className="h-4 w-4 text-[#03234b]" />
+                                          <p className="font-medium text-sm text-gray-900">{party.name || "—"}</p>
+                                          {(party.role || party.label) && (
+                                            <Badge variant="outline" className="text-xs bg-[#03234b]/10 text-[#03234b] border-[#03234b]/20">
+                                              {party.role || party.label}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-muted-foreground">No petitioners added.</p>
+                                  )}
                                 </TableCell>
-                                <TableCell className="align-top text-[#243246]">
-                                  {petitionerAdvocate}
+                                <TableCell className="align-top">
+                                  <div className="flex items-center gap-2">
+                                    <User className="h-4 w-4 text-[#03234b]" />
+                                    <p className="font-medium text-sm text-gray-900">{petitionerAdvocate}</p>
+                                  </div>
                                 </TableCell>
-                                <TableCell className="align-top text-center font-semibold uppercase tracking-[0.18em] text-[#5775ac]">
-                                  vs
+                                <TableCell className="border-l border-[#d9e2ef] align-top">
+                                  {respondentList.length > 0 ? (
+                                    <div className="space-y-3">
+                                      {respondentList.map((party, index) => (
+                                        <div key={`details-respondent-${index}`} className="flex items-center gap-2">
+                                          <User className="h-4 w-4 text-red-600" />
+                                          <p className="font-medium text-sm text-gray-900">{party.name || "—"}</p>
+                                          {(party.role || party.label) && (
+                                            <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
+                                              {party.role || party.label}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-muted-foreground">No respondents added.</p>
+                                  )}
                                 </TableCell>
-                                <TableCell className="align-top font-medium text-[#243246]">
-                                  {joinNames(respondentList)}
-                                </TableCell>
-                                <TableCell className="align-top text-[#243246]">
-                                  {respondentAdvocate}
+                                <TableCell className="align-top">
+                                  <div className="flex items-center gap-2">
+                                    <User className="h-4 w-4 text-red-600" />
+                                    <p className="font-medium text-sm text-gray-900">{respondentAdvocate}</p>
+                                  </div>
                                 </TableCell>
                               </TableRow>
                             </TableBody>

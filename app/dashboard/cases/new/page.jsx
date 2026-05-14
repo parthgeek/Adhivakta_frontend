@@ -1212,6 +1212,7 @@ export default function NewCasePage() {
       const normalizedClients = isLawyer
         ? removeCurrentUserFromParticipants(caseData.clients || [], user)
         : ensureCurrentUserPrimaryParticipant(caseData.clients || [], user, "client");
+      const isUpdatingExistingCase = Boolean(caseData._id);
 
       // Format the data according to the API schema
       const formattedData = {
@@ -1221,13 +1222,17 @@ export default function NewCasePage() {
         caseNumber: normalizeFormattedCaseNumber(caseData.caseNumber),
         caseType: getBackendCaseType(caseData.category),
         caseSubType: normalizeValue(caseData.eCourt?.caseTypeName),
-        status: caseData.status || "active",
-        closedAt:
-          caseData.status === "closed"
-            ? caseData.closedAt
-              ? new Date(caseData.closedAt).toISOString()
-              : new Date().toISOString()
-            : null,
+        status: isUpdatingExistingCase ? caseData.status || "active" : "active",
+        ...(isUpdatingExistingCase
+          ? {
+              closedAt:
+                caseData.status === "closed"
+                  ? caseData.closedAt
+                    ? new Date(caseData.closedAt).toISOString()
+                    : new Date().toISOString()
+                  : null,
+            }
+          : {}),
 
         // Court information
         courtState: normalizeValue(caseData.eCourt?.state || caseData.courtState),
@@ -1560,6 +1565,16 @@ export default function NewCasePage() {
   };
 
   const handleSelectChange = async (name, value) => {
+    if (name === "status" && value === "closed" && !caseData._id) {
+      toast({
+        title: "Create the case first",
+        description: "You can close a case and add the closed date from the edit screen after creation.",
+        variant: "destructive",
+        className: LIGHT_ERROR_TOAST_CLASSNAME,
+      });
+      return;
+    }
+
     if (name === "status" && value === "closed" && caseData.status !== "closed") {
       setShowFinalOrderPrompt(true);
       return;
@@ -2002,6 +2017,7 @@ export default function NewCasePage() {
             handleNext={handleNext}
             handleBack={handleBack}
             validationErrors={validationErrors}
+            allowClosedStatus={false}
           />
         </div>
 

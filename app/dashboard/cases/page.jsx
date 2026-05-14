@@ -7,6 +7,7 @@ import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -427,6 +428,49 @@ function buildCasePDF(raw) {
 </html>`;
 }
 
+function buildCasesPDF(rawCases = []) {
+  const printableCases = (Array.isArray(rawCases) ? rawCases : [rawCases]).filter(Boolean);
+  if (printableCases.length <= 1) return buildCasePDF(printableCases[0] || {});
+
+  const documents = printableCases.map((raw) => buildCasePDF(raw));
+  const firstDocument = documents[0];
+  const head =
+    firstDocument.match(/<head>[\s\S]*?<\/head>/)?.[0] ||
+    `<head><meta charset="utf-8"/><title>Selected Cases Report</title></head>`;
+  const enhancedHead = head
+    .replace(/<title>[\s\S]*?<\/title>/, "<title>Selected Cases Report</title>")
+    .replace(
+      "</style>",
+      `
+    .case-page-break { page-break-before: always; break-before: page; }
+  </style>`
+    );
+  const watermark = firstDocument.match(/<img class="watermark"[^>]*>/)?.[0] || "";
+  const printFooter = firstDocument.match(/<div class="print-footer">[\s\S]*?<\/div>/)?.[0] || "";
+  const pages = documents
+    .map((doc, index) => {
+      const page = doc.match(/<div class="page">[\s\S]*?<\/div>\s*(?=<div class="print-footer">)/)?.[0];
+      if (!page) return "";
+      return page.replace(
+        'class="page"',
+        `class="page${index > 0 ? " case-page-break" : ""}"`
+      );
+    })
+    .filter(Boolean)
+    .join("\n");
+
+  return `<!DOCTYPE html>
+<html>
+${enhancedHead}
+<body>
+${watermark}
+${pages}
+${printFooter}
+<script>window.onload = () => { window.print(); }</script>
+</body>
+</html>`;
+}
+
 // ─── Components ──────────────────────────────────────────────────────────────
 
 function StatCard({ icon, value, label, iconBg }) {
@@ -448,6 +492,11 @@ const CASES_PER_PAGE = 7;
 
 function getCaseId(raw = {}) {
   return raw._id || raw.id || raw.caseNumber || raw.number || raw.title;
+}
+
+function getCaseSelectionId(raw = {}) {
+  const id = getCaseId(raw);
+  return id == null ? "" : String(id);
 }
 
 function getCaseHearingTime(raw = {}) {
@@ -533,6 +582,7 @@ export default function CasesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCaseIds, setSelectedCaseIds] = useState(() => new Set());
 
   // export dialog
   const [exportOpen, setExportOpen] = useState(false);
@@ -567,6 +617,14 @@ export default function CasesPage() {
     () => Array.from(new Map(cases.map((c) => [getCaseId(c), c])).values()),
     [cases]
   );
+
+  useEffect(() => {
+    setSelectedCaseIds((current) => {
+      const availableIds = new Set(uniqueCases.map((raw) => getCaseSelectionId(raw)).filter(Boolean));
+      const next = new Set([...current].filter((id) => availableIds.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [uniqueCases]);
 
   const priorityCaseIds = useMemo(
     () => buildPriorityCaseIds(uniqueCases),
@@ -637,6 +695,41 @@ export default function CasesPage() {
     return filtered.slice(start, start + CASES_PER_PAGE);
   }, [filtered, safeCurrentPage]);
 
+  const visibleCaseIds = useMemo(
+    () => paginatedCases.map((raw) => getCaseSelectionId(raw)).filter(Boolean),
+    [paginatedCases]
+  );
+  const selectedCases = useMemo(
+    () => uniqueCases.filter((raw) => selectedCaseIds.has(getCaseSelectionId(raw))),
+    [uniqueCases, selectedCaseIds]
+  );
+  const selectedCount = selectedCases.length;
+  const allVisibleSelected =
+    visibleCaseIds.length > 0 && visibleCaseIds.every((id) => selectedCaseIds.has(id));
+  const someVisibleSelected = visibleCaseIds.some((id) => selectedCaseIds.has(id));
+
+  const toggleCaseSelection = useCallback((raw, checked) => {
+    const id = getCaseSelectionId(raw);
+    if (!id) return;
+    setSelectedCaseIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const toggleVisibleSelection = useCallback((checked) => {
+    setSelectedCaseIds((current) => {
+      const next = new Set(current);
+      visibleCaseIds.forEach((id) => {
+        if (checked) next.add(id);
+        else next.delete(id);
+      });
+      return next;
+    });
+  }, [visibleCaseIds]);
+
   useEffect(() => {
     setCurrentPage((page) => Math.min(page, totalPages));
   }, [totalPages]);
@@ -654,8 +747,7 @@ export default function CasesPage() {
     });
   }, [uniqueCases, exportSearch, mapCase]);
 
-  const handleExportCase = (raw) => {
-    const html = buildCasePDF(raw);
+  const printCaseDocument = (html) => {
     const iframe = document.createElement("iframe");
     iframe.style.position = "fixed";
     iframe.style.right = "0";
@@ -685,7 +777,22 @@ export default function CasesPage() {
 
     iframe.srcdoc = html;
     document.body.appendChild(iframe);
+  };
 
+  const handleExportCase = (raw) => {
+    printCaseDocument(buildCasePDF(raw));
+    setExportOpen(false);
+    setExportSearch("");
+  };
+
+  const handleExportCases = (rawCases) => {
+    const casesToExport = (Array.isArray(rawCases) ? rawCases : [rawCases]).filter(Boolean);
+    if (casesToExport.length === 0) {
+      setExportOpen(true);
+      return;
+    }
+
+    printCaseDocument(buildCasesPDF(casesToExport));
     setExportOpen(false);
     setExportSearch("");
   };
@@ -711,9 +818,13 @@ export default function CasesPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setExportOpen(true)}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => selectedCount > 0 ? handleExportCases(selectedCases) : setExportOpen(true)}
+          >
             <Download className="h-4 w-4 mr-1.5" />
-            Export
+            {selectedCount > 0 ? `Export Selected (${selectedCount})` : "Export"}
           </Button>
           <Link href="/dashboard/cases/new">
             <Button size="sm" className="bg-[#1a2332] hover:bg-[#253345]">
@@ -769,11 +880,36 @@ export default function CasesPage() {
         </div>
       </div>
 
+      {selectedCount > 0 && (
+        <div className="flex flex-col gap-2 rounded-lg border bg-white px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <span className="font-medium text-foreground">
+            {selectedCount} case{selectedCount !== 1 ? "s" : ""} selected for export
+          </span>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => handleExportCases(selectedCases)}>
+              <FileDown className="h-4 w-4 mr-1.5" />
+              Export PDF
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setSelectedCaseIds(new Set())}>
+              <X className="h-4 w-4 mr-1.5" />
+              Clear
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="border rounded-lg overflow-hidden bg-white">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b">
+              <th className="w-12 px-4 py-3 text-left">
+                <Checkbox
+                  checked={allVisibleSelected ? true : someVisibleSelected ? "indeterminate" : false}
+                  onCheckedChange={(checked) => toggleVisibleSelection(checked === true)}
+                  aria-label="Select all visible cases"
+                />
+              </th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground tracking-wider">
                 CASE ↑
               </th>
@@ -797,7 +933,7 @@ export default function CasesPage() {
           <tbody className="divide-y divide-gray-100">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
+                <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
                   No cases found.
                 </td>
               </tr>
@@ -811,6 +947,13 @@ export default function CasesPage() {
                     className="hover:bg-gray-50 cursor-pointer transition-colors"
                     onClick={() => router.push(`/dashboard/cases/${c.id}`)}
                   >
+                    <td className="w-12 px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={selectedCaseIds.has(getCaseSelectionId(raw))}
+                        onCheckedChange={(checked) => toggleCaseSelection(raw, checked === true)}
+                        aria-label={`Select ${c.title}`}
+                      />
+                    </td>
                     <td className="px-4 py-3.5 min-w-[240px] max-w-[320px]">
                       <div className="flex items-start gap-2">
                         {c.isHighPriority && (
