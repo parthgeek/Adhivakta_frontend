@@ -393,7 +393,7 @@ export default function MyLawyersPage() {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold text-gray-900 mb-6">My Lawyers</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-6">My Advocates</h1>
           <Card>
             <CardContent className="pt-12 pb-12">
               <div className="text-center">
@@ -419,9 +419,9 @@ export default function MyLawyersPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">My Lawyers</h1>
+            <h1 className="text-3xl font-bold text-gray-900">My Advocates</h1>
             <p className="text-gray-600 mt-1">
-              Legal professionals representing you ({lawyers.length} {lawyers.length === 1 ? 'lawyer' : 'lawyers'})
+              Legal professionals representing you ({lawyers.length} {lawyers.length === 1 ? 'advocate' : 'advocates'})
             </p>
           </div>
         </div>
@@ -431,7 +431,7 @@ export default function MyLawyersPage() {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
           <Input
             type="search"
-            placeholder="Search lawyers by name, firm, or email..."
+            placeholder="Search advocates by name, firm, or email..."
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -446,7 +446,7 @@ export default function MyLawyersPage() {
               <CardHeader>
                 <CardTitle className="text-lg">Your Legal Team</CardTitle>
                 <CardDescription>
-                  {filteredLawyers.length} {filteredLawyers.length === 1 ? 'lawyer' : 'lawyers'} found
+                  {filteredLawyers.length} {filteredLawyers.length === 1 ? 'advocate' : 'advocates'} found
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">

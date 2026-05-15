@@ -32,9 +32,9 @@ const translations = {
         calendar: "Calendar",
         clients: "Clients",
         clientsParties: "Clients & Parties",
-        lawyers: "Lawyers",
+        lawyers: "Advocates",
         myCases: "My Cases",
-        myLawyers: "My Lawyers",
+        myLawyers: "My Advocates",
         reports: "Reports",
         help: "Help",
 

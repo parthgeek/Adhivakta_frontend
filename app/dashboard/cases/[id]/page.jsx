@@ -919,7 +919,7 @@ export default function CaseDetailsPage() {
                                     <p className="font-medium text-sm text-gray-900">{petitionerAdvocate}</p>
                                   </div>
                                 </TableCell>
-                                <TableCell className="border-l border-[#d9e2ef] align-top">
+                                <TableCell className="border-l border-[#d9e2ef] align-top bg-[#fff7f7]">
                                   {respondentList.length > 0 ? (
                                     <div className="space-y-3">
                                       {respondentList.map((party, index) => (
@@ -938,7 +938,7 @@ export default function CaseDetailsPage() {
                                     <p className="text-sm text-muted-foreground">No respondents added.</p>
                                   )}
                                 </TableCell>
-                                <TableCell className="align-top">
+                                <TableCell className="align-top bg-[#fff7f7]">
                                   <div className="flex items-center gap-2">
                                     <User className="h-4 w-4 text-red-600" />
                                     <p className="font-medium text-sm text-gray-900">{respondentAdvocate}</p>
@@ -1266,7 +1266,7 @@ export default function CaseDetailsPage() {
                             ))}
                           </div>
                         )}
-                        {/* Lawyers */}
+                        {/* Advocates */}
                         {caseData.lawyers && caseData.lawyers.length > 0 && (
                           <div className="space-y-3 mt-4">
                             {caseData.lawyers.map((lawyer, index) => (
@@ -1555,8 +1555,8 @@ export default function CaseDetailsPage() {
                               {(isPending || isRejected) && !canReviewDocuments && (
                                 <span className="text-xs text-muted-foreground">
                                   {isPending
-                                    ? "Waiting for lawyer approval"
-                                    : "Rejected by lawyer"}
+                                    ? "Waiting for advocate approval"
+                                    : "Rejected by advocate"}
                                 </span>
                               )}
                               {canReviewDocuments && isPending && (

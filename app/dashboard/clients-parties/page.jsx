@@ -140,7 +140,7 @@ const processCasesData = (cases) => {
           ...existing,
           cases: [...(existing.cases || []), {
             ...caseInfo,
-            role: 'Primary Lawyer'
+            role: 'Primary Advocate'
           }]
         });
       }
@@ -162,7 +162,7 @@ const processCasesData = (cases) => {
             ...existing,
             cases: [...(existing.cases || []), {
               ...caseInfo,
-              role: lawyer.isPrimary ? 'Primary Lawyer' : 
+              role: lawyer.isPrimary ? 'Primary Advocate' : 
                     lawyer.role === 'lead' ? 'Lead Advocate' : 'Advocate'
             }]
           });
@@ -658,7 +658,7 @@ export default function ClientsPartiesPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Clients & Parties</h1>
           <p className="text-muted-foreground mt-1">
-            Manage all clients, lawyers, and parties involved in cases
+            Manage all clients, advocates, and parties involved in cases
           </p>
         </div>
         <div className="flex gap-2">
@@ -677,7 +677,7 @@ export default function ClientsPartiesPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search clients, lawyers by name, email, contact, filing number, or court..."
+              placeholder="Search clients, advocates by name, email, contact, filing number, or court..."
               className="pl-10"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -690,7 +690,7 @@ export default function ClientsPartiesPage() {
             <div className="text-2xl font-bold">{people?.clients?.length || 0}</div>
           </div>
           <div className="text-right">
-            <div className="text-sm text-muted-foreground">Total Lawyers</div>
+            <div className="text-sm text-muted-foreground">Total Advocates</div>
             <div className="text-2xl font-bold">{people?.lawyers?.length || 0}</div>
           </div>
         </div>
@@ -711,7 +711,7 @@ export default function ClientsPartiesPage() {
                 </TabsTrigger>
                 <TabsTrigger value="lawyers" className="flex items-center gap-2">
                   <Briefcase className="h-4 w-4" />
-                  <span>Lawyers</span>
+                  <span>Advocates</span>
                   <Badge variant="secondary" className="ml-2">
                     {filteredLawyers.length}
                   </Badge>
@@ -786,7 +786,7 @@ export default function ClientsPartiesPage() {
                     <Briefcase className="h-12 w-12 text-muted-foreground mb-4" />
                     <h3 className="text-lg font-semibold mb-2">No lawyers found</h3>
                     <p className="text-muted-foreground">
-                      {searchTerm ? 'Try a different search term' : 'No lawyers found in your cases'}
+                      {searchTerm ? 'Try a different search term' : 'No advocates found in your cases'}
                     </p>
                   </div>
                 )}

@@ -940,11 +940,11 @@ export default function NewCasePage() {
     if (isLawyer) {
       validateRequiredLegalTeamFields({
         participants: caseData.lawyers,
-        roleLabel: "Lawyer",
+        roleLabel: "Advocate",
         tab: "associatedParties",
         errors,
         requireAtLeastOne: true,
-        emptyStateMessage: "Add a lawyer",
+        emptyStateMessage: "Add an advocate",
         emptyStateField: "lawyers",
         emptyStateFocusId: "add-lawyer-button",
       });
@@ -1009,7 +1009,7 @@ export default function NewCasePage() {
         tab: "associatedParties",
         errors,
         requireAtLeastOne: true,
-        emptyStateMessage: "Add a lawyer",
+        emptyStateMessage: "Add an advocate",
         emptyStateField: "advocates",
         emptyStateFocusId: "add-advocate-button",
       });
@@ -1476,7 +1476,7 @@ export default function NewCasePage() {
         toast({
           title: "Success",
           description: hasPendingReviewDocuments
-            ? "Case created. Uploaded documents are pending lawyer approval."
+            ? "Case created. Uploaded documents are pending advocate approval."
             : "Case created successfully!",
         });
 
@@ -1836,6 +1836,47 @@ export default function NewCasePage() {
     setCaseData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleCaseTypeInputChange = (rawValue) => {
+    const typedValue = normalizeValue(rawValue);
+
+    if (!typedValue) {
+      setCaseData((prev) =>
+        syncDerivedCaseFields({
+          ...prev,
+          eCourt: {
+            ...prev.eCourt,
+            caseTypeCode: "",
+            caseTypeName: "",
+          },
+        })
+      );
+      return;
+    }
+
+    const matchedCaseType = (courtDirectoryOptions.caseTypes || []).find(
+      (caseType) =>
+        normalizeValue(caseType.name).toLowerCase() === typedValue.toLowerCase() ||
+        normalizeValue(caseType.code).toLowerCase() === typedValue.toLowerCase()
+    );
+
+    const resolvedName = matchedCaseType?.name || typedValue;
+    const caseTypeReference = getEcourtCaseTypeReference({
+      caseTypeName: resolvedName,
+      caseTypeCode: matchedCaseType?.code || "",
+    });
+
+    setCaseData((prev) =>
+      syncDerivedCaseFields({
+        ...prev,
+        eCourt: {
+          ...prev.eCourt,
+          caseTypeCode: matchedCaseType?.code || caseTypeReference.caseCode || "",
+          caseTypeName: resolvedName,
+        },
+      })
+    );
+  };
+
   const handleCloseStatusConfirm = () => {
     setCaseData((prev) => ({
       ...prev,
@@ -1990,6 +2031,7 @@ export default function NewCasePage() {
           <CaseTabs
             caseData={caseData}
             setCaseData={setCaseData}
+            handleCaseTypeInputChange={handleCaseTypeInputChange}
             courtDirectoryOptions={courtDirectoryOptions}
             courtDirectoryLoading={courtDirectoryLoading}
             courtSource={courtSource}

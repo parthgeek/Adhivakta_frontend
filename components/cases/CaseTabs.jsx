@@ -9,6 +9,7 @@ import TransferHistoryTab from "./TransferHistoryTab";
 export default function CaseTabs({
   caseData,
   setCaseData,
+  handleCaseTypeInputChange,
   courtDirectoryOptions,
   courtDirectoryLoading,
   courtSource,
@@ -71,6 +72,7 @@ export default function CaseTabs({
           caseData={caseData}
           handleChange={handleChange}
           handleSelectChange={handleSelectChange}
+          handleCaseTypeInputChange={handleCaseTypeInputChange}
           courtDirectoryOptions={courtDirectoryOptions}
           courtDirectoryLoading={courtDirectoryLoading}
           courtSource={courtSource}

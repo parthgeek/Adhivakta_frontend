@@ -340,7 +340,7 @@ export function LoginForm() {
                   <SelectValue placeholder="Select your role" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="lawyer">Lawyer</SelectItem>
+                  <SelectItem value="lawyer">Advocate</SelectItem>
                   <SelectItem value="client">Client</SelectItem>
                 </SelectContent>
               </Select>

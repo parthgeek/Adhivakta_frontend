@@ -186,7 +186,7 @@ export default function PricingPage() {
         }
 
         const packageName = quotePlan?.name || "Subscription Package";
-        const userType = selectedRole === "lawyer" ? "Lawyer" : "Customer";
+        const userType = selectedRole === "lawyer" ? "Advocate" : "Customer";
         const subject = encodeURIComponent(`Quote Request - ${packageName}`);
         const body = encodeURIComponent(
             `Package: ${packageName}\nUser Type: ${userType}\nName: ${name}\nEmail/Phone: ${contact}`
@@ -254,7 +254,7 @@ export default function PricingPage() {
 
         return PACKAGE_TIERS.map((tier, index) => {
             const sourcePlan = sortedPlans[index];
-            const roleLabel = selectedRole === "lawyer" ? "lawyers" : "customers";
+            const roleLabel = selectedRole === "lawyer" ? "advocates" : "customers";
             const tierDescription = `Package for ${roleLabel} with up to ${tier.limit} active cases and ${tier.limit} users.`;
             const fallbackPlan = {
                 _id: null,
@@ -361,7 +361,7 @@ export default function PricingPage() {
                         Choose the Perfect Plan for Your Practice
                     </h1>
                     <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
-                        Separate plans for lawyers and customers. Base packages start at 10 cases and 10 users, and
+                        Separate plans for advocates and customers. Base packages start at 10 cases and 10 users, and
                         superior packages scale to 20, 30, 40, and 50.
                     </p>
 
@@ -370,7 +370,7 @@ export default function PricingPage() {
                         <TabsList className="grid w-full grid-cols-2">
                             <TabsTrigger value="lawyer" className="flex items-center gap-2">
                                 <Scale className="h-4 w-4" />
-                                Lawyer Packages
+                                Advocate Packages
                             </TabsTrigger>
                             <TabsTrigger value="client" className="flex items-center gap-2">
                                 <Briefcase className="h-4 w-4" />
@@ -386,7 +386,7 @@ export default function PricingPage() {
                 <div className="max-w-6xl mx-auto">
                     <div className="text-center mb-10">
                         <h2 className="text-2xl font-bold text-gray-900">
-                            {selectedRole === "lawyer" ? "Lawyer Package Plans" : "Customer Package Plans"}
+                            {selectedRole === "lawyer" ? "Advocate Package Plans" : "Customer Package Plans"}
                         </h2>
                         <p className="text-gray-600 mt-2">
                             Base package allows 10 cases and 10 users. Superior package tiers increase to 20, 30, 40,

@@ -677,8 +677,8 @@ const ApprovalNotificationsPopup = ({
                 </DialogTitle>
                 <DialogDescription className="mt-1 text-sm leading-6 text-slate-600">
                   {visible.length === 1
-                    ? "A document needs lawyer review right now."
-                    : `${visible.length} documents need lawyer review right now.`}
+                    ? "A document needs advocate review right now."
+                    : `${visible.length} documents need advocate review right now.`}
                 </DialogDescription>
               </div>
             </div>

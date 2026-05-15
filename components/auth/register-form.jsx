@@ -28,7 +28,7 @@ const handleGoogleLogin = async () => {
     toast({
       variant: 'destructive',
       title: 'Account Type Required',
-      description: 'Please choose whether you are a lawyer or client first.',
+      description: 'Please choose whether you are an advocate or client first.',
     })
     return
   }
@@ -90,7 +90,7 @@ const handleGoogleLogin = async () => {
       toast({
         variant: 'destructive',
         title: 'Account Type Required',
-        description: 'Please choose whether you are a lawyer or client first.',
+        description: 'Please choose whether you are an advocate or client first.',
       })
       return
     }
@@ -103,7 +103,7 @@ const handleGoogleLogin = async () => {
         <div className="space-y-2">
           <h3 className="text-lg font-semibold">Email Registration</h3>
           <p className="text-sm text-muted-foreground">
-            Creating {accountType === 'lawyer' ? 'lawyer' : 'client'} account
+            Creating {accountType === 'lawyer' ? 'advocate' : 'client'} account
           </p>
         </div>
         <RegisterFormEmail defaultRole={accountType} />
@@ -135,7 +135,7 @@ const handleGoogleLogin = async () => {
             <SelectValue placeholder="Select your role" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="lawyer">Lawyer</SelectItem>
+            <SelectItem value="lawyer">Advocate</SelectItem>
             <SelectItem value="client">Client</SelectItem>
           </SelectContent>
         </Select>

@@ -1081,7 +1081,7 @@ export default function CalendarPage() {
                             </div>
                             <div>
                               <span className="font-medium">{l.name || l.user?.name || "—"}</span>
-                              <span className="ml-2 text-xs text-muted-foreground">Lawyer{l.isLead ? " (Lead)" : ""}</span>
+                              <span className="ml-2 text-xs text-muted-foreground">Advocate{l.isLead ? " (Lead)" : ""}</span>
                             </div>
                           </div>
                         ))}

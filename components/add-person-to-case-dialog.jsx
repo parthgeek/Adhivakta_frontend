@@ -35,7 +35,7 @@ export function AddPersonToCaseDialog({ caseId, userRole, onSuccess }) {
         toast.success("Client added successfully!")
       } else {
         await api.cases.addLawyer(caseId, email)
-        toast.success("Lawyer added successfully!")
+        toast.success("Advocate added successfully!")
       }
 
       setEmail("")
@@ -59,13 +59,13 @@ export function AddPersonToCaseDialog({ caseId, userRole, onSuccess }) {
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <UserPlusIcon className="mr-2 h-4 w-4" />
-          Add {isLawyer ? "Client" : "Lawyer"}
+          Add {isLawyer ? "Client" : "Advocate"}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Add {isLawyer ? "Client" : "Lawyer"} to Case</DialogTitle>
+            <DialogTitle>Add {isLawyer ? "Client" : "Advocate"} to Case</DialogTitle>
             <DialogDescription>
               Enter the email address of the {personType} you want to add to this case.
               They must be registered in the system with the correct role.
@@ -73,7 +73,7 @@ export function AddPersonToCaseDialog({ caseId, userRole, onSuccess }) {
           </DialogHeader>
           <div className="py-4">
             <div className="space-y-2">
-              <Label htmlFor="email">{isLawyer ? "Client" : "Lawyer"} Email</Label>
+              <Label htmlFor="email">{isLawyer ? "Client" : "Advocate"} Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -97,7 +97,7 @@ export function AddPersonToCaseDialog({ caseId, userRole, onSuccess }) {
               Cancel
             </Button>
             <Button type="submit" disabled={loading || !email}>
-              {loading ? "Adding..." : `Add ${isLawyer ? "Client" : "Lawyer"}`}
+              {loading ? "Adding..." : `Add `}
             </Button>
           </DialogFooter>
         </form>

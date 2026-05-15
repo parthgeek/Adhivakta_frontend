@@ -16,6 +16,7 @@ import { toast } from "@/components/ui/use-toast";
 import api from "@/services/api";
 import { Badge } from "@/components/ui/badge";
 import TransferHistoryTab from "@/components/cases/TransferHistoryTab";
+import CaseTypeSearchSelect from "@/components/cases/CaseTypeSearchSelect";
 import {
   Dialog,
   DialogContent,
@@ -26,13 +27,22 @@ import {
 } from "@/components/ui/dialog";
 import {
   buildCaseNumber,
+  getBackendCaseType,
   getEcourtCaseTypeReference,
   normalizeFormattedCaseNumber,
   normalizeCaseNumber,
   parseCaseNumberParts,
 } from "@/lib/caseTypeUtils";
+import { caseTypes as CASE_TYPE_OPTIONS } from "@/lib/caseTypes";
 
 const DEFAULT_CASE_YEAR = String(new Date().getFullYear());
+const EDIT_CASE_TYPE_SUGGESTIONS = Object.values(CASE_TYPE_OPTIONS)
+  .flat()
+  .map((caseType) => ({
+    name: caseType.label,
+    code: caseType.code,
+  }))
+  .sort((left, right) => left.name.localeCompare(right.name));
 
 const STATES = [
   { value: "karnataka", label: "Karnataka" },
@@ -329,6 +339,35 @@ export default function EditCasePage() {
     }));
   };
 
+  const handleCaseTypeDisplayChange = (rawValue) => {
+    const typedValue = typeof rawValue === "string" ? rawValue.trim() : "";
+
+    setCaseData((prev) => {
+      const caseTypeReference = getEcourtCaseTypeReference({
+        caseTypeName: typedValue,
+        caseTypeCode: "",
+      });
+      const nextCaseCode = typedValue ? caseTypeReference.caseCode : "";
+      const nextCaseYear = prev.caseYear || DEFAULT_CASE_YEAR;
+
+      return {
+        ...prev,
+        caseType: getBackendCaseType(caseTypeReference.category),
+        caseSubType: typedValue,
+        caseCode: nextCaseCode,
+        caseTypeDisplay:
+          [nextCaseCode, typedValue ? typedValue.toUpperCase() : ""]
+            .filter(Boolean)
+            .join(" - "),
+        caseNumber: buildCaseNumber({
+          caseCode: nextCaseCode,
+          caseNumberMiddle: prev.caseNumberMiddle,
+          caseYear: nextCaseYear,
+        }),
+      };
+    });
+  };
+
   const handleCloseStatusConfirm = () => {
     setCaseData((prev) => ({
       ...prev,
@@ -529,17 +568,17 @@ export default function EditCasePage() {
     // Validate lawyers/clients only if saving associated parties or everything
     if ((isLawyer && (section === 'all' || section === 'associatedParties'))) {
       if (!caseData.lawyers || caseData.lawyers.length === 0) {
-        toast({ title: "Error", description: "Please add at least one lawyer to the case.", variant: "destructive" });
+        toast({ title: "Error", description: "Please add at least one advocate to the case.", variant: "destructive" });
         return;
       }
       for (let i = 0; i < caseData.lawyers.length; i++) {
         const lawyer = caseData.lawyers[i];
         if (!lawyer.name || lawyer.name.trim() === '') {
-          toast({ title: "Error", description: `Please enter a name for Lawyer ${i + 1}.`, variant: "destructive" });
+          toast({ title: "Error", description: `Please enter a name for Advocate ${i + 1}.`, variant: "destructive" });
           return;
         }
         if (!(lawyer.email || lawyer.user?.email || "").trim()) {
-          toast({ title: "Error", description: `Please enter an email for Lawyer ${i + 1}.`, variant: "destructive" });
+          toast({ title: "Error", description: `Please enter an email for Advocate ${i + 1}.`, variant: "destructive" });
           return;
         }
       }
@@ -712,7 +751,7 @@ export default function EditCasePage() {
         title: "Success",
         description:
           hasPendingReviewDocuments && section === "all"
-            ? "Case updated. Uploaded documents are pending lawyer approval."
+            ? "Case updated. Uploaded documents are pending advocate approval."
             : section === "all"
               ? "Case updated successfully."
               : `Section "${section}" saved.`,
@@ -782,12 +821,12 @@ export default function EditCasePage() {
                           <Label htmlFor="caseTypeDisplay">
                             Case Type <span className="text-red-500">*</span>
                           </Label>
-                          <Input
+                          <CaseTypeSearchSelect
                             id="caseTypeDisplay"
-                            value={caseData.caseTypeDisplay || ""}
-                            readOnly
-                            placeholder="Case type"
-                            className="bg-muted text-muted-foreground cursor-default"
+                            value={caseData.caseSubType || ""}
+                            options={EDIT_CASE_TYPE_SUGGESTIONS}
+                            onValueChange={handleCaseTypeDisplayChange}
+                            placeholder="Search or type case type"
                           />
                         </div>
 
@@ -1343,7 +1382,7 @@ export default function EditCasePage() {
                                   />
                                 </div>
                                 <div className="space-y-2 md:col-span-2">
-                                  <Label>Defending Lawyer</Label>
+                                  <Label>Defending Advocate</Label>
                                   <Input
                                     value={respondent.opposingCounsel || ""}
                                     onChange={e => {
@@ -1479,7 +1518,7 @@ export default function EditCasePage() {
               <Card>
                 <CardHeader>
                   <CardTitle>People</CardTitle>
-                  <CardDescription>Add or edit lawyers, clients, or advocates associated with this case.</CardDescription>
+                  <CardDescription>Add or edit advocates, clients, or other associated people for this case.</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
@@ -1492,7 +1531,7 @@ export default function EditCasePage() {
                             <div key={`lawyer-${idx}`} className="space-y-4 border p-4 rounded-lg shadow-sm">
                               <div className="flex justify-between items-center">
                                 <h4 className="font-medium flex items-center gap-2">
-                                  Lawyer {idx + 1}
+                                  Advocate {idx + 1}
                                 </h4>
                                 <Button
                                   variant="ghost"
@@ -1617,7 +1656,7 @@ export default function EditCasePage() {
                             variant="outline"
                             className="mt-2 w-full border-dashed border-gray-300 hover:border-primary hover:bg-primary/5"
                           >
-                            Add Lawyer to Case
+                            Add Advocate to Case
                           </Button>
                         </div>
                         {/* Clients Section for Lawyers */}
@@ -1678,7 +1717,7 @@ export default function EditCasePage() {
                           {(caseData.lawyers || []).length > 0 ? (
                             (caseData.lawyers || []).map((lawyer, idx) => (
                               <div key={`lawyer-${idx}`} className="space-y-2 border p-4 rounded-lg shadow-sm bg-muted/30">
-                                <div className="font-medium">Lawyer {idx + 1}</div>
+                                <div className="font-medium">Advocate {idx + 1}</div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                                   <div><span className="text-muted-foreground">Name:</span> {lawyer.name || (lawyer.user?.name) || 'N/A'}</div>
                                   <div><span className="text-muted-foreground">Email:</span> {lawyer.email || (lawyer.user?.email) || 'N/A'}</div>
@@ -1689,7 +1728,7 @@ export default function EditCasePage() {
                               </div>
                             ))
                           ) : (
-                            <p className="text-sm text-muted-foreground italic">No lawyers assigned to this case.</p>
+                            <p className="text-sm text-muted-foreground italic">No advocates assigned to this case.</p>
                           )}
                         </div>
 

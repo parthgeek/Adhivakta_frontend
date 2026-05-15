@@ -36,6 +36,13 @@ const safeText = (value) => {
 
 const normalizeText = (value) => safeText(value).trim().toLowerCase();
 
+const getDisplayRole = (role) => {
+  const normalizedRole = safeText(role).trim().toLowerCase();
+  if (normalizedRole === "lawyer") return "Advocate";
+  if (!normalizedRole) return "Member";
+  return normalizedRole.charAt(0).toUpperCase() + normalizedRole.slice(1);
+};
+
 const buildSearchData = (cases = []) => {
   const clientsMap = new Map();
 
@@ -121,7 +128,7 @@ export default function Header({ onMenuClick }) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const displayName = user?.name || "User";
-  const displayRole = user?.role || "member";
+  const displayRole = getDisplayRole(user?.role);
   const initials = useMemo(() => {
     const value = displayName
       .split(" ")
@@ -428,7 +435,7 @@ export default function Header({ onMenuClick }) {
                 </div>
                 <div className="text-left hidden md:block">
                   <p className="text-sm font-medium">{displayName}</p>
-                  <p className="text-xs text-muted-foreground capitalize">
+                  <p className="text-xs text-muted-foreground">
                     {displayRole}
                   </p>
                 </div>

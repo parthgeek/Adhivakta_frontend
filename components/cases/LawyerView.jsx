@@ -216,11 +216,11 @@ export default function LawyerView({ caseData, setCaseData, updateClientField, r
                         disabled
                       />
                       <Label htmlFor={`lawyer-primary-${idx}`} className="text-sm font-medium">
-                        {primaryLawyer ? "Primary Lawyer (You)" : "Additional Lawyer"}
+                        {primaryLawyer ? "Primary Advocate (You)" : "Additional Advocate"}
                       </Label>
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
-                      The primary lawyer is always the logged-in lawyer creating this case.
+                      The primary advocate is always the logged-in advocate creating this case.
                     </p>
                   </div>
                 </div>

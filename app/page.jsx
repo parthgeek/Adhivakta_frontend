@@ -133,7 +133,7 @@ export default function Home() {
                 Core Features for Modern Legal Practice
               </h2>
               <p className="text-lg text-gray-700 max-w-2xl mx-auto">
-                Adhivakta is designed for both Lawyers and Clients, providing
+                Adhivakta is designed for both Advocates and Clients, providing
                 seamless case management, document handling, and secure
                 collaboration.
               </p>
@@ -141,15 +141,15 @@ export default function Home() {
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto">
               {[
                 {
-                  title: "User Roles: Lawyer & Client",
+                  title: "User Roles: Advocate & Client",
                   description:
-                    "Distinct dashboards and permissions for lawyers and clients, ensuring secure and relevant access for every user.",
+                    "Distinct dashboards and permissions for advocates and clients, ensuring secure and relevant access for every user.",
                   icon: <Users className="h-8 w-8 text-primary" />,
                 },
                 {
                   title: "Comprehensive Case Management",
                   description:
-                    "Upload and manage cases with all details: court, parties, lawyers, clients, and more. Keep everything organized in one place.",
+                    "Upload and manage cases with all details: court, parties, advocates, clients, and more. Keep everything organized in one place.",
                   icon: <Gavel className="h-8 w-8 text-primary" />,
                 },
                 {
@@ -239,7 +239,7 @@ export default function Home() {
                   quote:
                     "The analytics tools provide invaluable insights, helping us optimize our practice efficiently.",
                   author: "Anita Desai",
-                  title: "Corporate Lawyer",
+                  title: "Corporate Advocate",
                   rating: 5,
                   image: "/images/bg_1.jpg",
                 },

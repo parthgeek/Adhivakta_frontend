@@ -96,7 +96,7 @@ const handleSubmit = async (e) => {
     } else if (err.message?.includes("Password must be at least")) {
       setError("Password must be at least 6 characters long.")
     } else if (err.message?.includes("Invalid role")) {
-      setError("Please select a valid account type (lawyer or client).")
+      setError("Please select a valid account type (advocate or client).")
     } else if (err.message?.includes("verification email")) {
       // Handle case where verification email was resent
       setError(err.message)
@@ -160,7 +160,7 @@ const handleSubmit = async (e) => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="client">Client</SelectItem>
-            <SelectItem value="lawyer">Lawyer</SelectItem>
+            <SelectItem value="lawyer">Advocate</SelectItem>
           </SelectContent>
         </Select>
       </div>

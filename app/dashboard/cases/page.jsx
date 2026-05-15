@@ -278,8 +278,8 @@ function buildCasePDF(raw) {
       position: fixed;
       top: 50%;
       left: 50%;
-      width: 320px;
-      height: 320px;
+      width: 620px;
+      height: 620px;
       transform: translate(-50%, -50%);
       opacity: 0.06;
       z-index: 0;

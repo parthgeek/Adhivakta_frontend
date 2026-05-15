@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Building2, Scale, Gavel, CheckCircle2 } from "lucide-react";
+import CaseTypeSearchSelect from "@/components/cases/CaseTypeSearchSelect";
 import { cn } from "@/lib/utils";
 
 const COURT_TYPE_OPTIONS = [
@@ -44,6 +45,7 @@ export default function CourtInfoTab({
   caseData,
   handleChange,
   handleSelectChange,
+  handleCaseTypeInputChange,
   courtDirectoryOptions,
   courtDirectoryLoading,
   courtSource = "ecourts",
@@ -68,6 +70,17 @@ export default function CourtInfoTab({
 
   const isHighCourt = courtSource === "highcourts";
   const isSupremeCourt = courtSource === "supremecourt";
+  const caseTypeInputPlaceholder =
+    !selectedEcourt.courtCode && !isSupremeCourt
+      ? isHighCourt
+        ? "Select bench first"
+        : "Select court first"
+      : courtDirectoryLoading?.caseTypes
+        ? "Loading case types..."
+        : "Search or type case type";
+  const isCaseTypeInputDisabled =
+    ((!selectedEcourt.courtCode && !isSupremeCourt) || courtDirectoryLoading?.caseTypes);
+  const selectedCaseTypeName = selectedEcourt.caseTypeName || "";
 
   return (
     <Card>
@@ -240,30 +253,18 @@ export default function CourtInfoTab({
                 <Label htmlFor="ecourtCaseType">
                   Case Type <span className="text-red-500">*</span>
                 </Label>
-                <Select
-                  value={selectedEcourt.caseTypeCode || ""}
-                  onValueChange={(value) => handleSelectChange("ecourtCaseType", value)}
-                  disabled={!selectedEcourt.courtCode || courtDirectoryLoading?.caseTypes}
-                >
-                  <SelectTrigger id="ecourtCaseType">
-                    <SelectValue
-                      placeholder={
-                        !selectedEcourt.courtCode
-                          ? "Select court first"
-                          : courtDirectoryLoading?.caseTypes
-                            ? "Loading case types..."
-                            : "Select case type"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {caseTypes.map((caseType) => (
-                      <SelectItem key={caseType.code} value={caseType.code}>
-                        {caseType.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CaseTypeSearchSelect
+                  id="ecourtCaseType"
+                  value={selectedCaseTypeName}
+                  options={caseTypes.map((caseType) => ({
+                    name: caseType.name,
+                    code: caseType.code,
+                  }))}
+                  onValueChange={handleCaseTypeInputChange}
+                  placeholder={caseTypeInputPlaceholder}
+                  disabled={isCaseTypeInputDisabled}
+                  className={getFieldClassName("selectedCaseType")}
+                />
                 {getFieldError("district") && (
                   <p className="text-sm text-red-700">{getFieldError("district")}</p>
                 )}
@@ -395,30 +396,18 @@ export default function CourtInfoTab({
                 <Label htmlFor="hcCaseType">
                   Case Type <span className="text-red-500">*</span>
                 </Label>
-                <Select
-                  value={selectedEcourt.caseTypeCode || ""}
-                  onValueChange={(value) => handleSelectChange("ecourtCaseType", value)}
-                  disabled={!selectedEcourt.courtCode || courtDirectoryLoading?.caseTypes}
-                >
-                  <SelectTrigger id="hcCaseType">
-                    <SelectValue
-                      placeholder={
-                        !selectedEcourt.courtCode
-                          ? "Select bench first"
-                          : courtDirectoryLoading?.caseTypes
-                            ? "Loading case types..."
-                            : "Select case type"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {caseTypes.map((caseType) => (
-                      <SelectItem key={caseType.code} value={caseType.code}>
-                        {caseType.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CaseTypeSearchSelect
+                  id="hcCaseType"
+                  value={selectedCaseTypeName}
+                  options={caseTypes.map((caseType) => ({
+                    name: caseType.name,
+                    code: caseType.code,
+                  }))}
+                  onValueChange={handleCaseTypeInputChange}
+                  placeholder={caseTypeInputPlaceholder}
+                  disabled={isCaseTypeInputDisabled}
+                  className={getFieldClassName("selectedCaseType")}
+                />
                 {getFieldError("courtSelection") && (
                   <p className="text-sm text-red-700">{getFieldError("courtSelection")}</p>
                 )}
@@ -443,26 +432,18 @@ export default function CourtInfoTab({
                 <Label htmlFor="scCaseType">
                   Case Type <span className="text-red-500">*</span>
                 </Label>
-                <Select
-                  value={selectedEcourt.caseTypeCode || ""}
-                  onValueChange={(value) => handleSelectChange("ecourtCaseType", value)}
-                  disabled={courtDirectoryLoading?.caseTypes}
-                >
-                  <SelectTrigger id="scCaseType">
-                    <SelectValue
-                      placeholder={
-                        courtDirectoryLoading?.caseTypes ? "Loading case types..." : "Select case type"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {caseTypes.map((caseType) => (
-                      <SelectItem key={caseType.code} value={caseType.code}>
-                        {caseType.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CaseTypeSearchSelect
+                  id="scCaseType"
+                  value={selectedCaseTypeName}
+                  options={caseTypes.map((caseType) => ({
+                    name: caseType.name,
+                    code: caseType.code,
+                  }))}
+                  onValueChange={handleCaseTypeInputChange}
+                  placeholder={caseTypeInputPlaceholder}
+                  disabled={isCaseTypeInputDisabled}
+                  className={getFieldClassName("selectedCaseType")}
+                />
               </div>
             </div>
           )}
