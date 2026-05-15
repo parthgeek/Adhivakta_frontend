@@ -667,6 +667,8 @@ export default function CaseDetailsPage() {
 
   const petitionerList = caseData?.parties?.petitioner || []
   const respondentList = caseData?.parties?.respondent || []
+  const clientSide = caseData?.clientSide || "petitioner"
+  const petitionerIsClient = clientSide === "petitioner"
   const petitionerAdvocate = caseData?.advocates?.[0]?.name || caseData?.lawyers?.[0]?.name || "Not assigned"
   const respondentAdvocateNames = respondentList
     .map((party) => party?.opposingCounsel)
@@ -885,24 +887,28 @@ export default function CaseDetailsPage() {
                         <div className="overflow-hidden rounded-xl border border-[#d9e2ef] bg-white">
                           <Table>
                             <TableHeader>
-                              <TableRow className="bg-[#f8fafc] hover:bg-[#f8fafc]">
-                                <TableHead className="w-1/4 text-gray-600">Petitioner</TableHead>
-                                <TableHead className="w-1/4 text-gray-600">Advocate</TableHead>
-                                <TableHead className="w-1/4 border-l border-[#d9e2ef] text-gray-600">Respondent</TableHead>
-                                <TableHead className="w-1/4 text-gray-600">Advocate</TableHead>
+                              <TableRow>
+                                <TableHead className={`w-1/4 ${petitionerIsClient ? "text-blue-800 bg-blue-50" : "text-red-800 bg-red-50"}`}>
+                                  {petitionerIsClient ? "Our Client (Petitioner)" : "Opposing Party (Petitioner)"}
+                                </TableHead>
+                                <TableHead className={`w-1/4 ${petitionerIsClient ? "text-blue-800 bg-blue-50" : "text-red-800 bg-red-50"}`}>Advocate</TableHead>
+                                <TableHead className={`w-1/4 border-l border-[#d9e2ef] ${!petitionerIsClient ? "text-blue-800 bg-blue-50" : "text-red-800 bg-red-50"}`}>
+                                  {!petitionerIsClient ? "Our Client (Respondent)" : "Opposing Party (Respondent)"}
+                                </TableHead>
+                                <TableHead className={`w-1/4 ${!petitionerIsClient ? "text-blue-800 bg-blue-50" : "text-red-800 bg-red-50"}`}>Advocate</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
                               <TableRow>
-                                <TableCell className="align-top">
+                                <TableCell className={`align-top ${petitionerIsClient ? "bg-blue-50" : "bg-red-50"}`}>
                                   {petitionerList.length > 0 ? (
                                     <div className="space-y-3">
                                       {petitionerList.map((party, index) => (
                                         <div key={`details-petitioner-${index}`} className="flex items-center gap-2">
-                                          <User className="h-4 w-4 text-[#03234b]" />
+                                          <User className={`h-4 w-4 ${petitionerIsClient ? "text-blue-700" : "text-red-600"}`} />
                                           <p className="font-medium text-sm text-gray-900">{party.name || "—"}</p>
                                           {(party.role || party.label) && (
-                                            <Badge variant="outline" className="text-xs bg-[#03234b]/10 text-[#03234b] border-[#03234b]/20">
+                                            <Badge variant="outline" className={`text-xs ${petitionerIsClient ? "bg-blue-100 text-blue-800 border-blue-200" : "bg-red-100 text-red-800 border-red-200"}`}>
                                               {party.role || party.label}
                                             </Badge>
                                           )}
@@ -913,21 +919,21 @@ export default function CaseDetailsPage() {
                                     <p className="text-sm text-muted-foreground">No petitioners added.</p>
                                   )}
                                 </TableCell>
-                                <TableCell className="align-top">
+                                <TableCell className={`align-top ${petitionerIsClient ? "bg-blue-50" : "bg-red-50"}`}>
                                   <div className="flex items-center gap-2">
-                                    <User className="h-4 w-4 text-[#03234b]" />
+                                    <User className={`h-4 w-4 ${petitionerIsClient ? "text-blue-700" : "text-red-600"}`} />
                                     <p className="font-medium text-sm text-gray-900">{petitionerAdvocate}</p>
                                   </div>
                                 </TableCell>
-                                <TableCell className="border-l border-[#d9e2ef] align-top bg-[#fff7f7]">
+                                <TableCell className={`border-l border-[#d9e2ef] align-top ${!petitionerIsClient ? "bg-blue-50" : "bg-red-50"}`}>
                                   {respondentList.length > 0 ? (
                                     <div className="space-y-3">
                                       {respondentList.map((party, index) => (
                                         <div key={`details-respondent-${index}`} className="flex items-center gap-2">
-                                          <User className="h-4 w-4 text-red-600" />
+                                          <User className={`h-4 w-4 ${!petitionerIsClient ? "text-blue-700" : "text-red-600"}`} />
                                           <p className="font-medium text-sm text-gray-900">{party.name || "—"}</p>
                                           {(party.role || party.label) && (
-                                            <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
+                                            <Badge variant="outline" className={`text-xs ${!petitionerIsClient ? "bg-blue-100 text-blue-800 border-blue-200" : "bg-red-100 text-red-800 border-red-200"}`}>
                                               {party.role || party.label}
                                             </Badge>
                                           )}
@@ -938,9 +944,9 @@ export default function CaseDetailsPage() {
                                     <p className="text-sm text-muted-foreground">No respondents added.</p>
                                   )}
                                 </TableCell>
-                                <TableCell className="align-top bg-[#fff7f7]">
+                                <TableCell className={`align-top ${!petitionerIsClient ? "bg-blue-50" : "bg-red-50"}`}>
                                   <div className="flex items-center gap-2">
-                                    <User className="h-4 w-4 text-red-600" />
+                                    <User className={`h-4 w-4 ${!petitionerIsClient ? "text-blue-700" : "text-red-600"}`} />
                                     <p className="font-medium text-sm text-gray-900">{respondentAdvocate}</p>
                                   </div>
                                 </TableCell>
@@ -1389,24 +1395,28 @@ export default function CaseDetailsPage() {
                       <div className="overflow-hidden rounded-xl border border-[#d9e2ef] bg-white">
                         <Table>
                           <TableHeader>
-                            <TableRow className="bg-[#f8fafc] hover:bg-[#f8fafc]">
-                              <TableHead className="w-[45%] text-gray-600">Petitioner</TableHead>
-                              <TableHead className="w-16 text-center text-gray-600">VS</TableHead>
-                              <TableHead className="w-[45%] text-gray-600">Respondent</TableHead>
+                            <TableRow>
+                              <TableHead className={`w-[45%] ${petitionerIsClient ? "text-blue-800 bg-blue-50" : "text-red-800 bg-red-50"}`}>
+                                {petitionerIsClient ? "Our Client (Petitioner)" : "Opposing Party (Petitioner)"}
+                              </TableHead>
+                              <TableHead className="w-16 text-center text-gray-600 bg-[#f8fafc]">VS</TableHead>
+                              <TableHead className={`w-[45%] ${!petitionerIsClient ? "text-blue-800 bg-blue-50" : "text-red-800 bg-red-50"}`}>
+                                {!petitionerIsClient ? "Our Client (Respondent)" : "Opposing Party (Respondent)"}
+                              </TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             <TableRow>
-                              <TableCell className="align-top">
+                              <TableCell className={`align-top ${petitionerIsClient ? "bg-blue-50" : "bg-red-50"}`}>
                                 {petitionerList.length > 0 ? (
                                   <div className="space-y-3">
                                     {petitionerList.map((party, index) => (
-                                      <div key={`petitioner-${index}`} className="rounded-lg border bg-[#03234b]/5 p-3">
+                                      <div key={`petitioner-${index}`} className={`rounded-lg border p-3 ${petitionerIsClient ? "bg-blue-100" : "bg-red-100"}`}>
                                         <div className="flex items-center gap-2 mb-1">
-                                          <User className="h-4 w-4 text-[#03234b]" />
+                                          <User className={`h-4 w-4 ${petitionerIsClient ? "text-blue-700" : "text-red-600"}`} />
                                           <p className="font-medium text-sm text-gray-900">{party.name || "—"}</p>
                                           {party.role && (
-                                            <Badge variant="outline" className="text-xs bg-[#03234b]/10 text-[#03234b] border-[#03234b]/20">
+                                            <Badge variant="outline" className={`text-xs ${petitionerIsClient ? "bg-blue-200 text-blue-800 border-blue-300" : "bg-red-200 text-red-800 border-red-300"}`}>
                                               {party.role}
                                             </Badge>
                                           )}
@@ -1427,16 +1437,16 @@ export default function CaseDetailsPage() {
                               <TableCell className="align-top text-center font-semibold uppercase tracking-[0.18em] text-[#5775ac]">
                                 vs
                               </TableCell>
-                              <TableCell className="align-top">
+                              <TableCell className={`align-top ${!petitionerIsClient ? "bg-blue-50" : "bg-red-50"}`}>
                                 {respondentList.length > 0 ? (
                                   <div className="space-y-3">
                                     {respondentList.map((party, index) => (
-                                      <div key={`respondent-${index}`} className="rounded-lg border bg-[#fff7f7] p-3">
+                                      <div key={`respondent-${index}`} className={`rounded-lg border p-3 ${!petitionerIsClient ? "bg-blue-100" : "bg-red-100"}`}>
                                         <div className="flex items-center gap-2 mb-1">
-                                          <User className="h-4 w-4 text-red-600" />
+                                          <User className={`h-4 w-4 ${!petitionerIsClient ? "text-blue-700" : "text-red-600"}`} />
                                           <p className="font-medium text-sm text-gray-900">{party.name || "—"}</p>
                                           {party.role && (
-                                            <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
+                                            <Badge variant="outline" className={`text-xs ${!petitionerIsClient ? "bg-blue-200 text-blue-800 border-blue-300" : "bg-red-200 text-red-800 border-red-300"}`}>
                                               {party.role}
                                             </Badge>
                                           )}

@@ -18,6 +18,52 @@ import { useTheme } from "next-themes"
 import SubscriptionSettings from "@/components/subscription/subscription-settings"
 import { useLanguage } from "@/context/language-context"
 
+const DEFAULT_NOTIFICATION_SETTINGS = {
+  emailNotifications: true,
+  caseUpdates: true,
+  hearingReminders: true,
+  documentUploads: true,
+  marketingEmails: false,
+}
+
+const DEFAULT_SECURITY_SETTINGS = {
+  twoFactorAuth: false,
+  loginAlerts: true,
+  sessionTimeout: "30",
+}
+
+const DEFAULT_APPEARANCE_SETTINGS = {
+  theme: "system",
+  fontSize: "medium",
+  language: "english",
+}
+
+const mergeBooleanSettings = (settings, defaults) =>
+  Object.keys(defaults).reduce((acc, key) => {
+    acc[key] = typeof settings?.[key] === "boolean" ? settings[key] : defaults[key]
+    return acc
+  }, {})
+
+const normalizeSecuritySettings = (settings) => ({
+  ...DEFAULT_SECURITY_SETTINGS,
+  ...mergeBooleanSettings(settings, {
+    twoFactorAuth: DEFAULT_SECURITY_SETTINGS.twoFactorAuth,
+    loginAlerts: DEFAULT_SECURITY_SETTINGS.loginAlerts,
+  }),
+  sessionTimeout: String(settings?.sessionTimeout ?? DEFAULT_SECURITY_SETTINGS.sessionTimeout),
+})
+
+const normalizeAppearanceSettings = (settings) => ({
+  ...DEFAULT_APPEARANCE_SETTINGS,
+  theme: ["light", "dark", "system"].includes(settings?.theme) ? settings.theme : DEFAULT_APPEARANCE_SETTINGS.theme,
+  fontSize: ["small", "medium", "large"].includes(settings?.fontSize)
+    ? settings.fontSize
+    : DEFAULT_APPEARANCE_SETTINGS.fontSize,
+  language: ["english", "hindi", "kannada", "tamil", "telugu", "marathi"].includes(settings?.language)
+    ? settings.language
+    : DEFAULT_APPEARANCE_SETTINGS.language,
+})
+
 export default function SettingsPage() {
   const { user, refreshUser } = useAuth()
   const { theme, setTheme } = useTheme()
@@ -41,23 +87,9 @@ export default function SettingsPage() {
     newPassword: "",
     confirmPassword: "",
   })
-  const [notificationSettings, setNotificationSettings] = useState({
-    emailNotifications: true,
-    caseUpdates: true,
-    hearingReminders: true,
-    documentUploads: true,
-    marketingEmails: false,
-  })
-  const [securitySettings, setSecuritySettings] = useState({
-    twoFactorAuth: false,
-    loginAlerts: true,
-    sessionTimeout: "30",
-  })
-  const [appearanceSettings, setAppearanceSettings] = useState({
-    theme: "system",
-    fontSize: "medium",
-    language: "english",
-  })
+  const [notificationSettings, setNotificationSettings] = useState(DEFAULT_NOTIFICATION_SETTINGS)
+  const [securitySettings, setSecuritySettings] = useState(DEFAULT_SECURITY_SETTINGS)
+  const [appearanceSettings, setAppearanceSettings] = useState(DEFAULT_APPEARANCE_SETTINGS)
   const [successMessage, setSuccessMessage] = useState("")
   const [errorMessage, setErrorMessage] = useState("")
   const [phoneError, setPhoneError] = useState("")
@@ -128,35 +160,29 @@ export default function SettingsPage() {
         yearsOfExperience: profile.data.yearsOfExperience || "",
       })
 
-      // Set notification settings if available
-      if (profile.data.notificationSettings) {
-        setNotificationSettings(profile.data.notificationSettings)
-      }
-
-      // Set security settings if available
-      if (profile.data.securitySettings) {
-        setSecuritySettings(profile.data.securitySettings)
-      }
+      setNotificationSettings(mergeBooleanSettings(profile.data.notificationSettings, DEFAULT_NOTIFICATION_SETTINGS))
+      setSecuritySettings(normalizeSecuritySettings(profile.data.securitySettings))
 
       // Set appearance settings if available
       if (profile.data.appearanceSettings) {
-        setAppearanceSettings(profile.data.appearanceSettings)
+        const nextAppearanceSettings = normalizeAppearanceSettings(profile.data.appearanceSettings)
+        setAppearanceSettings(nextAppearanceSettings)
 
         // Apply font size from settings
-        if (profile.data.appearanceSettings.fontSize) {
-          setCurrentFontSize(profile.data.appearanceSettings.fontSize)
-          applyFontSize(profile.data.appearanceSettings.fontSize)
+        if (nextAppearanceSettings.fontSize) {
+          setCurrentFontSize(nextAppearanceSettings.fontSize)
+          applyFontSize(nextAppearanceSettings.fontSize)
         }
 
         // Apply language from settings
         // Apply language from settings
-        if (profile.data.appearanceSettings.language) {
-          changeLanguage(profile.data.appearanceSettings.language)
+        if (nextAppearanceSettings.language) {
+          changeLanguage(nextAppearanceSettings.language)
         }
 
         // Apply theme from settings
-        if (profile.data.appearanceSettings.theme) {
-          setTheme(profile.data.appearanceSettings.theme)
+        if (nextAppearanceSettings.theme) {
+          setTheme(nextAppearanceSettings.theme)
         }
       }
     } catch (error) {
@@ -244,7 +270,8 @@ export default function SettingsPage() {
     setAppearanceSettings((prev) => ({ ...prev, theme: value }))
     setTheme(value)
     try {
-      await api.users.updateAppearance({ ...appearanceSettings, theme: value })
+      const response = await api.users.updateAppearance({ theme: value })
+      setAppearanceSettings(normalizeAppearanceSettings(response.data))
       setSuccessMessage("Theme preference saved!")
     } catch (error) {
       setErrorMessage("Failed to save theme preference.")
@@ -335,7 +362,9 @@ export default function SettingsPage() {
     setErrorMessage("")
 
     try {
-      await api.users.updateNotifications(notificationSettings)
+      const nextNotificationSettings = mergeBooleanSettings(notificationSettings, DEFAULT_NOTIFICATION_SETTINGS)
+      const response = await api.users.updateNotifications(nextNotificationSettings)
+      setNotificationSettings(mergeBooleanSettings(response.data, DEFAULT_NOTIFICATION_SETTINGS))
       setSuccessMessage("Notification settings updated successfully")
     } catch (error) {
       console.error("Error updating notification settings:", error)
@@ -352,7 +381,8 @@ export default function SettingsPage() {
     setErrorMessage("")
 
     try {
-      await api.users.updateSecurity(securitySettings)
+      const response = await api.users.updateSecurity(securitySettings)
+      setSecuritySettings(normalizeSecuritySettings(response.data))
       setSuccessMessage("Security settings updated successfully")
     } catch (error) {
       console.error("Error updating security settings:", error)
@@ -369,7 +399,8 @@ export default function SettingsPage() {
     setErrorMessage("")
 
     try {
-      await api.users.updateAppearance(appearanceSettings)
+      const response = await api.users.updateAppearance(appearanceSettings)
+      setAppearanceSettings(normalizeAppearanceSettings(response.data))
       setSuccessMessage("Appearance settings updated successfully")
     } catch (error) {
       console.error("Error updating appearance settings:", error)

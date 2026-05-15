@@ -215,6 +215,7 @@ export default function EditCasePage() {
             Boolean(d.registrationDate && d.filingDate) &&
             new Date(d.registrationDate).toDateString() === new Date(d.filingDate).toDateString(),
           nextHearingDate: d.nextHearingDate ? new Date(d.nextHearingDate) : null,
+          clientSide: d.clientSide || "petitioner",
           petitionerRole: d.petitionerRole || "Petitioner",
           petitionerType: d.petitionerType || "Individual",
           petitioners: d.parties?.petitioner || [],
@@ -699,7 +700,8 @@ export default function EditCasePage() {
               if (r.opposingCounsel) obj.opposingCounsel = r.opposingCounsel;
               return obj;
             })
-          }
+          },
+          clientSide: caseData.clientSide || "petitioner",
         } : {}),
 
         // Include associated parties only when saving them or all
