@@ -8,11 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, Calendar, Clock, FileText, MapPin, User, Users, AlertTriangle, ShieldCheck } from "lucide-react"
+import { ArrowLeft, Calendar, FileText, AlertTriangle, ShieldCheck } from "lucide-react"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import api from "@/services/api"
-import PartyDetails from "@/components/ui/party-details"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -25,7 +23,7 @@ import { formatCaseTypeLabel, formatDisplayCaseNumber } from "@/lib/caseTypeUtil
 import { getDocumentOpenUrl } from "@/lib/document-url"
 import CaseTimeline from "@/components/cases/CaseTimeline"
 
-const CASE_TAB_VALUES = new Set(["details", "people", "documents", "hearings", "transfer"])
+const CASE_TAB_VALUES = new Set(["details", "history", "documents", "hearings"])
 
 const formatTransferDate = (d) => {
   if (!d) return "—"
@@ -260,16 +258,6 @@ export default function CaseDetailsPage() {
       month: "long",
       day: "numeric",
     })
-  }
-
-  const getStatusColor = (status) => {
-    const statusMap = {
-      active: "bg-green-100 text-green-800",
-      pending: "bg-yellow-100 text-yellow-800",
-      closed: "bg-gray-100 text-gray-800",
-      archived: "bg-[#03234b]/20 text-[#03234b]",
-    }
-    return statusMap[status?.toLowerCase()] || "bg-gray-100 text-gray-800"
   }
 
   const getDocumentApprovalStatus = (document) => {
@@ -805,262 +793,447 @@ export default function CaseDetailsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="details">Case Details</TabsTrigger>
-              <TabsTrigger value="people">People</TabsTrigger>
-              <TabsTrigger value="documents">Documents</TabsTrigger>
-              <TabsTrigger value="hearings">Hearings</TabsTrigger>
-              <TabsTrigger value="transfer">Others</TabsTrigger>
-            </TabsList>
+      <div className="space-y-6">
+        <div className="flex flex-col gap-3 rounded-2xl border border-[#d6deeb] bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#6b7a90]">
+              {String(caseData.courtType || "Civil Court").replace(/_/g, " ")}
+            </p>
+            <p className="mt-1 text-lg font-semibold text-[#1e2b3d]">
+              {caseData.court || "Court not specified"}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {canUploadDocuments && (
+              <Button variant="outline" onClick={() => router.push(`/dashboard/cases/${id}/edit`)}>
+                Edit Case
+              </Button>
+            )}
+            {canUploadDocuments && (
+              <Button variant="outline" onClick={() => setShowUploadDialog(true)}>
+                Upload Document
+              </Button>
+            )}
+            {((isLawyer && (caseData?.lawyer?._id === user?.id || caseData?.lawyer === user?.id)) ||
+              (user?.role === 'client' && (caseData?.client?._id === user?.id || caseData?.client === user?.id))) && (
+              <Button variant="outline" onClick={() => setShowScheduleDialog(true)}>
+                Schedule Hearing
+              </Button>
+            )}
+            {canUploadDocuments && (
+              <Button variant="destructive" onClick={() => setShowDeleteDialog(true)}>
+                Delete Case
+              </Button>
+            )}
+          </div>
+        </div>
 
-            <TabsContent value="details">
-              <div className="space-y-5">
-                <Card className="overflow-hidden border-[#d6deeb] shadow-sm">
-                  <CardContent className="space-y-4 p-4 sm:p-5">
-                    <div className="rounded-2xl border border-[#d6deeb] bg-[#f6f9fc] px-5 py-4 text-center">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#6b7a90]">
-                        {String(caseData.courtType || "Civil Court").replace(/_/g, " ")}
-                      </p>
-                      <h2 className="mt-1 text-xl font-semibold tracking-[-0.02em] text-[#1e2b3d]">
-                        {caseData.court || "Court not specified"}
-                      </h2>
-                    </div>
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+          <TabsList className="grid h-auto w-full grid-cols-2 gap-2 rounded-2xl bg-[#eef3f9] p-2 md:grid-cols-4">
+            <TabsTrigger value="details" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#03234b]">
+              Case Details
+            </TabsTrigger>
+            <TabsTrigger value="history" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#03234b]">
+              Case History
+            </TabsTrigger>
+            <TabsTrigger value="documents" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#03234b]">
+              Documents
+            </TabsTrigger>
+            <TabsTrigger value="hearings" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#03234b]">
+              Hearings
+            </TabsTrigger>
+          </TabsList>
 
+          <TabsContent value="details" className="space-y-5 pt-4">
+            <Card className="overflow-hidden border-[#d6deeb] shadow-sm">
+              <CardContent className="p-0">
+                <div className="border-b border-[#d6deeb] bg-[#eef4fb] px-4 py-3 text-center text-lg font-semibold text-[#355487]">
+                  Case details
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[760px] border-collapse text-sm">
+                    <tbody>
+                      <tr className="border-b border-[#d6deeb]">
+                        <td className="w-[18%] bg-[#e3effb] px-4 py-3 font-medium text-[#355487]">Case Type</td>
+                        <td className="px-4 py-3 font-medium text-[#20324a]" colSpan={3}>
+                          {formatCaseTypeLabel(caseData.caseSubType || caseData.caseType)}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-[#d6deeb]">
+                        <td className="bg-[#e3effb] px-4 py-3 font-medium text-[#355487]">Filing Number</td>
+                        <td className="px-4 py-3 text-[#20324a]">{caseDisplayNumber}</td>
+                        <td className="bg-[#e3effb] px-4 py-3 font-medium text-[#355487]">Filing Date</td>
+                        <td className="px-4 py-3 text-[#20324a]">{formatDate(caseData.filingDate)}</td>
+                      </tr>
+                      <tr className="border-b border-[#d6deeb]">
+                        <td className="bg-[#e3effb] px-4 py-3 font-medium text-[#355487]">Registration Number</td>
+                        <td className="px-4 py-3 text-[#20324a]">{caseData.registrationNumber || "—"}</td>
+                        <td className="bg-[#e3effb] px-4 py-3 font-medium text-[#355487]">Registration Date</td>
+                        <td className="px-4 py-3 text-[#20324a]">{formatDate(caseData.registrationDate)}</td>
+                      </tr>
+                      <tr className="border-b border-[#d6deeb]">
+                        <td className="bg-[#e3effb] px-4 py-3 font-medium text-[#355487]">CNR Number</td>
+                        <td className="px-4 py-3 font-semibold text-[#b42318]" colSpan={3}>
+                          {caseData.cnrNumber || "—"}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="bg-[#e3effb] px-4 py-3 font-medium text-[#355487]">Case Status</td>
+                        <td className="px-4 py-3 text-[#20324a]">
+                          {caseData.status?.charAt(0).toUpperCase() + caseData.status?.slice(1)}
+                        </td>
+                        <td className="bg-[#e3effb] px-4 py-3 font-medium text-[#355487]">Case Stage</td>
+                        <td className="px-4 py-3 text-[#20324a]">{caseData.caseStage?.replace(/_/g, " ") || "Not specified"}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="overflow-hidden border-[#ead5d8] shadow-sm">
+              <CardContent className="p-0">
+                <div className="border-b border-[#ead5d8] bg-[#fff7ef] px-4 py-3 text-center text-lg font-semibold text-[#b42318]">
+                  Case status
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[760px] border-collapse text-sm">
+                    <tbody>
+                      {[
+                        ["First Hearing Date", formatDate(firstHearingDate)],
+                        ["Next Hearing Date", formatDate(nextHearingDate)],
+                        ["Court Number and Judge", `${caseData.courtHall ? `Hall ${caseData.courtHall}` : "Hall —"}${hearingHistory[0]?.judge ? ` · ${hearingHistory[0].judge}` : ""}`],
+                        ["Court", caseData.court || "Not specified"],
+                      ].map(([label, value]) => (
+                        <tr key={label} className="border-b border-[#ead5d8] last:border-b-0">
+                          <td className="w-1/2 bg-[#fff8dc] px-4 py-3 font-medium text-[#b42318]">{label}</td>
+                          <td className="px-4 py-3 text-[#5b4240]">{value}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="overflow-hidden border-[#d6deeb] shadow-sm">
+              <CardContent className="p-0">
+                <div className="border-b border-[#d6deeb] bg-white px-4 py-3 text-center text-lg font-semibold text-[#1f2937]">
+                  Petitioner and advocate
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[760px] border-collapse text-sm">
+                    <tbody>
+                      <tr>
+                        <td className="bg-[#e3effb] px-4 py-3 align-top text-[#20324a]" colSpan={2}>
+                          {petitionerList.length > 0 ? (
+                            <div className="space-y-3">
+                              {petitionerList.map((party, index) => (
+                                <div key={`details-petitioner-${index}`}>
+                                  <p className="font-medium">{index + 1}) {party.name || "—"}</p>
+                                  <p className="mt-1 text-[#516076]">
+                                    Advocate: {party.advocateName || petitionerAdvocate}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p>No petitioner details available.</p>
+                          )}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="overflow-hidden border-[#d6deeb] shadow-sm">
+              <CardContent className="p-0">
+                <div className="border-b border-[#d6deeb] bg-white px-4 py-3 text-center text-lg font-semibold text-[#1f2937]">
+                  Respondent and advocate
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[760px] border-collapse text-sm">
+                    <tbody>
+                      <tr>
+                        <td className="bg-[#f5f0ff] px-4 py-3 align-top text-[#20324a]" colSpan={2}>
+                          {respondentList.length > 0 ? (
+                            <div className="space-y-3">
+                              {respondentList.map((party, index) => (
+                                <div key={`details-respondent-${index}`}>
+                                  <p className="font-medium">{index + 1}) {party.name || "—"}</p>
+                                  <p className="mt-1 text-[#516076]">
+                                    Advocate: {party.opposingCounsel || respondentAdvocate}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p>No respondent details available.</p>
+                          )}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Accordion type="multiple" defaultValue={["acts", "fir", "ia", "notes"]} className="space-y-4">
+              <AccordionItem value="acts" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
+                <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
+                  Acts
+                </AccordionTrigger>
+                <AccordionContent className="px-5 pb-5">
+                  {actRows.length > 0 ? (
                     <div className="overflow-hidden rounded-2xl border border-[#d9e2ef]">
-                      <div className="grid grid-cols-1 divide-y divide-[#d9e2ef] text-sm md:grid-cols-2 md:divide-y-0 md:[&>*:nth-child(odd)]:border-r md:[&>*]:border-[#d9e2ef]">
+                      <table className="w-full text-sm">
+                        <thead className="bg-[#eef3f9] text-left text-[#516076]">
+                          <tr>
+                            <th className="px-4 py-3 font-medium">Under Act(s)</th>
+                            <th className="px-4 py-3 font-medium">Under Section(s)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {actRows.map((row, index) => (
+                            <tr key={`${row.act}-${index}`} className="border-t border-[#d9e2ef]">
+                              <td className="px-4 py-3 text-[#243246]">{row.act || "—"}</td>
+                              <td className="px-4 py-3 text-[#243246]">{row.sections || "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No acts or sections recorded.</p>
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="fir" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
+                <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
+                  FIR and police station
+                </AccordionTrigger>
+                <AccordionContent className="px-5 pb-5">
+                  <div className="overflow-hidden rounded-2xl border border-[#d9e2ef]">
+                    <table className="w-full text-sm">
+                      <tbody>
                         {[
-                          ["Case Type", formatCaseTypeLabel(caseData.caseSubType || caseData.caseType)],
-                          ["Filing Number", caseDisplayNumber],
-                          ["Filing Date", formatDate(caseData.filingDate)],
-                          ["Registration Number", caseData.registrationNumber || "—"],
-                          ["Registration Date", formatDate(caseData.registrationDate)],
-                          ["CNR Number", caseData.cnrNumber || "—"],
-                          ["Case Status", caseData.status?.charAt(0).toUpperCase() + caseData.status?.slice(1)],
-                          ["Case Stage", caseData.caseStage?.replace(/_/g, " ") || "Not specified"],
+                          ["Police Station", caseData.policeStation || "—"],
+                          ["FIR Number", caseData.firNumber || "—"],
+                          ["FIR Year", caseData.firYear || "—"],
                         ].map(([label, value]) => (
-                          <div key={label} className="grid grid-cols-[180px_minmax(0,1fr)]">
-                            <div className="bg-[#eef3f9] px-4 py-3 font-medium text-[#516076]">{label}</div>
-                            <div className="px-4 py-3 font-medium text-[#243246]">{value}</div>
-                          </div>
+                          <tr key={label} className="border-b border-[#d9e2ef] last:border-b-0">
+                            <td className="w-[240px] bg-[#eef3f9] px-4 py-3 font-medium text-[#516076]">{label}</td>
+                            <td className="px-4 py-3 text-[#243246]">{value}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="ia" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
+                <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
+                  IA status
+                </AccordionTrigger>
+                <AccordionContent className="px-5 pb-5">
+                  {(caseData.iaStatuses?.length || 0) === 0 ? (
+                    <p className="text-sm italic text-muted-foreground">No IA status entries.</p>
+                  ) : (
+                    <div className="overflow-x-auto rounded-2xl border border-[#d9e2ef]">
+                      <table className="w-full border-collapse text-sm">
+                        <thead className="bg-[#f1f8d9] text-left">
+                          <tr>
+                            <th className="p-3 font-medium">IA Number</th>
+                            <th className="p-3 font-medium">Party Name</th>
+                            <th className="p-3 font-medium">Date of Filing</th>
+                            <th className="p-3 font-medium">Next Date / Purpose</th>
+                            <th className="p-3 font-medium">IA Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {caseData.iaStatuses.map((iaItem, index) => (
+                            <tr key={`${iaItem.iaNumber || "ia-status"}-${index}`} className="border-t border-[#d9e2ef] align-top">
+                              <td className="p-3">{iaItem.iaNumber || "—"}</td>
+                              <td className="p-3">{iaItem.partyName || "—"}</td>
+                              <td className="p-3">{formatTransferDate(iaItem.dateOfFiling)}</td>
+                              <td className="p-3">{iaItem.nextDatePurpose || "—"}</td>
+                              <td className="p-3">{iaItem.status || "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="notes" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
+                <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
+                  Notes and relief
+                </AccordionTrigger>
+                <AccordionContent className="space-y-4 px-5 pb-5">
+                  <div>
+                    <p className="text-sm font-medium text-[#243246]">Case description</p>
+                    <p className="mt-2 text-sm leading-7 text-[#6a778a]">
+                      {caseData.description || "No case description provided yet."}
+                    </p>
+                  </div>
+                  {caseData.reliefSought && (
+                    <div>
+                      <p className="text-sm font-medium text-[#243246]">Relief sought</p>
+                      <p className="mt-2 text-sm leading-7 text-[#6a778a]">{caseData.reliefSought}</p>
+                    </div>
+                  )}
+                  {caseData.notes && (
+                    <div>
+                      <p className="text-sm font-medium text-[#243246]">Additional notes</p>
+                      <p className="mt-2 text-sm leading-7 text-[#6a778a]">{caseData.notes}</p>
+                    </div>
+                  )}
+                  {allClients.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-[#243246]">Clients</p>
+                      <div className="mt-2 space-y-2 text-sm text-[#6a778a]">
+                        {allClients.map((client, index) => (
+                          <p key={`client-inline-${index}`}>{client.name || "Unnamed client"}</p>
                         ))}
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-
-                <Accordion type="multiple" defaultValue={["status", "parties", "acts", "processes", "history", "orders"]} className="space-y-4">
-                  <AccordionItem value="status" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
-                    <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
-                      Case status
-                    </AccordionTrigger>
-                    <AccordionContent className="px-5 pb-5">
-                      <div className="overflow-hidden rounded-2xl border border-[#d9e2ef]">
-                        <div className="grid grid-cols-1 divide-y divide-[#d9e2ef] text-sm">
-                          {[
-                            ["First Hearing Date", formatDate(firstHearingDate)],
-                            ["Next Hearing Date", formatDate(nextHearingDate)],
-                            ["Case Stage", caseData.caseStage?.replace(/_/g, " ") || "Not specified"],
-                            [
-                              "Court Number and Judge",
-                              `${caseData.courtHall ? `Hall ${caseData.courtHall}` : "Hall —"}${hearingHistory[0]?.judge ? ` · ${hearingHistory[0].judge}` : ""}`,
-                            ],
-                          ].map(([label, value]) => (
-                            <div key={label} className="grid grid-cols-[220px_minmax(0,1fr)]">
-                              <div className="bg-[#fdf0f1] px-4 py-3 font-medium text-[#cc6f76]">{label}</div>
-                              <div className="px-4 py-3 font-medium text-[#4a3d42]">{value}</div>
+                  )}
+                  {caseData.stakeholders?.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-[#243246]">Stakeholders</p>
+                      <div className="mt-2 grid gap-2 md:grid-cols-2">
+                        {stakeholderGroups.map((group) => {
+                          const filtered = caseData.stakeholders.filter(group.matches)
+                          if (filtered.length === 0) return null
+                          return (
+                            <div key={group.key} className={`rounded-xl border p-3 ${group.className}`}>
+                              <p className="font-medium text-[#243246]">{group.label}</p>
+                              <div className="mt-2 space-y-1 text-sm text-[#6a778a]">
+                                {filtered.map((stakeholder, idx) => (
+                                  <p key={`${group.key}-${idx}`}>{stakeholder.name || "—"}</p>
+                                ))}
+                              </div>
                             </div>
-                          ))}
-                        </div>
+                          )
+                        })}
                       </div>
-                    </AccordionContent>
-                  </AccordionItem>
+                    </div>
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </TabsContent>
 
-                  <AccordionItem value="parties" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
-                    <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
-                      Parties and advocates
-                    </AccordionTrigger>
-                    <AccordionContent className="px-5 pb-5">
-                      {petitionerList.length > 0 || respondentList.length > 0 ? (
-                        <div className="overflow-hidden rounded-xl border border-[#d9e2ef] bg-white">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead className={`w-1/4 ${petitionerIsClient ? "text-blue-800 bg-blue-50" : "text-red-800 bg-red-50"}`}>
-                                  {petitionerIsClient ? "Our Client (Petitioner)" : "Opposing Party (Petitioner)"}
-                                </TableHead>
-                                <TableHead className={`w-1/4 ${petitionerIsClient ? "text-blue-800 bg-blue-50" : "text-red-800 bg-red-50"}`}>Advocate</TableHead>
-                                <TableHead className={`w-1/4 border-l border-[#d9e2ef] ${!petitionerIsClient ? "text-blue-800 bg-blue-50" : "text-red-800 bg-red-50"}`}>
-                                  {!petitionerIsClient ? "Our Client (Respondent)" : "Opposing Party (Respondent)"}
-                                </TableHead>
-                                <TableHead className={`w-1/4 ${!petitionerIsClient ? "text-blue-800 bg-blue-50" : "text-red-800 bg-red-50"}`}>Advocate</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              <TableRow>
-                                <TableCell className={`align-top ${petitionerIsClient ? "bg-blue-50" : "bg-red-50"}`}>
-                                  {petitionerList.length > 0 ? (
-                                    <div className="space-y-3">
-                                      {petitionerList.map((party, index) => (
-                                        <div key={`details-petitioner-${index}`} className="flex items-center gap-2">
-                                          <User className={`h-4 w-4 ${petitionerIsClient ? "text-blue-700" : "text-red-600"}`} />
-                                          <p className="font-medium text-sm text-gray-900">{party.name || "—"}</p>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  ) : (
-                                    <p className="text-sm text-muted-foreground">No petitioners added.</p>
-                                  )}
-                                </TableCell>
-                                <TableCell className={`align-top ${petitionerIsClient ? "bg-blue-50" : "bg-red-50"}`}>
-                                  <div className="flex items-center gap-2">
-                                    <User className={`h-4 w-4 ${petitionerIsClient ? "text-blue-700" : "text-red-600"}`} />
-                                    <p className="font-medium text-sm text-gray-900">{petitionerAdvocate}</p>
-                                  </div>
-                                </TableCell>
-                                <TableCell className={`border-l border-[#d9e2ef] align-top ${!petitionerIsClient ? "bg-blue-50" : "bg-red-50"}`}>
-                                  {respondentList.length > 0 ? (
-                                    <div className="space-y-3">
-                                      {respondentList.map((party, index) => (
-                                        <div key={`details-respondent-${index}`} className="flex items-center gap-2">
-                                          <User className={`h-4 w-4 ${!petitionerIsClient ? "text-blue-700" : "text-red-600"}`} />
-                                          <p className="font-medium text-sm text-gray-900">{party.name || "—"}</p>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  ) : (
-                                    <p className="text-sm text-muted-foreground">No respondents added.</p>
-                                  )}
-                                </TableCell>
-                                <TableCell className={`align-top ${!petitionerIsClient ? "bg-blue-50" : "bg-red-50"}`}>
-                                  <div className="flex items-center gap-2">
-                                    <User className={`h-4 w-4 ${!petitionerIsClient ? "text-blue-700" : "text-red-600"}`} />
-                                    <p className="font-medium text-sm text-gray-900">{respondentAdvocate}</p>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            </TableBody>
-                          </Table>
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">No party information available.</p>
-                      )}
-                    </AccordionContent>
-                  </AccordionItem>
+          <TabsContent value="history" className="space-y-5 pt-4">
+            <Card className="overflow-hidden border-[#d9e2ef] shadow-sm">
+              <CardContent className="p-0">
+                <div className="border-b border-[#d9e2ef] bg-[#f1f8d9] px-4 py-3 text-center text-lg font-semibold text-[#355487]">
+                  Case history
+                </div>
+                {hearingHistory.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[860px] text-sm">
+                      <thead className="bg-[#f1f8d9] text-left text-[#243246]">
+                        <tr>
+                          <th className="px-4 py-3 font-medium">Judge</th>
+                          <th className="px-4 py-3 font-medium">Business on Date</th>
+                          <th className="px-4 py-3 font-medium">Hearing Date</th>
+                          <th className="px-4 py-3 font-medium">Purpose of Hearing</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {hearingHistory.map((hearing) => (
+                          <tr key={hearing.id} className="border-t border-[#d9e2ef]">
+                            <td className="px-4 py-3 text-[#243246]">{hearing.judge || "Not specified"}</td>
+                            <td className="px-4 py-3">
+                              <button
+                                type="button"
+                                onClick={() => openHistoryRecord(hearing)}
+                                className="font-medium text-[#355487] underline-offset-4 hover:underline"
+                              >
+                                {formatDate(hearing.businessDate)}
+                              </button>
+                            </td>
+                            <td className="px-4 py-3 text-[#243246]">{formatDate(hearing.date)}</td>
+                            <td className="px-4 py-3 text-[#243246]">{hearing.purpose || "Not specified"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="px-4 py-6 text-sm text-muted-foreground">
+                    No hearing history is available for this case yet.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-                  <AccordionItem value="acts" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
-                    <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
-                      Acts
-                    </AccordionTrigger>
-                    <AccordionContent className="px-5 pb-5">
-                      {actRows.length > 0 ? (
-                        <div className="overflow-hidden rounded-2xl border border-[#d9e2ef]">
-                          <table className="w-full text-sm">
-                            <thead className="bg-[#eef3f9] text-left text-[#516076]">
-                              <tr>
-                                <th className="px-4 py-3 font-medium">Under Act(s)</th>
-                                <th className="px-4 py-3 font-medium">Under Section(s)</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {actRows.map((row, index) => (
-                                <tr key={`${row.act}-${index}`} className="border-t border-[#d9e2ef]">
-                                  <td className="px-4 py-3 text-[#243246]">{row.act || "—"}</td>
-                                  <td className="px-4 py-3 text-[#243246]">{row.sections || "—"}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">No acts or sections recorded.</p>
-                      )}
-                    </AccordionContent>
-                  </AccordionItem>
+            <CaseTimeline caseData={{ ...caseData, events: hearings }} />
 
-                  <AccordionItem value="processes" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
-                    <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
-                      Processes
-                    </AccordionTrigger>
-                    <AccordionContent className="px-5 pb-5">
-                      {caseData.processes?.length > 0 ? (
-                        <div className="overflow-hidden rounded-2xl border border-[#d9e2ef]">
-                          <table className="w-full text-sm">
-                            <thead className="bg-[#eef3f9] text-left text-[#516076]">
-                              <tr>
-                                <th className="px-4 py-3 font-medium">Process ID</th>
-                                <th className="px-4 py-3 font-medium">Process Title</th>
-                                <th className="px-4 py-3 font-medium">Process Date</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {caseData.processes.map((processItem, index) => (
-                                <tr key={`process-sheet-${index}`} className="border-t border-[#d9e2ef]">
-                                  <td className="px-4 py-3 text-[#243246]">{processItem.processId || "—"}</td>
-                                  <td className="px-4 py-3 text-[#243246]">{processItem.processTitle || "—"}</td>
-                                  <td className="px-4 py-3 text-[#243246]">{formatDate(processItem.processDate)}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">No processes recorded.</p>
-                      )}
-                    </AccordionContent>
-                  </AccordionItem>
+            <Accordion type="multiple" defaultValue={["orders", "processes", "transfer"]} className="space-y-4">
+              <AccordionItem value="orders" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
+                <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
+                  Interim orders
+                </AccordionTrigger>
+                <AccordionContent className="space-y-4 px-5 pb-5">
+                  {interimOrders.length > 0 ? (
+                    <div className="overflow-x-auto rounded-2xl border border-[#d9e2ef]">
+                      <table className="w-full text-sm">
+                        <thead className="bg-[#eef3f9] text-left text-[#516076]">
+                          <tr>
+                            <th className="px-4 py-3 font-medium">Order Number</th>
+                            <th className="px-4 py-3 font-medium">Order Date</th>
+                            <th className="px-4 py-3 font-medium">Order Details</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {interimOrders.map((order) => (
+                            <tr key={order.id} className="border-t border-[#d9e2ef]">
+                              <td className="px-4 py-3 text-[#243246]">{order.orderNumber}</td>
+                              <td className="px-4 py-3 text-[#243246]">{formatDate(order.orderDate)}</td>
+                              <td className="px-4 py-3">
+                                {order.document ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const documentUrl = getDocumentOpenUrl(order.document)
+                                      if (documentUrl) {
+                                        window.open(documentUrl, "_blank", "noopener,noreferrer")
+                                      }
+                                    }}
+                                    className="font-medium text-[#5775ac] underline-offset-4 hover:underline"
+                                  >
+                                    {order.orderDetails}
+                                  </button>
+                                ) : (
+                                  <span className="text-muted-foreground">
+                                    {order.orderDetails || order.documentName || "Document not linked"}
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No interim orders linked to this case.</p>
+                  )}
 
-                  <AccordionItem value="history" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
-                    <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
-                      Case history
-                    </AccordionTrigger>
-                    <AccordionContent className="px-5 pb-5">
-                      {hearingHistory.length > 0 ? (
-                        <div className="overflow-hidden rounded-2xl border border-[#d9e2ef]">
-                          <table className="w-full text-sm">
-                            <thead className="bg-[#eef3f9] text-left text-[#516076]">
-                              <tr>
-                                <th className="px-4 py-3 font-medium">Judge</th>
-                                <th className="px-4 py-3 font-medium">Business on Date</th>
-                                <th className="px-4 py-3 font-medium">Hearing Date</th>
-                                <th className="px-4 py-3 font-medium">Purpose of Hearing</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {hearingHistory.map((hearing) => (
-                                <tr key={hearing.id} className="border-t border-[#d9e2ef]">
-                                  <td className="px-4 py-3 text-[#243246]">{hearing.judge || "Not specified"}</td>
-                                  <td className="px-4 py-3">
-                                    <button
-                                      type="button"
-                                      onClick={() => openHistoryRecord(hearing)}
-                                      className="font-medium text-[#5775ac] underline-offset-4 hover:underline"
-                                    >
-                                      {formatDate(hearing.businessDate)}
-                                    </button>
-                                  </td>
-                                  <td className="px-4 py-3 text-[#243246]">{formatDate(hearing.date)}</td>
-                                  <td className="px-4 py-3 text-[#243246]">{hearing.purpose || "Not specified"}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">No hearing history is available for this case yet.</p>
-                      )}
-                    </AccordionContent>
-                  </AccordionItem>
-
-                  <AccordionItem value="orders" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
-                    <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
-                      Interim orders
-                    </AccordionTrigger>
-                    <AccordionContent className="px-5 pb-5">
-                      {interimOrders.length > 0 ? (
-                        <div className="overflow-hidden rounded-2xl border border-[#d9e2ef]">
+                  {caseData.status === "closed" && (
+                    <div>
+                      <div className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c]">
+                        Final judgment
+                      </div>
+                      {finalOrders.length > 0 ? (
+                        <div className="overflow-x-auto rounded-2xl border border-[#d9e2ef]">
                           <table className="w-full text-sm">
                             <thead className="bg-[#eef3f9] text-left text-[#516076]">
                               <tr>
@@ -1070,7 +1243,7 @@ export default function CaseDetailsPage() {
                               </tr>
                             </thead>
                             <tbody>
-                              {interimOrders.map((order) => (
+                              {finalOrders.map((order) => (
                                 <tr key={order.id} className="border-t border-[#d9e2ef]">
                                   <td className="px-4 py-3 text-[#243246]">{order.orderNumber}</td>
                                   <td className="px-4 py-3 text-[#243246]">{formatDate(order.orderDate)}</td>
@@ -1100,405 +1273,111 @@ export default function CaseDetailsPage() {
                           </table>
                         </div>
                       ) : (
-                        <p className="text-sm text-muted-foreground">No interim orders linked to this case.</p>
+                        <p className="text-sm text-muted-foreground">No final order or judgment linked to this closed case.</p>
                       )}
-                    </AccordionContent>
-                  </AccordionItem>
-
-                  {caseData.status === "closed" && (
-                    <AccordionItem value="final-orders" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
-                      <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
-                        Final order / judgment
-                      </AccordionTrigger>
-                      <AccordionContent className="px-5 pb-5">
-                        {finalOrders.length > 0 ? (
-                          <div className="overflow-hidden rounded-2xl border border-[#d9e2ef]">
-                            <table className="w-full text-sm">
-                              <thead className="bg-[#eef3f9] text-left text-[#516076]">
-                                <tr>
-                                  <th className="px-4 py-3 font-medium">Order Number</th>
-                                  <th className="px-4 py-3 font-medium">Order Date</th>
-                                  <th className="px-4 py-3 font-medium">Order Details</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {finalOrders.map((order) => (
-                                  <tr key={order.id} className="border-t border-[#d9e2ef]">
-                                    <td className="px-4 py-3 text-[#243246]">{order.orderNumber}</td>
-                                    <td className="px-4 py-3 text-[#243246]">{formatDate(order.orderDate)}</td>
-                                    <td className="px-4 py-3">
-                                      {order.document ? (
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            const documentUrl = getDocumentOpenUrl(order.document)
-                                            if (documentUrl) {
-                                              window.open(documentUrl, "_blank", "noopener,noreferrer")
-                                            }
-                                          }}
-                                          className="font-medium text-[#5775ac] underline-offset-4 hover:underline"
-                                        >
-                                          {order.orderDetails}
-                                        </button>
-                                      ) : (
-                                        <span className="text-muted-foreground">
-                                          {order.orderDetails || order.documentName || "Document not linked"}
-                                        </span>
-                                      )}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">No final order or judgment linked to this closed case.</p>
-                        )}
-                      </AccordionContent>
-                    </AccordionItem>
-                  )}
-
-                  <AccordionItem value="notes" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
-                    <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
-                      Notes and relief
-                    </AccordionTrigger>
-                    <AccordionContent className="space-y-4 px-5 pb-5">
-                      <div>
-                        <p className="text-sm font-medium text-[#243246]">Case description</p>
-                        <p className="mt-2 text-sm leading-7 text-[#6a778a]">
-                          {caseData.description || "No case description provided yet."}
-                        </p>
-                      </div>
-                      {caseData.reliefSought && (
-                        <div>
-                          <p className="text-sm font-medium text-[#243246]">Relief sought</p>
-                          <p className="mt-2 text-sm leading-7 text-[#6a778a]">{caseData.reliefSought}</p>
-                        </div>
-                      )}
-                      {caseData.notes && (
-                        <div>
-                          <p className="text-sm font-medium text-[#243246]">Additional notes</p>
-                          <p className="mt-2 text-sm leading-7 text-[#6a778a]">{caseData.notes}</p>
-                        </div>
-                      )}
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="people">
-              <Card>
-                <CardHeader>
-                  <CardTitle>People Involved</CardTitle>
-                  <CardDescription>Key individuals and parties associated with the case.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Legal Team Section */}
-                  <div className="mb-4 pb-4 border-b">
-                    <h3 className="text-md font-semibold mb-3 text-gray-700">Legal Team</h3>
-                    {(caseData.advocates && caseData.advocates.length > 0) || (caseData.lawyers && caseData.lawyers.length > 0) ? (
-                      <>
-                        {/* Advocates */}
-                        {caseData.advocates && caseData.advocates.length > 0 && (
-                          <div className="space-y-4">
-                            {caseData.advocates.map((advocate, idx) => (
-                              <div key={`advocate-${idx}`} className="mb-4 p-4 bg-[#03234b]/10 rounded-lg border-l-4 border-[#03234b]">
-                                <div className="flex justify-between items-start">
-                                  <div className="w-full">
-                                    <div className="flex items-center flex-wrap gap-2 mb-2">
-                                      <User className="h-4 w-4 text-[#03234b] mr-1 flex-shrink-0" />
-                                      <p className="font-medium text-[#03234b]">
-                                        {advocate.name || 'Advocate'}
-                                      </p>
-                                      {advocate.isLead && <Badge className="bg-[#03234b] text-white text-xs">Lead Advocate</Badge>}
-                                      {advocate.level && (
-                                        <Badge variant="outline" className="text-xs bg-[#03234b]/10 text-[#03234b] border-[#03234b]/30">
-                                          {advocate.level}
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    <div className="ml-5 space-y-1.5">
-                                      {advocate.email && (
-                                        <p className="text-sm text-gray-700 flex items-start">
-                                          <span className="w-16 text-gray-500">Email:</span>
-                                          <span className="flex-1">{advocate.email}</span>
-                                        </p>
-                                      )}
-                                      {advocate.contact && (
-                                        <p className="text-sm text-gray-700 flex items-start">
-                                          <span className="w-16 text-gray-500">Contact:</span>
-                                          <span className="flex-1">{advocate.contact}</span>
-                                        </p>
-                                      )}
-                                      {advocate.company && (
-                                        <p className="text-sm text-gray-700 flex items-start">
-                                          <span className="w-16 text-gray-500">Firm:</span>
-                                          <span className="flex-1">{advocate.company}</span>
-                                        </p>
-                                      )}
-                                      {advocate.gst && (
-                                        <p className="text-sm text-gray-700 flex items-start">
-                                          <span className="w-16 text-gray-500">GST:</span>
-                                          <span className="flex-1">{advocate.gst}</span>
-                                        </p>
-                                      )}
-                                      {advocate.chairPosition && (
-                                        <p className="text-sm text-gray-700 flex items-start">
-                                          <span className="w-16 text-gray-500">Position:</span>
-                                          <span className="flex-1 capitalize">
-                                            {advocate.chairPosition
-                                              .replace(/_/g, ' ')
-                                              .split(' ')
-                                              .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                                              .join(' ')}
-                                          </span>
-                                        </p>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {/* Advocates */}
-                        {caseData.lawyers && caseData.lawyers.length > 0 && (
-                          <div className="space-y-3 mt-4">
-                            {caseData.lawyers.map((lawyer, index) => (
-                              <div key={`lawyer-${index}`} className="p-3 border rounded-lg bg-white shadow-sm">
-                                <div className="flex justify-between items-start">
-                                  <div>
-                                    <div className="flex-1">
-                                      <div className="flex items-center flex-wrap gap-2">
-                                        <User className="h-4 w-4 text-gray-500 mr-1 flex-shrink-0" />
-                                        <p className="font-medium text-sm">{lawyer.name}</p>
-                                        {/* Role Badge */}
-                                        {lawyer.role && (
-                                          <Badge variant="outline" className="text-xs">
-                                            {lawyer.role.charAt(0).toUpperCase() + lawyer.role.slice(1)}
-                                          </Badge>
-                                        )}
-                                        {/* Level Badge */}
-                                        {lawyer.level && (
-                                          <Badge variant="outline" className="text-xs bg-[#03234b]/10 text-[#03234b] border-[#03234b]/30">
-                                            {lawyer.level}
-                                          </Badge>
-                                        )}
-                                        {/* Position Badge */}
-                                        {lawyer.chairPosition && lawyer.chairPosition !== 'other' && (
-                                          <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
-                                            {lawyer.chairPosition.replace(/_/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-                                          </Badge>
-                                        )}
-                                        {/* Primary Badge */}
-                                        {lawyer.isPrimary && (
-                                          <Badge className="ml-1 bg-[#03234b]/20 text-[#03234b] border-[#03234b]/30 text-xs">
-                                            Primary
-                                          </Badge>
-                                        )}
-                                      </div>
-                                      <div className="ml-5 mt-2 space-y-1.5">
-                                        {lawyer.email && (
-                                          <p className="text-sm text-gray-600 flex items-start">
-                                            <span className="w-16 text-gray-500 text-sm">Email:</span>
-                                            <span className="flex-1">{lawyer.email}</span>
-                                          </p>
-                                        )}
-                                        {lawyer.contact && (
-                                          <p className="text-sm text-gray-600 flex items-start">
-                                            <span className="w-16 text-gray-500 text-sm">Contact:</span>
-                                            <span className="flex-1">{lawyer.contact}</span>
-                                          </p>
-                                        )}
-                                        {lawyer.company && (
-                                          <p className="text-sm text-gray-600 flex items-start">
-                                            <span className="w-16 text-gray-500 text-sm">Firm:</span>
-                                            <span className="flex-1">{lawyer.company}</span>
-                                          </p>
-                                        )}
-                                        {lawyer.gst && (
-                                          <p className="text-sm text-gray-600 flex items-start">
-                                            <span className="w-16 text-gray-500 text-sm">GST:</span>
-                                            <span className="flex-1">{lawyer.gst}</span>
-                                          </p>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <div className="text-center py-4 text-muted-foreground">No advocate or lawyer information available.</div>
-                    )}
-                  </div>
-
-                  {/* Clients Section */}
-                  <div className="mb-4 pb-4 border-b">
-                    <h3 className="text-md font-semibold mb-3 text-gray-700">Clients</h3>
-                    {allClients.length > 0 && (
-                      <div className="space-y-3 mt-4">
-                        {allClients.map((client, index) => (
-                          <div key={`client-${index}`} className="p-3 border rounded-lg bg-white shadow-sm">
-                            <p className="font-medium text-sm flex items-center">
-                              <User className="h-4 w-4 text-gray-500 mr-2" />
-                              {client.name}
-                            </p>
-                            <div className="ml-6 mt-1 space-y-1">
-                              {client.email && (
-                                <p className="text-xs text-gray-600 flex items-center">
-                                  <span className="w-16 text-gray-500">Email:</span>
-                                  {client.email}
-                                </p>
-                              )}
-                              {client.contact && (
-                                <p className="text-xs text-gray-600 flex items-center">
-                                  <span className="w-16 text-gray-500">Contact:</span>
-                                  {client.contact}
-                                </p>
-                              )}
-                              {client.address && (
-                                <p className="text-xs text-gray-600 flex items-center">
-                                  <span className="w-16 text-gray-500">Address:</span>
-                                  <span className="flex-1">{client.address}</span>
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {allClients.length === 0 && (
-                      <p className="text-sm text-muted-foreground">No clients have been added to this case.</p>
-                    )}
-                  </div>
-
-                  {/* Parties Section */}
-                  {(caseData.parties?.petitioner?.length > 0 || caseData.parties?.respondent?.length > 0) && (
-                    <div className="mb-6">
-                      <h3 className="text-md font-semibold mb-3 text-gray-700">Case Parties</h3>
-                      <div className="overflow-hidden rounded-xl border border-[#d9e2ef] bg-white">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className={`w-[45%] ${petitionerIsClient ? "text-blue-800 bg-blue-50" : "text-red-800 bg-red-50"}`}>
-                                {petitionerIsClient ? "Our Client (Petitioner)" : "Opposing Party (Petitioner)"}
-                              </TableHead>
-                              <TableHead className="w-16 text-center text-gray-600 bg-[#f8fafc]">VS</TableHead>
-                              <TableHead className={`w-[45%] ${!petitionerIsClient ? "text-blue-800 bg-blue-50" : "text-red-800 bg-red-50"}`}>
-                                {!petitionerIsClient ? "Our Client (Respondent)" : "Opposing Party (Respondent)"}
-                              </TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            <TableRow>
-                              <TableCell className={`align-top ${petitionerIsClient ? "bg-blue-50" : "bg-red-50"}`}>
-                                {petitionerList.length > 0 ? (
-                                  <div className="space-y-3">
-                                    {petitionerList.map((party, index) => (
-                                      <div key={`petitioner-${index}`} className={`rounded-lg border p-3 ${petitionerIsClient ? "bg-blue-100" : "bg-red-100"}`}>
-                                        <div className="flex items-center gap-2 mb-1">
-                                          <User className={`h-4 w-4 ${petitionerIsClient ? "text-blue-700" : "text-red-600"}`} />
-                                          <p className="font-medium text-sm text-gray-900">{party.name || "—"}</p>
-                                        </div>
-                                        <div className="ml-6 space-y-1">
-                                          <p className="text-xs text-gray-600">Type: {party.type || "—"}</p>
-                                          {party.email && <p className="text-xs text-gray-600">Email: {party.email}</p>}
-                                          {party.contact && <p className="text-xs text-gray-600">Contact: {party.contact}</p>}
-                                          {party.address && <p className="text-xs text-gray-600">Address: {party.address}</p>}
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <p className="text-sm text-muted-foreground">No petitioners added.</p>
-                                )}
-                              </TableCell>
-                              <TableCell className="align-top text-center font-semibold uppercase tracking-[0.18em] text-[#5775ac]">
-                                vs
-                              </TableCell>
-                              <TableCell className={`align-top ${!petitionerIsClient ? "bg-blue-50" : "bg-red-50"}`}>
-                                {respondentList.length > 0 ? (
-                                  <div className="space-y-3">
-                                    {respondentList.map((party, index) => (
-                                      <div key={`respondent-${index}`} className={`rounded-lg border p-3 ${!petitionerIsClient ? "bg-blue-100" : "bg-red-100"}`}>
-                                        <div className="flex items-center gap-2 mb-1">
-                                          <User className={`h-4 w-4 ${!petitionerIsClient ? "text-blue-700" : "text-red-600"}`} />
-                                          <p className="font-medium text-sm text-gray-900">{party.name || "—"}</p>
-                                        </div>
-                                        <div className="ml-6 space-y-1">
-                                          <p className="text-xs text-gray-600">Type: {party.type || "—"}</p>
-                                          {party.email && <p className="text-xs text-gray-600">Email: {party.email}</p>}
-                                          {party.contact && <p className="text-xs text-gray-600">Contact: {party.contact}</p>}
-                                          {party.address && <p className="text-xs text-gray-600">Address: {party.address}</p>}
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <p className="text-sm text-muted-foreground">No respondents added.</p>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          </TableBody>
-                        </Table>
-                      </div>
                     </div>
                   )}
+                </AccordionContent>
+              </AccordionItem>
 
-                  {/* Stakeholders Section */}
-                  <div className="mt-6">
-                    <h3 className="text-md font-semibold mb-3 text-gray-700">Stakeholders</h3>
-                    {caseData.stakeholders && caseData.stakeholders.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {stakeholderGroups.map((group) => {
-                          const filtered = caseData.stakeholders.filter(group.matches);
-                          if (filtered.length === 0) return null;
-                          return (
-                            <div key={group.key} className={`p-4 border rounded-lg ${group.className} md:col-span-1`}>
-                              <div className="flex items-center gap-2 mb-2">
-                                <Users className={`h-4 w-4 ${group.iconClassName}`} />
-                                <h4 className="font-medium">{group.label}</h4>
-                              </div>
-                              <div className="space-y-2">
-                                {filtered.map((stakeholder, idx) => (
-                                  <div key={idx} className="mb-2">
-                                    <p className="font-medium text-sm">{stakeholder.name}</p>
-                                    {stakeholder.roleInCase && <p className="text-xs text-gray-600">Role: {stakeholder.roleInCase}</p>}
-                                    {stakeholder.email && <p className="text-xs text-gray-600">Email: {stakeholder.email}</p>}
-                                    {stakeholder.contact && <p className="text-xs text-gray-600">Contact: {stakeholder.contact}</p>}
-                                    {stakeholder.address && <p className="text-xs text-gray-600">Address: {stakeholder.address}</p>}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="text-center py-4 text-muted-foreground">No stakeholders added yet.</div>
-                    )}
-                  </div>
-
-                  {/* Fallback if no people or parties at all */}
-                  {!caseData.lawyer && !caseData.client && 
-                    (!caseData.clients || caseData.clients.length === 0) && 
-                    (!caseData.advocates || caseData.advocates.length === 0) && 
-                    (!caseData.parties || 
-                      (caseData.parties.petitioner?.length === 0 && 
-                       caseData.parties.respondent?.length === 0)) && (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      No people or party information available for this case.
-                    </p>
+              <AccordionItem value="processes" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
+                <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
+                  Processes
+                </AccordionTrigger>
+                <AccordionContent className="px-5 pb-5">
+                  {(caseData.processes?.length || 0) === 0 ? (
+                    <p className="text-sm italic text-muted-foreground">No process entries.</p>
+                  ) : (
+                    <div className="overflow-x-auto rounded-2xl border border-[#d9e2ef]">
+                      <table className="w-full border-collapse text-sm">
+                        <thead className="bg-[#eef3f9] text-left text-[#516076]">
+                          <tr>
+                            <th className="p-3 font-medium">Process ID</th>
+                            <th className="p-3 font-medium">Process Title</th>
+                            <th className="p-3 font-medium">Process Date</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {caseData.processes.map((processItem, index) => (
+                            <tr key={`${processItem.processId || "process"}-${index}`} className="border-t border-[#d9e2ef] align-top">
+                              <td className="p-3">{processItem.processId || "—"}</td>
+                              <td className="p-3">{processItem.processTitle || "—"}</td>
+                              <td className="p-3">{formatTransferDate(processItem.processDate)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
-                </CardContent>
-              </Card>
-            </TabsContent>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="transfer" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
+                <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
+                  Case transfer history
+                </AccordionTrigger>
+                <AccordionContent className="px-5 pb-5">
+                  {(caseData.transferHistory?.length || 0) === 0 ? (
+                    <p className="text-sm text-muted-foreground italic">No transfer entries.</p>
+                  ) : (
+                    <div className="overflow-x-auto rounded-2xl border border-[#d9e2ef]">
+                      <table className="w-full text-sm border-collapse">
+                        <thead className="bg-[#eef3f9] text-left text-[#516076]">
+                          <tr>
+                            <th className="p-3 font-medium">Reg. No</th>
+                            <th className="p-3 font-medium">Date</th>
+                            <th className="p-3 font-medium">From Court / Hall / Judge</th>
+                            <th className="p-3 font-medium">To Court / Hall / Judge</th>
+                            <th className="p-3 font-medium">Linked Hearing</th>
+                            <th className="p-3 font-medium">Remarks</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[...caseData.transferHistory]
+                            .sort((a, b) => new Date(b.transferDate) - new Date(a.transferDate))
+                            .map((t) => {
+                              const hearing = typeof t.hearing === "object" && t.hearing ? t.hearing : null
+                              return (
+                                <tr key={t._id} className="border-t border-[#d9e2ef] align-top">
+                                  <td className="p-3">{t.registrationNumber || "—"}</td>
+                                  <td className="p-3">{formatTransferDate(t.transferDate)}</td>
+                                  <td className="p-3">
+                                    <div>{t.fromCourt || "—"}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                      Hall {t.fromCourtHall || "—"} · {t.fromJudge || "—"}
+                                    </div>
+                                  </td>
+                                  <td className="p-3">
+                                    <div>{t.toCourt || "—"}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                      Hall {t.toCourtHall || "—"} · {t.toJudge || "—"}
+                                    </div>
+                                  </td>
+                                  <td className="p-3 text-xs">
+                                    {hearing ? (
+                                      <>
+                                        {hearing.title || "Hearing"}
+                                        <br />
+                                        <span className="text-muted-foreground">
+                                          {formatTransferDate(hearing.start)}
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <span className="text-muted-foreground">—</span>
+                                    )}
+                                  </td>
+                                  <td className="p-3 max-w-xs text-xs">{t.remarks || "—"}</td>
+                                </tr>
+                              )
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </TabsContent>
 
             <TabsContent value="documents">
               <Card>
@@ -1680,302 +1559,7 @@ export default function CaseDetailsPage() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="transfer">
-              <Card>
-                <CardHeader>
-                  <CardTitle>FIR & Police Station</CardTitle>
-                  <CardDescription>FIR details linked to this case</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-3">
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground">Police Station</h3>
-                      <p>{caseData.policeStation || "—"}</p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground">FIR Number</h3>
-                      <p>{caseData.firNumber || "—"}</p>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground">FIR Year</h3>
-                      <p>{caseData.firYear || "—"}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="mt-6">
-                <CardHeader>
-                  <CardTitle>Processes</CardTitle>
-                  <CardDescription>Processes recorded against this case</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {(caseData.processes?.length || 0) === 0 ? (
-                    <p className="text-sm italic text-muted-foreground">No process entries.</p>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse text-sm">
-                        <thead>
-                          <tr className="border-b text-left">
-                            <th className="p-2">Process ID</th>
-                            <th className="p-2">Process Title</th>
-                            <th className="p-2">Process Date</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {caseData.processes.map((processItem, index) => (
-                            <tr
-                              key={`${processItem.processId || "process"}-${index}`}
-                              className="border-b align-top"
-                            >
-                              <td className="p-2">{processItem.processId || "—"}</td>
-                              <td className="p-2">{processItem.processTitle || "—"}</td>
-                              <td className="p-2">{formatTransferDate(processItem.processDate)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card className="mt-6">
-                <CardHeader>
-                  <CardTitle>IA Status</CardTitle>
-                  <CardDescription>Interlocutory application details linked to this case</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {(caseData.iaStatuses?.length || 0) === 0 ? (
-                    <p className="text-sm italic text-muted-foreground">No IA status entries.</p>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse text-sm">
-                        <thead>
-                          <tr className="border-b text-left">
-                            <th className="p-2">IA Number</th>
-                            <th className="p-2">Party Name</th>
-                            <th className="p-2">Date of Filing</th>
-                            <th className="p-2">Next Date / Purpose</th>
-                            <th className="p-2">IA Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {caseData.iaStatuses.map((iaItem, index) => (
-                            <tr
-                              key={`${iaItem.iaNumber || "ia-status"}-${index}`}
-                              className="border-b align-top"
-                            >
-                              <td className="p-2">{iaItem.iaNumber || "—"}</td>
-                              <td className="p-2">{iaItem.partyName || "—"}</td>
-                              <td className="p-2">{formatTransferDate(iaItem.dateOfFiling)}</td>
-                              <td className="p-2">{iaItem.nextDatePurpose || "—"}</td>
-                              <td className="p-2">{iaItem.status || "—"}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card className="mt-6">
-                <CardHeader>
-                  <CardTitle>Case Transfer History</CardTitle>
-                  <CardDescription>
-                    Every transfer between courts or judges. Latest entry reflects current court.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {(caseData.transferHistory?.length || 0) === 0 ? (
-                    <p className="text-sm text-muted-foreground italic">No transfer entries.</p>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm border-collapse">
-                        <thead>
-                          <tr className="border-b text-left">
-                            <th className="p-2">Reg. No</th>
-                            <th className="p-2">Date</th>
-                            <th className="p-2">From Court / Hall / Judge</th>
-                            <th className="p-2">To Court / Hall / Judge</th>
-                            <th className="p-2">Linked Hearing</th>
-                            <th className="p-2">Remarks</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {[...caseData.transferHistory]
-                            .sort((a, b) => new Date(b.transferDate) - new Date(a.transferDate))
-                            .map((t) => {
-                              const hearing =
-                                typeof t.hearing === "object" && t.hearing ? t.hearing : null
-                              return (
-                                <tr key={t._id} className="border-b align-top">
-                                  <td className="p-2">{t.registrationNumber || "—"}</td>
-                                  <td className="p-2">{formatTransferDate(t.transferDate)}</td>
-                                  <td className="p-2">
-                                    <div>{t.fromCourt || "—"}</div>
-                                    <div className="text-xs text-muted-foreground">
-                                      Hall {t.fromCourtHall || "—"} · {t.fromJudge || "—"}
-                                    </div>
-                                  </td>
-                                  <td className="p-2">
-                                    <div>{t.toCourt || "—"}</div>
-                                    <div className="text-xs text-muted-foreground">
-                                      Hall {t.toCourtHall || "—"} · {t.toJudge || "—"}
-                                    </div>
-                                  </td>
-                                  <td className="p-2 text-xs">
-                                    {hearing ? (
-                                      <>
-                                        {hearing.title || "Hearing"}
-                                        <br />
-                                        <span className="text-muted-foreground">
-                                          {formatTransferDate(hearing.start)}
-                                        </span>
-                                      </>
-                                    ) : (
-                                      <span className="text-muted-foreground">—</span>
-                                    )}
-                                  </td>
-                                  <td className="p-2 max-w-xs text-xs">{t.remarks || "—"}</td>
-                                </tr>
-                              )
-                            })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-
-        <div className="space-y-6 lg:col-span-1">
-          <Card>
-            <CardHeader>
-              <CardTitle>Case Summary</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-4 gap-y-1">
-                  <h3 className="text-sm font-medium">Status</h3>
-                  <Badge className={`justify-self-end ${getStatusColor(caseData.status)}`}>
-                    {caseData.status?.charAt(0).toUpperCase() + caseData.status?.slice(1)}
-                  </Badge>
-                </div>
-                <div className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-4 gap-y-1">
-                  <h3 className="text-sm font-medium">Case Type</h3>
-                  <span className="text-sm text-right break-words">
-                    {formatCaseTypeLabel(caseData.caseSubType || caseData.caseType)}
-                  </span>
-                </div>
-                <div className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-4 gap-y-1">
-                  <h3 className="text-sm font-medium">Filing Date</h3>
-                  <span className="text-sm text-right">{formatDate(caseData.filingDate)}</span>
-                </div>
-                <div className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-4 gap-y-1">
-                  <h3 className="text-sm font-medium">Registration Date</h3>
-                  <span className="text-sm text-right">{formatDate(caseData.registrationDate)}</span>
-                </div>
-                <div className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-4 gap-y-1">
-                  <h3 className="text-sm font-medium">Registration No.</h3>
-                  <span className="text-sm text-right">{caseData.registrationNumber || "Not available"}</span>
-                </div>
-                <div className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-4 gap-y-1">
-                  <h3 className="text-sm font-medium">First Hearing</h3>
-                  <span className="text-sm text-right">{formatDate(firstHearingDate)}</span>
-                </div>
-                <div className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-4 gap-y-1">
-                  <h3 className="text-sm font-medium">Next Hearing</h3>
-                  <span className="text-sm text-right">{formatDate(nextHearingDate)}</span>
-                </div>
-                {caseData.court && (
-                  <div className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-start gap-x-4 gap-y-1">
-                    <h3 className="pt-0.5 text-sm font-medium">Court</h3>
-                    <span className="min-w-0 text-sm text-right break-words">
-                      {caseData.court}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium">Key Parties</h3>
-                {caseData.petitionerNames && caseData.petitionerNames.length > 0 && (
-                  <div>
-                    <p className="text-xs text-muted-foreground">
-                      {caseData.petitionerRole?.charAt(0).toUpperCase() + caseData.petitionerRole?.slice(1) ||
-                        "Petitioner"}
-                    </p>
-                    <p className="text-sm">{caseData.petitionerNames[0]}</p>
-                  </div>
-                )}
-                {caseData.opposingPartyNames && caseData.opposingPartyNames.length > 0 && (
-                  <div className="mt-2">
-                    <p className="text-xs text-muted-foreground">
-                      {caseData.opposingRole?.charAt(0).toUpperCase() + caseData.opposingRole?.slice(1) || "Defendant"}
-                    </p>
-                    <p className="text-sm">{caseData.opposingPartyNames[0]}</p>
-                  </div>
-                )}
-              </div>
-
-              {documents && documents.length > 0 && (
-                <>
-                  <Separator />
-                  <div>
-                    <h3 className="text-sm font-medium">Documents</h3>
-                    <p className="text-sm">{documents.length} document(s) attached</p>
-                  </div>
-                </>
-              )}
-
-              {events && events.length > 0 && (
-                <>
-                  <Separator />
-                  <div>
-                    <h3 className="text-sm font-medium">Hearings</h3>
-                    <p className="text-sm">{events.length} hearing(s) scheduled</p>
-                  </div>
-                </>
-              )}
-            </CardContent>
-            {canUploadDocuments && (
-              <CardFooter className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Button className="w-full" variant="outline" onClick={() => router.push(`/dashboard/cases/${id}/edit`)}>
-                  Edit Case
-                </Button>
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  onClick={() => setShowUploadDialog(true)}
-                >
-                  Upload Document
-                </Button>
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  onClick={() => setShowScheduleDialog(true)}
-                >
-                  Schedule Hearing
-                </Button>
-                <Button
-                  className="w-full"
-                  variant="destructive"
-                  onClick={() => setShowDeleteDialog(true)}
-                >
-                  Delete Case
-                </Button>
-              </CardFooter>
-            )}
-          </Card>
-
-          <CaseTimeline caseData={caseData} />
-        </div>
+        </Tabs>
       </div>
       <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
         <DialogContent>
@@ -2152,7 +1736,7 @@ export default function CaseDetailsPage() {
         </DialogContent>
       </Dialog>
       <Dialog open={Boolean(selectedHistoryRecord)} onOpenChange={(open) => !open && setSelectedHistoryRecord(null)}>
-        <DialogContent className="max-h-[88vh] overflow-y-auto border-[#03234b]/10 bg-[#fcfcfb] p-0 sm:max-w-4xl">
+        <DialogContent className="max-h-[88vh] overflow-y-auto border-[#cfd9e6] bg-[#fffdf8] p-0 sm:max-w-5xl">
           {selectedHistoryRecord && (
             <div className="overflow-hidden rounded-xl">
               <DialogHeader className="sr-only">
@@ -2163,111 +1747,95 @@ export default function CaseDetailsPage() {
                   Details for hearing {selectedHistoryRecord.serialNumber}, including proceedings, case metadata, and next hearing information.
                 </DialogDescription>
               </DialogHeader>
-              <div className="border-b border-[#03234b]/10 bg-gradient-to-b from-[#03234b]/[0.04] to-transparent px-6 py-6 sm:px-8">
-                <div className="space-y-2 text-center">
-                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#03234b]/65">
+              <div className="px-6 py-8 sm:px-12 sm:py-10">
+                <div className="space-y-3 text-center">
+                  <p className="text-xs font-semibold uppercase tracking-[0.34em] text-[#5f7698]">
                     Daily Status
                   </p>
-                  <h2 className="text-xl font-semibold tracking-tight text-[#03234b]">
+                  <h2 className="text-2xl font-semibold tracking-tight text-[#03234b] sm:text-3xl">
                     {caseData.court || "Court details not available"}
                   </h2>
-                </div>
-
-                <div className="mt-6 grid gap-4 rounded-2xl border border-[#03234b]/10 bg-white/90 p-4 shadow-sm sm:grid-cols-2">
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">In the court of</p>
-                      <p className="mt-1 text-sm text-foreground">{selectedHistoryRecord.judge || "Not available"}</p>
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">CNR number</p>
-                      <p className="mt-1 font-mono text-sm text-foreground">{caseData.cnrNumber || "Not available"}</p>
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Case number</p>
-                      <p className="mt-1 font-mono text-sm text-foreground">{caseDisplayNumber}</p>
-                    </div>
-                  </div>
-                  <div className="space-y-3 text-left sm:text-right">
-                    <div>
-                      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Date</p>
-                      <p className="mt-1 text-sm font-semibold text-foreground">{formatDate(selectedHistoryRecord.businessDate || selectedHistoryRecord.date)}</p>
-                    </div>
+                  <div className="space-y-1 text-base text-[#1f2937] sm:text-[1.05rem]">
+                    <p>{selectedHistoryRecord.location || caseData.court || "Court details not available"}</p>
+                    <p>In the court of : {selectedHistoryRecord.judge || "Not available"}</p>
+                    <p>CNR Number : {caseData.cnrNumber || "Not available"}</p>
+                    <p>Case Number : {caseDisplayNumber}</p>
+                    <p>{caseVersusTitle}</p>
+                    <p>Date : {formatDate(selectedHistoryRecord.businessDate || selectedHistoryRecord.date)}</p>
                   </div>
                 </div>
 
-                <div className="mt-5 text-center">
-                  <p className="text-lg font-semibold leading-snug text-foreground">{caseVersusTitle}</p>
-                </div>
-              </div>
+                <div className="mt-8 border-t border-[#cfd9e6]" />
 
-              <div className="space-y-6 px-6 py-6 sm:px-8">
-                <div className="grid gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(260px,0.75fr)]">
-                  <section className="space-y-4">
-                    <div className="rounded-2xl border border-[#03234b]/10 bg-white p-5 shadow-sm">
-                      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Purpose</p>
-                      <p className="mt-2 text-sm leading-7 text-foreground">
-                        {selectedHistoryRecord.purpose || "Not specified"}
-                      </p>
-                    </div>
+                <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-left text-[15px] sm:text-lg">
+                      <tbody className="align-top text-[#1f2937]">
+                        <tr>
+                          <td className="w-[200px] py-2 font-medium">Presentee</td>
+                          <td className="w-6 py-2 font-medium">:</td>
+                          <td className="py-2">{petitionerAdvocate !== "Not assigned" ? petitionerAdvocate : "—"}</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 font-medium">Purpose</td>
+                          <td className="py-2 font-medium">:</td>
+                          <td className="py-2">{selectedHistoryRecord.purpose || "Not specified"}</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 font-medium">Business</td>
+                          <td className="py-2 font-medium">:</td>
+                          <td className="whitespace-pre-wrap py-2">
+                            {selectedHistoryRecord.proceedings || "No proceedings were recorded for this hearing."}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 font-medium">Next Purpose</td>
+                          <td className="py-2 font-medium">:</td>
+                          <td className="py-2">{selectedHistoryRecord.nextPurpose || "Purpose not specified yet"}</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 font-medium">Next Hearing Date</td>
+                          <td className="py-2 font-medium">:</td>
+                          <td className="py-2">
+                            {selectedHistoryRecord.nextHearingDate
+                              ? formatDate(selectedHistoryRecord.nextHearingDate)
+                              : "No next hearing has been recorded after this hearing yet."}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
 
-                    <div className="rounded-2xl border border-[#03234b]/10 bg-white p-5 shadow-sm">
-                      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Business</p>
-                      <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-foreground">
-                        {selectedHistoryRecord.proceedings || "No proceedings were recorded for this hearing."}
-                      </p>
-                    </div>
-                  </section>
+                  <div className="flex flex-col justify-between gap-6">
+                    <table className="w-full border-collapse text-[15px] sm:text-lg">
+                      <tbody className="align-top text-[#1f2937]">
+                        <tr>
+                          <td className="py-2 font-medium">Serial</td>
+                          <td className="w-6 py-2 font-medium">:</td>
+                          <td className="py-2">{selectedHistoryRecord.serialNumber}</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 font-medium">Stage</td>
+                          <td className="py-2 font-medium">:</td>
+                          <td className="py-2">{caseData.caseStage?.replace(/_/g, " ") || "Not specified"}</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 font-medium">Filed On</td>
+                          <td className="py-2 font-medium">:</td>
+                          <td className="py-2">{formatDate(caseData.filingDate)}</td>
+                        </tr>
+                        <tr>
+                          <td className="py-2 font-medium">Hearing Date</td>
+                          <td className="py-2 font-medium">:</td>
+                          <td className="py-2">{formatDate(selectedHistoryRecord.date)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
 
-                  <aside className="space-y-4">
-                    <div className="rounded-2xl border border-[#03234b]/10 bg-[#03234b]/[0.03] p-5">
-                      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Hearing summary</p>
-                      <dl className="mt-3 space-y-3 text-sm">
-                        <div className="flex items-start justify-between gap-4">
-                          <dt className="text-muted-foreground">Serial</dt>
-                          <dd className="text-right font-medium text-foreground">{selectedHistoryRecord.serialNumber}</dd>
-                        </div>
-                        <div className="flex items-start justify-between gap-4">
-                          <dt className="text-muted-foreground">Stage</dt>
-                          <dd className="text-right font-medium text-foreground capitalize">
-                            {caseData.caseStage?.replace(/_/g, " ") || "Not specified"}
-                          </dd>
-                        </div>
-                        <div className="flex items-start justify-between gap-4">
-                          <dt className="text-muted-foreground">Location</dt>
-                          <dd className="text-right font-medium text-foreground">{selectedHistoryRecord.location || "Not specified"}</dd>
-                        </div>
-                        <div className="flex items-start justify-between gap-4">
-                          <dt className="text-muted-foreground">Filed on</dt>
-                          <dd className="text-right font-medium text-foreground">{formatDate(caseData.filingDate)}</dd>
-                        </div>
-                        <div className="flex items-start justify-between gap-4">
-                          <dt className="text-muted-foreground">Hearing date</dt>
-                          <dd className="text-right font-medium text-foreground">{formatDate(selectedHistoryRecord.date)}</dd>
-                        </div>
-                      </dl>
+                    <div className="pt-10 text-right text-xl font-medium text-[#1f2937]">
+                      {selectedHistoryRecord.judge || "Not available"}
                     </div>
-
-                    <div className="rounded-2xl border border-dashed border-[#03234b]/20 bg-white p-5">
-                      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Next purpose</p>
-                      <p className="mt-3 text-sm text-muted-foreground">
-                        {selectedHistoryRecord.nextPurpose || "Purpose not specified yet"}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-dashed border-[#03234b]/20 bg-white p-5">
-                      <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Next hearing date</p>
-                      {selectedHistoryRecord.nextHearingDate ? (
-                        <p className="mt-3 text-base font-semibold text-[#03234b]">
-                          {formatDate(selectedHistoryRecord.nextHearingDate)}
-                        </p>
-                      ) : (
-                        <p className="mt-3 text-sm text-muted-foreground">
-                          No next hearing has been recorded after this hearing yet.
-                        </p>
-                      )}
-                    </div>
-                  </aside>
+                  </div>
                 </div>
               </div>
             </div>
