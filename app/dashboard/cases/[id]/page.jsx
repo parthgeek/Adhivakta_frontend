@@ -907,11 +907,6 @@ export default function CaseDetailsPage() {
                                         <div key={`details-petitioner-${index}`} className="flex items-center gap-2">
                                           <User className={`h-4 w-4 ${petitionerIsClient ? "text-blue-700" : "text-red-600"}`} />
                                           <p className="font-medium text-sm text-gray-900">{party.name || "—"}</p>
-                                          {(party.role || party.label) && (
-                                            <Badge variant="outline" className={`text-xs ${petitionerIsClient ? "bg-blue-100 text-blue-800 border-blue-200" : "bg-red-100 text-red-800 border-red-200"}`}>
-                                              {party.role || party.label}
-                                            </Badge>
-                                          )}
                                         </div>
                                       ))}
                                     </div>
@@ -932,11 +927,6 @@ export default function CaseDetailsPage() {
                                         <div key={`details-respondent-${index}`} className="flex items-center gap-2">
                                           <User className={`h-4 w-4 ${!petitionerIsClient ? "text-blue-700" : "text-red-600"}`} />
                                           <p className="font-medium text-sm text-gray-900">{party.name || "—"}</p>
-                                          {(party.role || party.label) && (
-                                            <Badge variant="outline" className={`text-xs ${!petitionerIsClient ? "bg-blue-100 text-blue-800 border-blue-200" : "bg-red-100 text-red-800 border-red-200"}`}>
-                                              {party.role || party.label}
-                                            </Badge>
-                                          )}
                                         </div>
                                       ))}
                                     </div>
@@ -1415,11 +1405,6 @@ export default function CaseDetailsPage() {
                                         <div className="flex items-center gap-2 mb-1">
                                           <User className={`h-4 w-4 ${petitionerIsClient ? "text-blue-700" : "text-red-600"}`} />
                                           <p className="font-medium text-sm text-gray-900">{party.name || "—"}</p>
-                                          {party.role && (
-                                            <Badge variant="outline" className={`text-xs ${petitionerIsClient ? "bg-blue-200 text-blue-800 border-blue-300" : "bg-red-200 text-red-800 border-red-300"}`}>
-                                              {party.role}
-                                            </Badge>
-                                          )}
                                         </div>
                                         <div className="ml-6 space-y-1">
                                           <p className="text-xs text-gray-600">Type: {party.type || "—"}</p>
@@ -1445,11 +1430,6 @@ export default function CaseDetailsPage() {
                                         <div className="flex items-center gap-2 mb-1">
                                           <User className={`h-4 w-4 ${!petitionerIsClient ? "text-blue-700" : "text-red-600"}`} />
                                           <p className="font-medium text-sm text-gray-900">{party.name || "—"}</p>
-                                          {party.role && (
-                                            <Badge variant="outline" className={`text-xs ${!petitionerIsClient ? "bg-blue-200 text-blue-800 border-blue-300" : "bg-red-200 text-red-800 border-red-300"}`}>
-                                              {party.role}
-                                            </Badge>
-                                          )}
                                         </div>
                                         <div className="ml-6 space-y-1">
                                           <p className="text-xs text-gray-600">Type: {party.type || "—"}</p>
