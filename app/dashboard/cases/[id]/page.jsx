@@ -1808,21 +1808,6 @@ export default function CaseDetailsPage() {
                     <table className="w-full border-collapse text-[15px] sm:text-lg">
                       <tbody className="align-top text-[#1f2937]">
                         <tr>
-                          <td className="py-2 font-medium">Serial</td>
-                          <td className="w-6 py-2 font-medium">:</td>
-                          <td className="py-2">{selectedHistoryRecord.serialNumber}</td>
-                        </tr>
-                        <tr>
-                          <td className="py-2 font-medium">Stage</td>
-                          <td className="py-2 font-medium">:</td>
-                          <td className="py-2">{caseData.caseStage?.replace(/_/g, " ") || "Not specified"}</td>
-                        </tr>
-                        <tr>
-                          <td className="py-2 font-medium">Filed On</td>
-                          <td className="py-2 font-medium">:</td>
-                          <td className="py-2">{formatDate(caseData.filingDate)}</td>
-                        </tr>
-                        <tr>
                           <td className="py-2 font-medium">Hearing Date</td>
                           <td className="py-2 font-medium">:</td>
                           <td className="py-2">{formatDate(selectedHistoryRecord.date)}</td>
