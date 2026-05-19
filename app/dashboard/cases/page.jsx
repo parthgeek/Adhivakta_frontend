@@ -263,8 +263,10 @@ function buildCasePDF(raw) {
   <meta charset="utf-8"/>
   <title>${title}</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11.5px; color: #1a1a1a; background: #fff; }
+    body { font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif; font-size: 11.5px; color: #1a1a1a; background: #fff; }
+    h1, h2, h3, h4, h5, h6, .brand-name, .case-title-block h1, .section-title { font-family: 'Lora', Georgia, serif; }
     .page { position: relative; padding: 36px 40px 72px; max-width: 940px; margin: 0 auto; }
 
     .doc-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 16px; border-bottom: 2.5px solid #1a2332; margin-bottom: 20px; }
@@ -960,7 +962,7 @@ export default function CasesPage() {
                           <span className="mt-1.5 w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />
                         )}
                         <div>
-                          <p className="font-medium text-foreground leading-snug">{c.title}</p>
+                          <p className="case-heading font-medium text-foreground leading-snug">{c.title}</p>
                           <p className="text-xs text-muted-foreground mt-0.5">{c.number}</p>
                         </div>
                       </div>
@@ -1078,7 +1080,7 @@ export default function CasesPage() {
                         {c.isHighPriority && (
                           <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
                         )}
-                        <p className="text-sm font-medium text-foreground truncate">{c.title}</p>
+                        <p className="case-heading text-sm font-medium text-foreground truncate">{c.title}</p>
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-xs text-muted-foreground">{c.number}</span>

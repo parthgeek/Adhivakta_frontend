@@ -655,6 +655,8 @@ export default function CaseDetailsPage() {
 
   const petitionerList = caseData?.parties?.petitioner || []
   const respondentList = caseData?.parties?.respondent || []
+  const clientSide = caseData?.clientSide || "petitioner"
+  const petitionerIsClient = clientSide === "petitioner"
   const petitionerAdvocate = caseData?.advocates?.[0]?.name || caseData?.lawyers?.[0]?.name || "Not assigned"
   const respondentAdvocateNames = respondentList
     .map((party) => party?.opposingCounsel)

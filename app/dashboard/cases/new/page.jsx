@@ -408,6 +408,7 @@ export default function NewCasePage() {
       registrationNumber: "",
       registrationSameAsFilingDate: false,
       nextHearingDate: null,
+      clientSide: "petitioner",
       petitionerRole: "Petitioner",
       petitionerType: "Individual",
       petitionerLabel: "Petitioner",
@@ -1287,6 +1288,7 @@ export default function NewCasePage() {
             opposingCounsel: normalizeValue(r.opposingCounsel),
           })),
         },
+        clientSide: caseData.clientSide || "petitioner",
 
         // Case Management
         isUrgent: caseData.isUrgent || false,

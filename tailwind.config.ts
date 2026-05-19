@@ -68,6 +68,12 @@ const config: Config = {
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
   		},
+  		fontFamily: {
+  			sans: ['var(--font-montserrat)', 'Montserrat', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+  			body: ['var(--font-montserrat)', 'Montserrat', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+  			serif: ['var(--font-lora)', 'Lora', 'Georgia', 'ui-serif', 'serif'],
+  			heading: ['var(--font-lora)', 'Lora', 'Georgia', 'ui-serif', 'serif']
+  		},
   		keyframes: {
   			'accordion-down': {
   				from: {

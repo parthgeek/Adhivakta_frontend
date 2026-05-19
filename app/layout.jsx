@@ -1,8 +1,18 @@
-import { Inter } from "next/font/google";
+import { Lora, Montserrat } from "next/font/google";
 import "./globals.css";
 import Providers from "./provider";
 
-const inter = Inter({ subsets: ["latin"] });
+const lora = Lora({
+  subsets: ["latin"],
+  variable: "--font-lora",
+  display: "swap",
+});
+
+const montserrat = Montserrat({
+  subsets: ["latin"],
+  variable: "--font-montserrat",
+  display: "swap",
+});
 
 export const metadata = {
   title: "Legal Case Management",
@@ -12,7 +22,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className} suppressHydrationWarning>
+      <body className={`${lora.variable} ${montserrat.variable}`} suppressHydrationWarning>
         <Providers>
           {children}
         </Providers>

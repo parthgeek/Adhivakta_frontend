@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { UserPlus, Users, Trash2 } from "lucide-react";
+import { UserPlus, Users, Trash2, Shield, Swords } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function PartyForm({ party, idx, partyList, fieldKey, setCaseData, nameError }) {
@@ -144,7 +144,6 @@ function PartyColumn({
         listError && "border border-destructive/30 bg-destructive/5"
       )}
     >
-      {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{description}</p>
@@ -171,7 +170,6 @@ function PartyColumn({
         <p className="text-sm text-destructive">{listError}</p>
       )}
 
-      {/* Party cards */}
       {list.length > 0 ? (
         <div className="space-y-3">
           {list.map((party, idx) => (
@@ -199,7 +197,6 @@ function PartyColumn({
         </div>
       )}
 
-      {/* Add button */}
       <Button
         id={`add-${listKey === "petitioners" ? "petitioner" : "respondent"}-button`}
         type="button"
@@ -225,6 +222,9 @@ export default function PartySectionTab({
   isLastTab,
   validationErrors,
 }) {
+  const clientSide = caseData.clientSide || "petitioner";
+  const petitionerIsClient = clientSide === "petitioner";
+
   return (
     <Card>
       <CardHeader>
@@ -233,12 +233,63 @@ export default function PartySectionTab({
           Add all parties involved in this case — the side filing the case and the opposing side.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-6">
+
+        {/* Which side are you representing */}
+        <div className="rounded-xl border bg-muted/30 p-4">
+          <p className="text-sm font-semibold text-foreground mb-3">Which side are you representing?</p>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setCaseData((prev) => ({ ...prev, clientSide: "petitioner" }))}
+              className={cn(
+                "flex flex-col items-start gap-1 rounded-lg border-2 p-4 text-left transition-all",
+                petitionerIsClient
+                  ? "border-blue-500 bg-blue-50"
+                  : "border-muted bg-background hover:border-blue-300 hover:bg-blue-50/50"
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <Shield className={cn("h-4 w-4", petitionerIsClient ? "text-blue-600" : "text-muted-foreground")} />
+                <span className={cn("text-sm font-semibold", petitionerIsClient ? "text-blue-700" : "text-foreground")}>
+                  Filing Side
+                </span>
+                {petitionerIsClient && (
+                  <span className="ml-auto rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold text-white">OUR CLIENT</span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground ml-6">Petitioner · Appellant · Plaintiff · Complainant</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCaseData((prev) => ({ ...prev, clientSide: "respondent" }))}
+              className={cn(
+                "flex flex-col items-start gap-1 rounded-lg border-2 p-4 text-left transition-all",
+                !petitionerIsClient
+                  ? "border-blue-500 bg-blue-50"
+                  : "border-muted bg-background hover:border-blue-300 hover:bg-blue-50/50"
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <Swords className={cn("h-4 w-4", !petitionerIsClient ? "text-blue-600" : "text-muted-foreground")} />
+                <span className={cn("text-sm font-semibold", !petitionerIsClient ? "text-blue-700" : "text-foreground")}>
+                  Opposing Side
+                </span>
+                {!petitionerIsClient && (
+                  <span className="ml-auto rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold text-white">OUR CLIENT</span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground ml-6">Respondent · Defendant · Accused · Opponent</p>
+            </button>
+          </div>
+        </div>
+
         <div className="flex flex-col lg:flex-row gap-6">
           <PartyColumn
-            title="Filing Side"
-            description="Party initiating the case"
-            borderColor="border-primary"
+            title={petitionerIsClient ? "Our Client's Side" : "Filing Side"}
+            description={petitionerIsClient ? "Party you represent — initiating the case" : "Opposing party — initiating the case"}
+            borderColor={petitionerIsClient ? "border-blue-500" : "border-red-400"}
             labelOptions={[
               { value: "Petitioner" },
               { value: "Appellant" },
@@ -265,9 +316,9 @@ export default function PartySectionTab({
           </div>
 
           <PartyColumn
-            title="Opposing Side"
-            description="Party responding to the case"
-            borderColor="border-destructive"
+            title={!petitionerIsClient ? "Our Client's Side" : "Opposing Side"}
+            description={!petitionerIsClient ? "Party you represent — responding to the case" : "Opposing party — responding to the case"}
+            borderColor={!petitionerIsClient ? "border-blue-500" : "border-red-400"}
             labelOptions={[
               { value: "Defendant" },
               { value: "Accused" },
