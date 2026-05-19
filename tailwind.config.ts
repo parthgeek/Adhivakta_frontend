@@ -69,10 +69,10 @@ const config: Config = {
   			sm: 'calc(var(--radius) - 4px)'
   		},
   		fontFamily: {
-  			sans: ['var(--font-montserrat)', 'Montserrat', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-  			body: ['var(--font-montserrat)', 'Montserrat', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-  			serif: ['var(--font-lora)', 'Lora', 'Georgia', 'ui-serif', 'serif'],
-  			heading: ['var(--font-lora)', 'Lora', 'Georgia', 'ui-serif', 'serif']
+  			sans: ['var(--font-body)', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+  			body: ['var(--font-body)', 'Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+  			serif: ['var(--font-heading)', '"Cormorant Garamond"', 'Georgia', 'ui-serif', 'serif'],
+  			heading: ['var(--font-heading)', '"Cormorant Garamond"', 'Georgia', 'ui-serif', 'serif']
   		},
   		keyframes: {
   			'accordion-down': {

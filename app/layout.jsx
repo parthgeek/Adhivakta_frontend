@@ -1,16 +1,18 @@
-import { Lora, Montserrat } from "next/font/google";
+import { Cormorant_Garamond, Manrope } from "next/font/google";
 import "./globals.css";
 import Providers from "./provider";
 
-const lora = Lora({
+const headingFont = Cormorant_Garamond({
   subsets: ["latin"],
-  variable: "--font-lora",
+  weight: ["500", "600", "700"],
+  variable: "--font-heading",
   display: "swap",
 });
 
-const montserrat = Montserrat({
+const bodyFont = Manrope({
   subsets: ["latin"],
-  variable: "--font-montserrat",
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-body",
   display: "swap",
 });
 
@@ -22,7 +24,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${lora.variable} ${montserrat.variable}`} suppressHydrationWarning>
+      <body className={`${headingFont.variable} ${bodyFont.variable}`} suppressHydrationWarning>
         <Providers>
           {children}
         </Providers>

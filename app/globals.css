@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 body {
-  font-family: var(--font-montserrat), Montserrat, Arial, Helvetica, sans-serif;
+  font-family: var(--font-body), Manrope, Arial, Helvetica, sans-serif;
 }
 
 @layer utilities {
@@ -90,7 +90,9 @@ body {
   }
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-montserrat), Montserrat, Arial, Helvetica, sans-serif;
+    font-family: var(--font-body), Manrope, Arial, Helvetica, sans-serif;
+    font-feature-settings: "liga" 1, "calt" 1;
+    text-rendering: optimizeLegibility;
   }
 
   h1,
@@ -101,7 +103,10 @@ body {
   h6,
   .font-heading,
   .case-heading {
-    font-family: var(--font-lora), Lora, Georgia, "Times New Roman", serif;
+    font-family: var(--font-heading), "Cormorant Garamond", Georgia, "Times New Roman", serif;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-wrap: balance;
   }
 
   input,
@@ -110,7 +115,7 @@ body {
   button,
   [role="combobox"],
   [cmdk-input] {
-    font-family: var(--font-montserrat), Montserrat, Arial, Helvetica, sans-serif;
+    font-family: var(--font-body), Manrope, Arial, Helvetica, sans-serif;
   }
 }
 

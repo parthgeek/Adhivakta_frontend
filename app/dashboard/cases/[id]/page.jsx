@@ -657,13 +657,15 @@ export default function CaseDetailsPage() {
   const respondentList = caseData?.parties?.respondent || []
   const clientSide = caseData?.clientSide || "petitioner"
   const petitionerIsClient = clientSide === "petitioner"
-  const petitionerAdvocate = caseData?.advocates?.[0]?.name || caseData?.lawyers?.[0]?.name || "Not assigned"
+  const representedAdvocate = caseData?.advocates?.[0]?.name || caseData?.lawyers?.[0]?.name || "Not assigned"
   const respondentAdvocateNames = respondentList
     .map((party) => party?.opposingCounsel)
     .filter(Boolean)
-  const respondentAdvocate = respondentAdvocateNames.length > 0
+  const opposingRespondentAdvocate = respondentAdvocateNames.length > 0
     ? Array.from(new Set(respondentAdvocateNames)).join(", ")
     : "Not specified"
+  const petitionerAdvocate = petitionerIsClient ? representedAdvocate : "Not specified"
+  const respondentAdvocate = petitionerIsClient ? opposingRespondentAdvocate : representedAdvocate
 
   const handleDeleteCase = async () => {
     if (deleteConfirmation !== caseData.title) {
@@ -932,7 +934,7 @@ export default function CaseDetailsPage() {
                                 <div key={`details-petitioner-${index}`}>
                                   <p className="font-medium">{index + 1}) {party.name || "—"}</p>
                                   <p className="mt-1 text-[#516076]">
-                                    Advocate: {party.advocateName || petitionerAdvocate}
+                                    Advocate: {petitionerIsClient ? petitionerAdvocate : party.advocateName || petitionerAdvocate}
                                   </p>
                                 </div>
                               ))}
@@ -964,7 +966,7 @@ export default function CaseDetailsPage() {
                                 <div key={`details-respondent-${index}`}>
                                   <p className="font-medium">{index + 1}) {party.name || "—"}</p>
                                   <p className="mt-1 text-[#516076]">
-                                    Advocate: {party.opposingCounsel || respondentAdvocate}
+                                    Advocate: {petitionerIsClient ? party.opposingCounsel || respondentAdvocate : respondentAdvocate}
                                   </p>
                                 </div>
                               ))}
@@ -1774,7 +1776,7 @@ export default function CaseDetailsPage() {
                         <tr>
                           <td className="w-[200px] py-2 font-medium">Presentee</td>
                           <td className="w-6 py-2 font-medium">:</td>
-                          <td className="py-2">{petitionerAdvocate !== "Not assigned" ? petitionerAdvocate : "—"}</td>
+                          <td className="py-2">{representedAdvocate !== "Not assigned" ? representedAdvocate : "—"}</td>
                         </tr>
                         <tr>
                           <td className="py-2 font-medium">Purpose</td>
