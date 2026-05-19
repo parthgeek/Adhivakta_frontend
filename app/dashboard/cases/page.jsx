@@ -190,7 +190,8 @@ function buildCasePDF(raw) {
         ${p.address ? `<span class="detail">${p.address}</span>`                     : ""}
         ${p.contact ? `<span class="detail">Contact: ${p.contact}</span>`            : ""}
         ${p.email   ? `<span class="detail">Email: ${p.email}</span>`                : ""}
-        ${p.opposingCounsel ? `<span class="detail">Opp. Counsel: ${p.opposingCounsel}</span>` : ""}
+        ${p.advocateName ? `<span class="detail">Advocate: ${p.advocateName}</span>` : ""}
+        ${p.opposingCounsel ? `<span class="detail">Advocate: ${p.opposingCounsel}</span>` : ""}
       </div>`).join("");
   };
 

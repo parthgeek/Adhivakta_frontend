@@ -218,8 +218,10 @@ export default function EditCasePage() {
           clientSide: d.clientSide || "petitioner",
           petitionerRole: d.petitionerRole || "Petitioner",
           petitionerType: d.petitionerType || "Individual",
+          petitionerLabel: d.petitionerLabel || d.parties?.petitioner?.[0]?.role || "Petitioner",
           petitioners: d.parties?.petitioner || [],
           respondentRole: d.respondentRole || "Defendant",
+          respondentLabel: d.respondentLabel || d.parties?.respondent?.[0]?.role || "Defendant",
           respondents: d.parties?.respondent || [],
           description: d.description || "",
           caseSubType: d.caseSubType || ecourtCaseTypeName || "",
@@ -684,20 +686,25 @@ export default function EditCasePage() {
             petitioner: (caseData.petitioners || []).map(p => {
               const obj = { name: p.name };
               if (p.type) obj.type = p.type;
-              if (p.role) obj.role = p.role;
+              obj.role = p.role || p.label || caseData.petitionerLabel || "Petitioner";
               if (p.email) obj.email = p.email;
               if (p.contact) obj.contact = p.contact;
               if (p.address) obj.address = p.address;
+              if (caseData.clientSide === "respondent" && p.advocateName) {
+                obj.advocateName = p.advocateName;
+              }
               return obj;
             }),
             respondent: (caseData.respondents || []).map(r => {
               const obj = { name: r.name };
               if (r.type) obj.type = r.type;
-              if (r.role) obj.role = r.role;
+              obj.role = r.role || r.label || caseData.respondentLabel || "Defendant";
               if (r.email) obj.email = r.email;
               if (r.contact) obj.contact = r.contact;
               if (r.address) obj.address = r.address;
-              if (r.opposingCounsel) obj.opposingCounsel = r.opposingCounsel;
+              if (caseData.clientSide !== "respondent" && r.opposingCounsel) {
+                obj.opposingCounsel = r.opposingCounsel;
+              }
               return obj;
             })
           },
@@ -774,6 +781,9 @@ export default function EditCasePage() {
   };
 
   if (!caseData) return <div>Loading...</div>;
+
+  const clientSide = caseData.clientSide || "petitioner";
+  const petitionerIsClient = clientSide === "petitioner";
 
   return (
     <div className="space-y-6">
@@ -1123,12 +1133,56 @@ export default function EditCasePage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
+                    <div className="rounded-lg border bg-muted/30 p-4">
+                      <p className="mb-3 text-sm font-semibold">Which side are you representing?</p>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <Button
+                          type="button"
+                          variant={petitionerIsClient ? "default" : "outline"}
+                          onClick={() => setCaseData(prev => ({
+                            ...prev,
+                            clientSide: "petitioner",
+                            petitioners: (prev.petitioners || []).map((party) => ({
+                              ...party,
+                              advocateName: "",
+                            })),
+                          }))}
+                          className="justify-start"
+                        >
+                          Filing Side {petitionerIsClient ? "(Our Client)" : ""}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={!petitionerIsClient ? "default" : "outline"}
+                          onClick={() => setCaseData(prev => ({
+                            ...prev,
+                            clientSide: "respondent",
+                            respondents: (prev.respondents || []).map((party) => ({
+                              ...party,
+                              opposingCounsel: "",
+                            })),
+                          }))}
+                          className="justify-start"
+                        >
+                          Opposing Side {!petitionerIsClient ? "(Our Client)" : ""}
+                        </Button>
+                      </div>
+                    </div>
+
                     {/* Petitioners Section */}
                     <div className="space-y-4">
                       <div className="flex items-center space-x-4">
                         <Select
                           value={caseData.petitionerLabel || 'Petitioner'}
-                          onValueChange={val => setCaseData(prev => ({ ...prev, petitionerLabel: val }))}
+                          onValueChange={val => setCaseData(prev => ({
+                            ...prev,
+                            petitionerLabel: val,
+                            petitioners: (prev.petitioners || []).map((party) => ({
+                              ...party,
+                              label: val,
+                              role: val,
+                            })),
+                          }))}
                         >
                           <SelectTrigger className="w-56">
                             <SelectValue />
@@ -1148,11 +1202,13 @@ export default function EditCasePage() {
                               ...(prev.petitioners || []),
                               {
                                 label: prev.petitionerLabel || 'Petitioner',
+                                role: prev.petitionerLabel || 'Petitioner',
                                 type: 'Individual',
                                 name: '',
                                 email: '',
                                 contact: '',
-                                address: ''
+                                address: '',
+                                advocateName: '',
                               }
                             ]
                           }))}
@@ -1249,6 +1305,20 @@ export default function EditCasePage() {
                                     rows={2}
                                   />
                                 </div>
+                                {!petitionerIsClient && (
+                                  <div className="space-y-2 md:col-span-2">
+                                    <Label>Advocate</Label>
+                                    <Input
+                                      value={petitioner.advocateName || ""}
+                                      onChange={e => {
+                                        const arr = [...caseData.petitioners];
+                                        arr[idx].advocateName = e.target.value;
+                                        setCaseData(prev => ({ ...prev, petitioners: arr }));
+                                      }}
+                                      placeholder="e.g. Adv. Neha Sharma"
+                                    />
+                                  </div>
+                                )}
                               </div>
                             </div>
                           ))}
@@ -1261,7 +1331,15 @@ export default function EditCasePage() {
                       <div className="flex items-center space-x-4">
                         <Select
                           value={caseData.respondentLabel || 'Defendant'}
-                          onValueChange={val => setCaseData(prev => ({ ...prev, respondentLabel: val }))}
+                          onValueChange={val => setCaseData(prev => ({
+                            ...prev,
+                            respondentLabel: val,
+                            respondents: (prev.respondents || []).map((party) => ({
+                              ...party,
+                              label: val,
+                              role: val,
+                            })),
+                          }))}
                         >
                           <SelectTrigger className="w-56">
                             <SelectValue />
@@ -1281,6 +1359,7 @@ export default function EditCasePage() {
                               ...(prev.respondents || []),
                               {
                                 label: prev.respondentLabel || 'Defendant',
+                                role: prev.respondentLabel || 'Defendant',
                                 type: 'Individual',
                                 name: '',
                                 email: '',
@@ -1383,18 +1462,20 @@ export default function EditCasePage() {
                                     rows={2}
                                   />
                                 </div>
-                                <div className="space-y-2 md:col-span-2">
-                                  <Label>Defending Advocate</Label>
-                                  <Input
-                                    value={respondent.opposingCounsel || ""}
-                                    onChange={e => {
-                                      const arr = [...caseData.respondents];
-                                      arr[idx].opposingCounsel = e.target.value;
-                                      setCaseData(prev => ({ ...prev, respondents: arr }));
-                                    }}
-                                    placeholder="e.g. Adv. Neha Sharma"
-                                  />
-                                </div>
+                                {petitionerIsClient && (
+                                  <div className="space-y-2 md:col-span-2">
+                                    <Label>Advocate</Label>
+                                    <Input
+                                      value={respondent.opposingCounsel || ""}
+                                      onChange={e => {
+                                        const arr = [...caseData.respondents];
+                                        arr[idx].opposingCounsel = e.target.value;
+                                        setCaseData(prev => ({ ...prev, respondents: arr }));
+                                      }}
+                                      placeholder="e.g. Adv. Neha Sharma"
+                                    />
+                                  </div>
+                                )}
                               </div>
                             </div>
                           ))}

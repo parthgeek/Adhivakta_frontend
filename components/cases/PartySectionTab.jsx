@@ -8,7 +8,15 @@ import { Button } from "@/components/ui/button";
 import { UserPlus, Users, Trash2, Shield, Swords } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-function PartyForm({ party, idx, partyList, fieldKey, setCaseData, nameError }) {
+function PartyForm({
+  party,
+  idx,
+  partyList,
+  fieldKey,
+  setCaseData,
+  nameError,
+  showAdvocateField,
+}) {
   const update = (field, value) => {
     const arr = [...partyList];
     arr[idx] = { ...arr[idx], [field]: value };
@@ -88,12 +96,21 @@ function PartyForm({ party, idx, partyList, fieldKey, setCaseData, nameError }) 
             rows={2}
           />
         </div>
-        {fieldKey === "respondents" && (
+        {showAdvocateField && (
           <div className="space-y-1.5 md:col-span-2">
-            <Label>Defending Lawyer</Label>
+            <Label>Advocate</Label>
             <Input
-              value={party.opposingCounsel || ""}
-              onChange={(e) => update("opposingCounsel", e.target.value)}
+              value={
+                fieldKey === "petitioners"
+                  ? party.advocateName || ""
+                  : party.opposingCounsel || ""
+              }
+              onChange={(e) =>
+                update(
+                  fieldKey === "petitioners" ? "advocateName" : "opposingCounsel",
+                  e.target.value
+                )
+              }
               placeholder="e.g. Adv. Neha Sharma"
             />
           </div>
@@ -114,11 +131,21 @@ function PartyColumn({
   caseData,
   setCaseData,
   validationErrors,
+  showAdvocateField,
 }) {
   const list = caseData[listKey] || [];
   const currentLabel = caseData[labelKey] || labelOptions[0].value;
   const fieldErrors = validationErrors?.fieldErrors || {};
   const listError = fieldErrors[listKey];
+  const updateColumnLabel = (value) =>
+    setCaseData((prev) => ({
+      ...prev,
+      [labelKey]: value,
+      [listKey]: (prev[listKey] || []).map((party) => ({
+        ...party,
+        label: value,
+      })),
+    }));
 
   const addParty = () =>
     setCaseData((prev) => ({
@@ -133,6 +160,7 @@ function PartyColumn({
           contact: "",
           address: "",
           ...(listKey === "respondents" ? { opposingCounsel: "" } : {}),
+          ...(listKey === "petitioners" ? { advocateName: "" } : {}),
         },
       ],
     }));
@@ -152,7 +180,7 @@ function PartyColumn({
         <div className="flex items-center gap-2 flex-shrink-0">
           <Select
             value={currentLabel}
-            onValueChange={(val) => setCaseData((prev) => ({ ...prev, [labelKey]: val }))}
+            onValueChange={updateColumnLabel}
           >
             <SelectTrigger className="w-36 h-8 text-xs">
               <SelectValue />
@@ -181,6 +209,7 @@ function PartyColumn({
               fieldKey={listKey}
               setCaseData={setCaseData}
               nameError={fieldErrors[`${listKey}.${idx}.name`]}
+              showAdvocateField={showAdvocateField}
             />
           ))}
         </div>
@@ -241,7 +270,16 @@ export default function PartySectionTab({
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
-              onClick={() => setCaseData((prev) => ({ ...prev, clientSide: "petitioner" }))}
+              onClick={() =>
+                setCaseData((prev) => ({
+                  ...prev,
+                  clientSide: "petitioner",
+                  petitioners: (prev.petitioners || []).map((party) => ({
+                    ...party,
+                    advocateName: "",
+                  })),
+                }))
+              }
               className={cn(
                 "flex flex-col items-start gap-1 rounded-lg border-2 p-4 text-left transition-all",
                 petitionerIsClient
@@ -263,7 +301,16 @@ export default function PartySectionTab({
 
             <button
               type="button"
-              onClick={() => setCaseData((prev) => ({ ...prev, clientSide: "respondent" }))}
+              onClick={() =>
+                setCaseData((prev) => ({
+                  ...prev,
+                  clientSide: "respondent",
+                  respondents: (prev.respondents || []).map((party) => ({
+                    ...party,
+                    opposingCounsel: "",
+                  })),
+                }))
+              }
               className={cn(
                 "flex flex-col items-start gap-1 rounded-lg border-2 p-4 text-left transition-all",
                 !petitionerIsClient
@@ -301,6 +348,7 @@ export default function PartySectionTab({
             caseData={caseData}
             setCaseData={setCaseData}
             validationErrors={validationErrors}
+            showAdvocateField={!petitionerIsClient}
           />
 
           {/* Divider */}
@@ -330,6 +378,7 @@ export default function PartySectionTab({
             caseData={caseData}
             setCaseData={setCaseData}
             validationErrors={validationErrors}
+            showAdvocateField={petitionerIsClient}
           />
         </div>
       </CardContent>

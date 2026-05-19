@@ -59,7 +59,7 @@ export default function LawyerView({ caseData, setCaseData, updateClientField, r
                 <div className="flex justify-between items-center">
                   <h4 className="font-medium flex items-center gap-2">
                     <User className="h-4 w-4 text-gray-500" />
-                    Lawyer {idx + 1}
+                    Advocate {idx + 1}
                   </h4>
                   <Button
                     variant="ghost"
@@ -253,7 +253,7 @@ export default function LawyerView({ caseData, setCaseData, updateClientField, r
             variant="outline"
             className="mt-2 w-full border-dashed border-gray-300 hover:border-primary hover:bg-primary/5"
           >
-            <PlusCircle className="mr-2 h-4 w-4" /> Add Lawyer to Case
+            <PlusCircle className="mr-2 h-4 w-4" /> Add Advocate to Case
           </Button>
         </div>
       </CardContent>

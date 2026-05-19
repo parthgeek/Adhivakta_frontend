@@ -414,6 +414,7 @@ export default function NewCasePage() {
       petitionerLabel: "Petitioner",
       petitioners: [],
       respondentRole: "Defendant",
+      respondentLabel: "Defendant",
       respondents: [],
       description: "",
       status: "active",
@@ -1277,6 +1278,9 @@ export default function NewCasePage() {
             email: normalizeValue(p.email),
             contact: normalizeValue(p.contact),
             address: normalizeValue(p.address),
+            ...(caseData.clientSide === "respondent"
+              ? { advocateName: normalizeValue(p.advocateName) }
+              : {}),
           })),
           respondent: (caseData.respondents || []).map((r) => ({
             name: normalizeValue(r.name),
@@ -1285,7 +1289,9 @@ export default function NewCasePage() {
             email: normalizeValue(r.email),
             contact: normalizeValue(r.contact),
             address: normalizeValue(r.address),
-            opposingCounsel: normalizeValue(r.opposingCounsel),
+            ...(caseData.clientSide !== "respondent"
+              ? { opposingCounsel: normalizeValue(r.opposingCounsel) }
+              : {}),
           })),
         },
         clientSide: caseData.clientSide || "petitioner",
