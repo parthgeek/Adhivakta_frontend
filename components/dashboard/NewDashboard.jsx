@@ -84,7 +84,7 @@ const UpcomingHearings = ({ events = [] }) => {
   return (
     <div className="bg-white rounded-lg border p-6 shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Upcoming Hearings</h3>
+        <h3 className="font-heading text-lg font-semibold text-gray-900">Upcoming Hearings</h3>
         <button className="text-[#03234b] hover:text-[#03234b] text-sm font-medium">
           View all
         </button>

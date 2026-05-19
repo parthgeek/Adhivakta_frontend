@@ -242,7 +242,7 @@ const UpcomingHearingsTable = ({ events = [], cases = [] }) => {
     <Card>
       <CardHeader className="flex flex-row items-start justify-between pb-2">
         <div>
-          <CardTitle className="text-lg font-bold text-gray-900">Upcoming Hearings</CardTitle>
+          <CardTitle className="font-heading text-lg font-bold text-gray-900">Upcoming Hearings</CardTitle>
           <p className="text-xs text-gray-400 mt-0.5">Next {Math.min(upcoming.length || 5, 5)} scheduled across all advocates</p>
         </div>
         <Link href="/dashboard/calendar">
@@ -393,7 +393,7 @@ const CasesByStatusChart = ({ cases = [] }) => {
   return (
     <Card className="h-full">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg font-bold text-gray-900">Cases by Status</CardTitle>
+        <CardTitle className="font-heading text-lg font-bold text-gray-900">Cases by Status</CardTitle>
         <p className="text-xs text-gray-400">Live distribution across {total} cases</p>
       </CardHeader>
       <CardContent>
