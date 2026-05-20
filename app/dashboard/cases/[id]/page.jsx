@@ -1635,21 +1635,36 @@ export default function CaseDetailsPage() {
         </DialogContent>
       </Dialog>
       <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-[420px] border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-0 shadow-[0_32px_80px_-38px_rgba(15,23,42,0.5)]">
           <DialogHeader>
-            <DialogTitle>Schedule Next Hearing</DialogTitle>
+            <div className="border-b border-slate-200/80 px-6 pt-6 pb-4">
+              <DialogTitle className="text-[1.95rem] font-semibold tracking-tight text-slate-950">
+                Schedule Next Hearing
+              </DialogTitle>
+              <p className="mt-1 text-sm text-slate-500">
+                Choose a future listing date for this matter.
+              </p>
+            </div>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-5 px-5 pb-5">
             <DatePicker
+              variant="mobile"
               mode="single"
               selected={hearingDate}
               onSelect={setHearingDate}
+              className="w-full"
               disabled={(date) => {
                 const firstHearing = caseData.nextHearingDate ? new Date(caseData.nextHearingDate) : (caseData.hearingDate ? new Date(caseData.hearingDate) : null);
                 return firstHearing ? date <= firstHearing : false;
               }}
             />
-            <Button onClick={handleScheduleSubmit} disabled={scheduling || !hearingDate}>{scheduling ? "Scheduling..." : "Set Hearing Date"}</Button>
+            <Button
+              className="h-12 w-full rounded-2xl bg-slate-900 text-base font-semibold text-white transition-all duration-300 ease-out hover:-translate-y-px hover:bg-slate-800 disabled:hover:translate-y-0"
+              onClick={handleScheduleSubmit}
+              disabled={scheduling || !hearingDate}
+            >
+              {scheduling ? "Scheduling..." : "Set Hearing Date"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
