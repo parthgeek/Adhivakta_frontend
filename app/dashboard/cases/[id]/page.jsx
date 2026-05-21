@@ -982,7 +982,7 @@ export default function CaseDetailsPage() {
               </CardContent>
             </Card>
 
-            <Accordion type="multiple" defaultValue={["acts", "fir", "ia", "notes"]} className="space-y-4">
+            <Accordion type="multiple" defaultValue={["acts", "fir", "ia", "notes", "processes"]} className="space-y-4">
               <AccordionItem value="acts" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
                 <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
                   Acts
@@ -1129,6 +1129,38 @@ export default function CaseDetailsPage() {
                   )}
                 </AccordionContent>
               </AccordionItem>
+
+              <AccordionItem value="processes" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
+                <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
+                  Processes
+                </AccordionTrigger>
+                <AccordionContent className="px-5 pb-5">
+                  {(caseData.processes?.length || 0) === 0 ? (
+                    <p className="text-sm italic text-muted-foreground">No process entries.</p>
+                  ) : (
+                    <div className="overflow-x-auto rounded-2xl border border-[#d9e2ef]">
+                      <table className="w-full border-collapse text-sm">
+                        <thead className="bg-[#eef3f9] text-left text-[#516076]">
+                          <tr>
+                            <th className="p-3 font-medium">Process ID</th>
+                            <th className="p-3 font-medium">Process Title</th>
+                            <th className="p-3 font-medium">Process Date</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {caseData.processes.map((processItem, index) => (
+                            <tr key={`${processItem.processId || "process"}-${index}`} className="border-t border-[#d9e2ef] align-top">
+                              <td className="p-3">{processItem.processId || "—"}</td>
+                              <td className="p-3">{processItem.processTitle || "—"}</td>
+                              <td className="p-3">{formatTransferDate(processItem.processDate)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </AccordionContent>
+              </AccordionItem>
             </Accordion>
           </TabsContent>
 
@@ -1179,7 +1211,7 @@ export default function CaseDetailsPage() {
 
             <CaseTimeline caseData={{ ...caseData, events: hearings }} />
 
-            <Accordion type="multiple" defaultValue={["orders", "processes", "transfer"]} className="space-y-4">
+            <Accordion type="multiple" defaultValue={["orders", "transfer"]} className="space-y-4">
               <AccordionItem value="orders" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
                 <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
                   Interim orders
@@ -1277,38 +1309,6 @@ export default function CaseDetailsPage() {
                       ) : (
                         <p className="text-sm text-muted-foreground">No final order or judgment linked to this closed case.</p>
                       )}
-                    </div>
-                  )}
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="processes" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
-                <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
-                  Processes
-                </AccordionTrigger>
-                <AccordionContent className="px-5 pb-5">
-                  {(caseData.processes?.length || 0) === 0 ? (
-                    <p className="text-sm italic text-muted-foreground">No process entries.</p>
-                  ) : (
-                    <div className="overflow-x-auto rounded-2xl border border-[#d9e2ef]">
-                      <table className="w-full border-collapse text-sm">
-                        <thead className="bg-[#eef3f9] text-left text-[#516076]">
-                          <tr>
-                            <th className="p-3 font-medium">Process ID</th>
-                            <th className="p-3 font-medium">Process Title</th>
-                            <th className="p-3 font-medium">Process Date</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {caseData.processes.map((processItem, index) => (
-                            <tr key={`${processItem.processId || "process"}-${index}`} className="border-t border-[#d9e2ef] align-top">
-                              <td className="p-3">{processItem.processId || "—"}</td>
-                              <td className="p-3">{processItem.processTitle || "—"}</td>
-                              <td className="p-3">{formatTransferDate(processItem.processDate)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
                     </div>
                   )}
                 </AccordionContent>

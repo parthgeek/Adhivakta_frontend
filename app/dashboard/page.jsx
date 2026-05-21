@@ -6,7 +6,6 @@ import {
   FileText,
   Users,
   Calendar,
-  Clock,
   AlertCircle,
   Briefcase,
   CheckCircle,
@@ -489,74 +488,6 @@ const CasesByCategoryChart = ({ cases = [] }) => {
   );
 };
 
-// ─── RecentActivity ───────────────────────────────────────────────────────────
-
-const RecentActivityFeed = ({ documents = [], notifications = [] }) => {
-  const items = useMemo(() => {
-    const docItems = documents.slice(0, 3).map((doc) => ({
-      id: doc._id || doc.id,
-      type: "document",
-      text: `Document "${doc.name || doc.title || "File"}" uploaded`,
-      sub: doc.caseNumber || doc.case?.caseNumber || "",
-      time: doc.createdAt ? new Date(doc.createdAt) : null,
-    }));
-    const notifItems = notifications
-      .filter((n) => n.type !== "document_review_request")
-      .slice(0, 3)
-      .map((n) => ({
-        id: n._id,
-        type: "notification",
-        text: n.message || "Notification",
-        sub: "",
-        time: n.createdAt ? new Date(n.createdAt) : null,
-      }));
-    return [...docItems, ...notifItems]
-      .sort((a, b) => (b.time?.getTime() || 0) - (a.time?.getTime() || 0))
-      .slice(0, 5);
-  }, [documents, notifications]);
-
-  const iconMap = {
-    document: <FileText className="h-4 w-4 text-[#03234b]" />,
-    notification: <AlertCircle className="h-4 w-4 text-amber-500" />,
-  };
-
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-lg font-bold text-gray-900">Recent Activity</CardTitle>
-        <Link href="/dashboard/notifications" className="text-xs font-medium text-[#03234b] hover:underline">
-          All
-        </Link>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-gray-400">
-            <Clock className="h-8 w-8 mb-2 text-gray-200" />
-            <p className="text-sm">No recent activity</p>
-          </div>
-        ) : (
-          items.map((item, idx) => (
-            <div key={item.id || idx} className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100">
-                {iconMap[item.type] || <Clock className="h-4 w-4 text-gray-500" />}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-gray-800 line-clamp-2">{item.text}</p>
-                {item.sub && <p className="text-xs text-gray-400">{item.sub}</p>}
-              </div>
-              {item.time && (
-                <span className="shrink-0 text-xs text-gray-400 whitespace-nowrap">
-                  {formatRelativeTime(item.time)}
-                </span>
-              )}
-            </div>
-          ))
-        )}
-      </CardContent>
-    </Card>
-  );
-};
-
 // ─── TasksAndTeam ─────────────────────────────────────────────────────────────
 
 const TasksAndTeam = ({ cases = [], notifications = [] }) => {
@@ -989,9 +920,8 @@ const NewDashboard = () => {
           </div>
         </div>
 
-        {/* Recent Activity + Cases by Category + Tasks & Team */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <RecentActivityFeed documents={documents} notifications={notifications} />
+        {/* Cases by Category + Tasks & Team */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <CasesByCategoryChart cases={cases} />
           <TasksAndTeam cases={cases} notifications={notifications} />
         </div>
