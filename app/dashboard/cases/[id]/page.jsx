@@ -666,6 +666,12 @@ export default function CaseDetailsPage() {
     : "Not specified"
   const petitionerAdvocate = petitionerIsClient ? representedAdvocate : "Not specified"
   const respondentAdvocate = petitionerIsClient ? opposingRespondentAdvocate : representedAdvocate
+  const courtEstablishmentFields = [
+    { label: "State", value: caseData?.eCourt?.state || caseData?.courtState || "—" },
+    { label: "District", value: caseData?.eCourt?.district || caseData?.district || "—" },
+    { label: "Court Complex", value: caseData?.eCourt?.complex || caseData?.courtComplex || "—" },
+    { label: "Court Establishment", value: caseData?.eCourt?.court || caseData?.court || "—" },
+  ]
 
   const handleDeleteCase = async () => {
     if (deleteConfirmation !== caseData.title) {
@@ -798,12 +804,21 @@ export default function CaseDetailsPage() {
       <div className="space-y-6">
         <div className="flex flex-col gap-3 rounded-2xl border border-[#d6deeb] bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#6b7a90]">
+            <p className="text-sm font-bold uppercase tracking-[0.28em] text-[#4f5f77] sm:text-base">
               {String(caseData.courtType || "Civil Court").replace(/_/g, " ")}
             </p>
-            <p className="mt-1 text-lg font-semibold text-[#1e2b3d]">
-              {caseData.court || "Court not specified"}
-            </p>
+            <div className="mt-2 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+              {courtEstablishmentFields.map((field) => (
+                <div key={field.label}>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#6b7a90]">
+                    {field.label}
+                  </p>
+                  <p className="mt-1 text-lg font-semibold text-[#1e2b3d]">
+                    {field.value}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             {canUploadDocuments && (
@@ -849,8 +864,13 @@ export default function CaseDetailsPage() {
           <TabsContent value="details" className="space-y-5 pt-4">
             <Card className="overflow-hidden border-[#d6deeb] shadow-sm">
               <CardContent className="p-0">
-                <div className="border-b border-[#d6deeb] bg-[#eef4fb] px-4 py-3 text-center text-lg font-semibold text-[#355487]">
-                  Case details
+                <div className="border-b border-[#d6deeb] bg-[#eef4fb] px-4 py-3 text-center">
+                  <p className="text-xl font-semibold text-[#1e2b3d] sm:text-2xl">
+                    {caseData?.eCourt?.court || caseData?.court || "Court not specified"}
+                  </p>
+                  <p className="mt-1 text-lg font-semibold text-[#355487]">
+                    Case details
+                  </p>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[760px] border-collapse text-sm">
@@ -872,6 +892,12 @@ export default function CaseDetailsPage() {
                         <td className="px-4 py-3 text-[#20324a]">{caseData.registrationNumber || "—"}</td>
                         <td className="bg-[#e3effb] px-4 py-3 font-medium text-[#355487]">Registration Date</td>
                         <td className="px-4 py-3 text-[#20324a]">{formatDate(caseData.registrationDate)}</td>
+                      </tr>
+                      <tr className="border-b border-[#d6deeb]">
+                        <td className="bg-[#e3effb] px-4 py-3 font-medium text-[#355487]">e-Filing Number</td>
+                        <td className="px-4 py-3 text-[#20324a]">{caseData.eFilingNumber || "—"}</td>
+                        <td className="bg-[#e3effb] px-4 py-3 font-medium text-[#355487]">e-Filing Date</td>
+                        <td className="px-4 py-3 text-[#20324a]">{formatDate(caseData.eFilingDate)}</td>
                       </tr>
                       <tr className="border-b border-[#d6deeb]">
                         <td className="bg-[#e3effb] px-4 py-3 font-medium text-[#355487]">CNR Number</td>

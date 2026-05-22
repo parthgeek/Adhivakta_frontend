@@ -198,6 +198,40 @@ export default function CaseDetailsTab({
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="eFilingNumber" className={getLabelClassName("eFilingNumber")}>
+                e-Filing Number
+              </Label>
+              <Input
+                id="eFilingNumber"
+                name="eFilingNumber"
+                value={caseData.eFilingNumber || ""}
+                onChange={handleChange}
+                placeholder="Enter e-filing number"
+                className={getInputClassName("eFilingNumber")}
+              />
+              {getFieldError("eFilingNumber") && (
+                <p className="text-sm text-red-700">{getFieldError("eFilingNumber")}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="eFilingDate" className={getLabelClassName("eFilingDate")}>
+                e-Filing Date
+              </Label>
+              <DatePicker
+                id="eFilingDate"
+                selected={caseData.eFilingDate}
+                onSelect={(date) => handleDateChange("eFilingDate", date)}
+                className={getInputClassName("eFilingDate")}
+              />
+              {getFieldError("eFilingDate") && (
+                <p className="text-sm text-red-700">{getFieldError("eFilingDate")}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="registrationNumber" className={getLabelClassName("registrationNumber")}>
                 Registration Number
               </Label>

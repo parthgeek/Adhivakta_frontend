@@ -211,6 +211,8 @@ export default function EditCasePage() {
           filingDate: d.filingDate ? new Date(d.filingDate) : new Date(),
           registrationDate: d.registrationDate ? new Date(d.registrationDate) : null,
           registrationNumber: d.registrationNumber || "",
+          eFilingNumber: d.eFilingNumber || "",
+          eFilingDate: d.eFilingDate ? new Date(d.eFilingDate) : null,
           registrationSameAsFilingDate:
             Boolean(d.registrationDate && d.filingDate) &&
             new Date(d.registrationDate).toDateString() === new Date(d.filingDate).toDateString(),
@@ -633,6 +635,8 @@ export default function EditCasePage() {
           filingDate: caseData.filingDate ? new Date(caseData.filingDate).toISOString() : null,
           registrationDate: caseData.registrationDate ? new Date(caseData.registrationDate).toISOString() : null,
           registrationNumber: caseData.registrationNumber || "",
+          eFilingNumber: caseData.eFilingNumber || "",
+          eFilingDate: caseData.eFilingDate ? new Date(caseData.eFilingDate).toISOString() : null,
           nextHearingDate: caseData.nextHearingDate ? new Date(caseData.nextHearingDate).toISOString() : null,
           description: normalizedDescription,
           priority: caseData.priority || "normal",
@@ -914,6 +918,28 @@ export default function EditCasePage() {
                           id="filingDate"
                           selected={caseData.filingDate}
                           onSelect={(date) => handleDateChange("filingDate", date)}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="eFilingNumber">e-Filing Number</Label>
+                        <Input
+                          id="eFilingNumber"
+                          name="eFilingNumber"
+                          value={caseData.eFilingNumber || ""}
+                          onChange={handleChange}
+                          placeholder="Enter e-filing number"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="eFilingDate">e-Filing Date</Label>
+                        <DatePicker
+                          id="eFilingDate"
+                          selected={caseData.eFilingDate}
+                          onSelect={(date) => handleDateChange("eFilingDate", date)}
                         />
                       </div>
 

@@ -406,6 +406,8 @@ export default function NewCasePage() {
       filingDate: new Date(),
       registrationDate: null,
       registrationNumber: "",
+      eFilingNumber: "",
+      eFilingDate: null,
       registrationSameAsFilingDate: false,
       nextHearingDate: null,
       clientSide: "petitioner",
@@ -1265,6 +1267,10 @@ export default function NewCasePage() {
           ? new Date(caseData.registrationDate).toISOString()
           : null,
         registrationNumber: normalizeValue(caseData.registrationNumber),
+        eFilingNumber: normalizeValue(caseData.eFilingNumber),
+        eFilingDate: caseData.eFilingDate
+          ? new Date(caseData.eFilingDate).toISOString()
+          : null,
         nextHearingDate: caseData.nextHearingDate
           ? new Date(caseData.nextHearingDate).toISOString()
           : null,
