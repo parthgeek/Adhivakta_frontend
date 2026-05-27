@@ -951,6 +951,16 @@ const CauseListSearchCard = ({ cases = [] }) => {
                             {item.case_number || "Case number unavailable"}
                           </p>
                           <p className="mt-1 text-sm text-slate-600">{item.party || "Party details unavailable"}</p>
+                          {item.advocate ? (
+                            <p className="mt-1 text-xs text-slate-600">
+                              Advocate: {item.advocate}
+                            </p>
+                          ) : null}
+                          {item.next_hearing_date ? (
+                            <p className="mt-1 text-xs text-slate-600">
+                              Next hearing date:- {item.next_hearing_date}
+                            </p>
+                          ) : null}
                           {item.judge_name ? (
                             <p className="mt-1 text-xs font-medium uppercase tracking-wide text-slate-500">
                               {item.judge_name}

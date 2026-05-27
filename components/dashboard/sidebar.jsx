@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   MessageSquare,
   BarChart3,
+  Scale,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,7 @@ import { useRealTimeCounts } from "@/context/realtime-counts-context";
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: FileText, label: "Cases", path: "/dashboard/cases" },
+  { icon: Scale, label: "Cause List Search", path: "/dashboard/cause-list/search" },
   {
     icon: Users,
     label: "Clients & Parties",
