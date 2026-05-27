@@ -1,4 +1,11 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const withApiBaseUrl = (value = "") => {
+  if (!value || /^https?:\/\//i.test(value)) {
+    return value;
+  }
+
+  return `${API_URL}${value.startsWith("/") ? value : `/${value}`}`;
+};
 const handleResponse = async (response) => {
   let data;
   try {
@@ -520,6 +527,88 @@ const api = {
 
       const response = await fetch(
         `${API_URL}/cause-list${queryParams.toString() ? `?${queryParams.toString()}` : ""}`,
+        {
+          method: "GET",
+          headers: createHeaders(),
+        }
+      );
+
+      return handleResponse(response);
+    },
+    getJudgesForCase: async (caseId, date) => {
+      const queryParams = new URLSearchParams();
+
+      if (date) {
+        queryParams.set("date", date);
+      }
+
+      const response = await fetch(
+        `${API_URL}/cause-list/case/${caseId}/judges${queryParams.toString() ? `?${queryParams.toString()}` : ""}`,
+        {
+          method: "GET",
+          headers: createHeaders(),
+        }
+      );
+
+      const data = await handleResponse(response);
+      if (data?.captchaImageUrl) {
+        data.captchaImageUrl = withApiBaseUrl(data.captchaImageUrl);
+      }
+
+      return data;
+    },
+    searchForCase: async (
+      caseId,
+      { date, listingType, courtOptionValue, captchaCode, captchaSessionId } = {}
+    ) => {
+      const response = await fetch(`${API_URL}/cause-list/case/${caseId}/search`, {
+        method: "POST",
+        headers: createHeaders(),
+        body: JSON.stringify({
+          date,
+          listingType,
+          courtOptionValue,
+          captchaCode,
+          captchaSessionId,
+        }),
+      });
+
+      const data = await handleResponse(response);
+      if (data?.captchaImageUrl) {
+        data.captchaImageUrl = withApiBaseUrl(data.captchaImageUrl);
+      }
+
+      return data;
+    },
+    refreshCaptcha: async (captchaSessionId) => {
+      const response = await fetch(
+        `${API_URL}/cause-list/captcha/${captchaSessionId}/refresh`,
+        {
+          method: "POST",
+          headers: createHeaders(),
+        }
+      );
+
+      const data = await handleResponse(response);
+      if (data?.captchaImageUrl) {
+        data.captchaImageUrl = withApiBaseUrl(data.captchaImageUrl);
+      }
+
+      return data;
+    },
+    getForCase: async (caseId, { date, judgeName } = {}) => {
+      const queryParams = new URLSearchParams();
+
+      if (date) {
+        queryParams.set("date", date);
+      }
+
+      if (judgeName) {
+        queryParams.set("judgeName", judgeName);
+      }
+
+      const response = await fetch(
+        `${API_URL}/cause-list/case/${caseId}${queryParams.toString() ? `?${queryParams.toString()}` : ""}`,
         {
           method: "GET",
           headers: createHeaders(),

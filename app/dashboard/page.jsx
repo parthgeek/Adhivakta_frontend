@@ -11,6 +11,9 @@ import {
   CheckCircle,
   Sparkles,
   TrendingUp,
+  Search,
+  Scale,
+  ArrowRight,
 } from "lucide-react";
 import {
   PieChart,
@@ -25,6 +28,7 @@ import { getNotificationTarget } from "@/lib/notification-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -129,6 +133,15 @@ const hearingStatusStyles = {
   Upcoming: "bg-emerald-100 text-emerald-700 border border-emerald-200",
   Past:     "bg-gray-100 text-gray-500 border border-gray-200",
 };
+
+const padDatePart = (value) => String(value).padStart(2, "0");
+const getTodayIsoDate = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${padDatePart(now.getMonth() + 1)}-${padDatePart(now.getDate())}`;
+};
+
+const getCaseDisplayLabel = (caseItem = {}) =>
+  caseItem.title || caseItem.caseNumber || caseItem.cnrNumber || "Untitled case";
 
 // ─── skeleton ───────────────────────────────────────────────────────────────
 
@@ -577,6 +590,407 @@ const TasksAndTeam = ({ cases = [], notifications = [] }) => {
   );
 };
 
+const CauseListSearchCard = ({ cases = [] }) => {
+  const [selectedCaseId, setSelectedCaseId] = useState("");
+  const [selectedDate, setSelectedDate] = useState(getTodayIsoDate());
+  const [listingType, setListingType] = useState("civ");
+  const [courtOptions, setCourtOptions] = useState([]);
+  const [selectedCourtOptionValue, setSelectedCourtOptionValue] = useState("");
+  const [captchaCode, setCaptchaCode] = useState("");
+  const [captchaSessionId, setCaptchaSessionId] = useState("");
+  const [captchaImageUrl, setCaptchaImageUrl] = useState("");
+  const [captchaNonce, setCaptchaNonce] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [contextLoading, setContextLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState(null);
+
+  const selectedCase = useMemo(
+    () => cases.find((caseItem) => String(caseItem._id) === String(selectedCaseId)) || null,
+    [cases, selectedCaseId]
+  );
+
+  useEffect(() => {
+    setCourtOptions([]);
+    setSelectedCourtOptionValue("");
+    setCaptchaCode("");
+    setCaptchaSessionId("");
+    setCaptchaImageUrl("");
+    setCaptchaNonce(0);
+    setResult(null);
+    setError("");
+
+    if (!selectedCaseId || !selectedDate || !listingType) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadContext = async () => {
+      try {
+        setContextLoading(true);
+        const response = await api.causeList.getJudgesForCase(selectedCaseId, selectedDate);
+        if (cancelled) {
+          return;
+        }
+
+        const options = Array.isArray(response?.courtOptions)
+          ? response.courtOptions
+          : Array.isArray(response?.judges)
+            ? response.judges
+            : [];
+
+        setCourtOptions(options);
+        setCaptchaSessionId(response?.captchaSessionId || "");
+        setCaptchaImageUrl(response?.captchaImageUrl || "");
+        setCaptchaNonce((value) => value + 1);
+      } catch (err) {
+        if (cancelled) {
+          return;
+        }
+
+        setCourtOptions([]);
+        setError(
+          err?.message ||
+            err?.errors?.[0]?.msg ||
+            "Unable to fetch eCourts judge options for the selected case."
+        );
+      } finally {
+        if (!cancelled) {
+          setContextLoading(false);
+        }
+      }
+    };
+
+    loadContext();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCaseId, selectedDate, listingType]);
+
+  const refreshCaptcha = async () => {
+    if (!captchaSessionId) {
+      return;
+    }
+
+    try {
+      const response = await api.causeList.refreshCaptcha(captchaSessionId);
+      setCaptchaImageUrl(response?.captchaImageUrl || "");
+      setCaptchaCode("");
+      setCaptchaNonce((value) => value + 1);
+    } catch (err) {
+      setError(
+        err?.message ||
+          err?.errors?.[0]?.msg ||
+          "Unable to refresh captcha right now."
+      );
+    }
+  };
+
+  const fetchCauseList = async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const response = await api.causeList.searchForCase(selectedCaseId, {
+        date: selectedDate,
+        listingType,
+        courtOptionValue: selectedCourtOptionValue,
+        captchaCode,
+        captchaSessionId,
+      });
+      setResult(response);
+      setCaptchaImageUrl(response?.captchaImageUrl || captchaImageUrl);
+      setCaptchaCode("");
+      setCaptchaNonce((value) => value + 1);
+    } catch (err) {
+      const message =
+        err?.message ||
+        err?.errors?.[0]?.msg ||
+        "Unable to fetch cause list right now.";
+      setError(message);
+      setResult(null);
+
+      if (/captcha/i.test(message)) {
+        await refreshCaptcha();
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Card className="overflow-hidden border-[#03234b]/10 bg-white">
+      <CardHeader className="border-b border-slate-100 bg-[linear-gradient(135deg,rgba(3,35,75,0.05),rgba(15,118,110,0.05))]">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#03234b]">
+              <Scale className="h-4 w-4" />
+              Cause List
+            </div>
+            <CardTitle className="text-lg font-bold text-slate-900">
+              Search Your Daily Cause List
+            </CardTitle>
+            <p className="mt-1 text-sm text-slate-600">
+              Select one of your cases, load the live eCourts court and judge entries, solve the current captcha, then fetch the matching cause list result.
+            </p>
+          </div>
+          <Link
+            href="/dashboard/cases"
+            className="hidden shrink-0 text-sm font-medium text-[#03234b] hover:underline sm:inline-flex"
+          >
+            Open cases
+          </Link>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4 p-6">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.3fr,0.9fr,0.8fr,1.4fr]">
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Case
+            </label>
+            <select
+              value={selectedCaseId}
+              onChange={(event) => setSelectedCaseId(event.target.value)}
+              className="flex h-11 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#03234b]"
+            >
+              <option value="">Select a case</option>
+              {cases.map((caseItem) => (
+                <option key={caseItem._id} value={caseItem._id}>
+                  {getCaseDisplayLabel(caseItem)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex-1">
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Cause list date
+            </label>
+            <Input
+              type="date"
+              value={selectedDate}
+              onChange={(event) => setSelectedDate(event.target.value)}
+              max="2099-12-31"
+              className="h-11"
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Cause list type
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant={listingType === "civ" ? "default" : "outline"}
+                onClick={() => setListingType("civ")}
+                className="h-11"
+              >
+                Civil
+              </Button>
+              <Button
+                type="button"
+                variant={listingType === "cri" ? "default" : "outline"}
+                onClick={() => setListingType("cri")}
+                className="h-11"
+              >
+                Criminal
+              </Button>
+            </div>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Court / judge entry from eCourts
+            </label>
+            <select
+              value={selectedCourtOptionValue}
+              onChange={(event) => setSelectedCourtOptionValue(event.target.value)}
+              disabled={!selectedCaseId || contextLoading || courtOptions.length === 0}
+              className="flex h-11 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm disabled:cursor-not-allowed disabled:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#03234b]"
+            >
+              <option value="">
+                {contextLoading
+                  ? "Loading eCourts entries..."
+                  : courtOptions.length > 0
+                    ? "Select court and judge entry"
+                    : "No live eCourts entries found"}
+              </option>
+              {courtOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[auto,1fr,auto]">
+          <div className="space-y-2">
+            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              eCourts captcha
+            </label>
+            <div className="flex min-h-[84px] min-w-[180px] items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2">
+              {captchaImageUrl ? (
+                <img
+                  src={`${captchaImageUrl}${captchaImageUrl.includes("?") ? "&" : "?"}v=${captchaNonce}`}
+                  alt="eCourts captcha"
+                  className="max-h-[64px] w-auto max-w-[160px] object-contain"
+                />
+              ) : (
+                <span className="text-sm text-slate-400">Captcha will load here</span>
+              )}
+            </div>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Enter captcha
+            </label>
+            <Input
+              value={captchaCode}
+              onChange={(event) =>
+                setCaptchaCode(event.target.value.replace(/[^a-zA-Z0-9]/g, ""))
+              }
+              placeholder="Enter eCourts captcha"
+              className="h-11"
+              maxLength={6}
+            />
+          </div>
+          <div className="flex gap-2 lg:self-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={refreshCaptcha}
+              disabled={!captchaSessionId}
+              className="h-11"
+            >
+              Refresh Captcha
+            </Button>
+            <Button
+              onClick={fetchCauseList}
+              disabled={
+                loading ||
+                !selectedDate ||
+                !selectedCaseId ||
+                !selectedCourtOptionValue ||
+                !captchaCode ||
+                !captchaSessionId
+              }
+              className="h-11 bg-[#03234b] px-5 text-white hover:bg-[#042d5e]"
+            >
+              <Search className="mr-2 h-4 w-4" />
+              {loading ? "Fetching..." : "Fetch Cause List"}
+            </Button>
+          </div>
+        </div>
+
+        {error ? (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {error}
+          </div>
+        ) : null}
+
+        {selectedCase ? (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+            <div className="flex flex-wrap gap-x-6 gap-y-2">
+              <span>
+                <span className="font-semibold text-slate-900">Court:</span>{" "}
+                {selectedCase.eCourt?.court || selectedCase.court || "Unavailable"}
+              </span>
+              <span>
+                <span className="font-semibold text-slate-900">District:</span>{" "}
+                {selectedCase.eCourt?.district || selectedCase.district || "Unavailable"}
+              </span>
+              <span>
+                <span className="font-semibold text-slate-900">State:</span>{" "}
+                {selectedCase.eCourt?.state || selectedCase.courtState || "Unavailable"}
+              </span>
+              <span>
+                <span className="font-semibold text-slate-900">Mode:</span>{" "}
+                {listingType === "cri" ? "Criminal" : "Civil"}
+              </span>
+            </div>
+          </div>
+        ) : null}
+
+        {result ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Date</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{result.date || selectedDate}</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Case matches</p>
+                <p className="mt-1 text-2xl font-bold text-slate-900">{result.total_matches || 0}</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Selected entry</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  {result.selectedCourtOption?.label || "Unavailable"}
+                </p>
+              </div>
+            </div>
+
+            {(result.entries || []).length > 0 ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-slate-900">Matching listings</p>
+                  <Badge className="border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
+                    {result.total_matches || result.entries.length} found
+                  </Badge>
+                </div>
+
+                <div className="space-y-2">
+                  {(result.entries || []).slice(0, 6).map((item, index) => (
+                    <div
+                      key={`${item.case_number}-${item.serial || index}`}
+                      className="rounded-xl border border-slate-200 px-4 py-3"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">
+                            {item.case_number || "Case number unavailable"}
+                          </p>
+                          <p className="mt-1 text-sm text-slate-600">{item.party || "Party details unavailable"}</p>
+                          {item.judge_name ? (
+                            <p className="mt-1 text-xs font-medium uppercase tracking-wide text-slate-500">
+                              {item.judge_name}
+                            </p>
+                          ) : null}
+                        </div>
+                        {item.stage ? (
+                          <Badge className="border border-[#03234b]/10 bg-[#03234b]/5 text-[#03234b] hover:bg-[#03234b]/5">
+                            {item.stage}
+                          </Badge>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-600">
+                No cause-list entry matched this case for the selected date and judge filter.
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-600">
+            Choose a case to auto-fill court details, load the live eCourts court and judge entry, solve the captcha, then fetch the matching cause list.
+          </div>
+        )}
+
+        <Link
+          href="/dashboard/cases"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-[#03234b] hover:underline"
+        >
+          Review tracked cases
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      </CardContent>
+    </Card>
+  );
+};
+
 // ─── ApprovalPopup (unchanged logic) ─────────────────────────────────────────
 
 const ApprovalNotificationsPopup = ({
@@ -919,6 +1333,8 @@ const NewDashboard = () => {
             <CasesByStatusChart cases={cases} />
           </div>
         </div>
+
+        <CauseListSearchCard cases={cases} />
 
         {/* Cases by Category + Tasks & Team */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
