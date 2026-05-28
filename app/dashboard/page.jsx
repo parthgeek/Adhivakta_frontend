@@ -143,6 +143,56 @@ const getTodayIsoDate = () => {
 const getCaseDisplayLabel = (caseItem = {}) =>
   caseItem.title || caseItem.caseNumber || caseItem.cnrNumber || "Untitled case";
 
+const normalizeCourtHallValue = (value = "") => {
+  const normalized = String(value ?? "").trim().toUpperCase();
+
+  if (!normalized) {
+    return "";
+  }
+
+  const withoutCourtWords = normalized.replace(
+    /\b(HALL|COURT|ROOM|NUMBER|NO|NUM)\b\.?/g,
+    " "
+  );
+  const alphanumeric = withoutCourtWords.replace(/[^A-Z0-9]/g, "");
+
+  if (!alphanumeric) {
+    return "";
+  }
+
+  if (/^\d+$/.test(alphanumeric)) {
+    return String(Number(alphanumeric));
+  }
+
+  return alphanumeric;
+};
+
+const getCaseCourtHallValue = (caseItem = {}) =>
+  caseItem?.causeListTracking?.courtNo ||
+  caseItem?.courtHall ||
+  caseItem?.eCourt?.courtNo ||
+  "";
+
+const getCourtOptionCourtHallValue = (option = {}) =>
+  option?.courtNo || option?.label?.split("-")[0] || option?.value || "";
+
+const getAutoSelectedCourtOptionValue = (options = [], caseItem = {}) => {
+  const targetCourtHall = normalizeCourtHallValue(getCaseCourtHallValue(caseItem));
+
+  if (!targetCourtHall) {
+    return "";
+  }
+
+  const matchedOption = options.find((option) => {
+    const optionCourtHall = normalizeCourtHallValue(
+      getCourtOptionCourtHallValue(option)
+    );
+    return optionCourtHall && optionCourtHall === targetCourtHall;
+  });
+
+  return matchedOption?.value || "";
+};
+
 // ─── skeleton ───────────────────────────────────────────────────────────────
 
 const DashboardSkeleton = () => (
@@ -641,6 +691,9 @@ const CauseListSearchCard = ({ cases = [] }) => {
             : [];
 
         setCourtOptions(options);
+        setSelectedCourtOptionValue(
+          getAutoSelectedCourtOptionValue(options, selectedCase)
+        );
         setCaptchaSessionId(response?.captchaSessionId || "");
         setCaptchaImageUrl(response?.captchaImageUrl || "");
         setCaptchaNonce((value) => value + 1);
@@ -667,7 +720,7 @@ const CauseListSearchCard = ({ cases = [] }) => {
     return () => {
       cancelled = true;
     };
-  }, [selectedCaseId, selectedDate, listingType]);
+  }, [selectedCaseId, selectedDate, listingType, selectedCase]);
 
   const refreshCaptcha = async () => {
     if (!captchaSessionId) {
@@ -826,7 +879,7 @@ const CauseListSearchCard = ({ cases = [] }) => {
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-[auto,1fr,auto]">
           <div className="space-y-2">
             <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              eCourts captcha
+              captcha
             </label>
             <div className="flex min-h-[84px] min-w-[180px] items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2">
               {captchaImageUrl ? (
