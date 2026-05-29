@@ -143,6 +143,45 @@ const getTodayIsoDate = () => {
 const getCaseDisplayLabel = (caseItem = {}) =>
   caseItem.title || caseItem.caseNumber || caseItem.cnrNumber || "Untitled case";
 
+const toValidDate = (value) => {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const getCaseNextHearingDate = (caseItem = {}) =>
+  toValidDate(caseItem.nextHearingDate || caseItem.hearingDate);
+
+const getRecommendedCauseListCaseId = (cases = []) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const upcomingCases = cases
+    .map((caseItem) => ({
+      id: String(caseItem?._id || ""),
+      hearingDate: getCaseNextHearingDate(caseItem),
+    }))
+    .filter((caseItem) => caseItem.id && caseItem.hearingDate && caseItem.hearingDate >= today)
+    .sort((a, b) => a.hearingDate - b.hearingDate);
+
+  if (upcomingCases.length > 0) {
+    return upcomingCases[0].id;
+  }
+
+  const fallbackCases = cases
+    .map((caseItem) => ({
+      id: String(caseItem?._id || ""),
+      hearingDate: getCaseNextHearingDate(caseItem),
+    }))
+    .filter((caseItem) => caseItem.id && caseItem.hearingDate)
+    .sort((a, b) => b.hearingDate - a.hearingDate);
+
+  return fallbackCases[0]?.id || String(cases[0]?._id || "");
+};
+
 const normalizeCourtHallValue = (value = "") => {
   const normalized = String(value ?? "").trim().toUpperCase();
 
@@ -660,6 +699,28 @@ const CauseListSearchCard = ({ cases = [] }) => {
     [cases, selectedCaseId]
   );
 
+  const recommendedCaseId = useMemo(
+    () => getRecommendedCauseListCaseId(cases),
+    [cases]
+  );
+
+  useEffect(() => {
+    if (cases.length === 0) {
+      if (selectedCaseId) {
+        setSelectedCaseId("");
+      }
+      return;
+    }
+
+    const selectedCaseStillExists = cases.some(
+      (caseItem) => String(caseItem._id) === String(selectedCaseId)
+    );
+
+    if (!selectedCaseStillExists && recommendedCaseId) {
+      setSelectedCaseId(recommendedCaseId);
+    }
+  }, [cases, recommendedCaseId, selectedCaseId]);
+
   useEffect(() => {
     setCourtOptions([]);
     setSelectedCourtOptionValue("");
@@ -814,6 +875,11 @@ const CauseListSearchCard = ({ cases = [] }) => {
                 </option>
               ))}
             </select>
+            <p className="mt-1.5 text-xs text-slate-500">
+              {selectedCaseId && selectedCaseId === recommendedCaseId
+                ? "Auto-selected from the nearest upcoming hearing. You can change it anytime."
+                : "Change the case here to view a different cause list."}
+            </p>
           </div>
           <div className="flex-1">
             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
