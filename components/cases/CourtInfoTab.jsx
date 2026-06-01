@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Building2, Scale, Gavel, CheckCircle2 } from "lucide-react";
+import { Building2, Scale, Gavel, CheckCircle2, RefreshCw, Search, Sparkles, Zap } from "lucide-react";
 import CaseTypeSearchSelect from "@/components/cases/CaseTypeSearchSelect";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +41,9 @@ const HIGH_COURT_STATE_LABELS = {
 const getHighCourtStateLabel = (state = {}) =>
   HIGH_COURT_STATE_LABELS[String(state.code || "")] || state.name;
 
+const currentYear = new Date().getFullYear();
+const caseYearOptions = Array.from({ length: 21 }, (_, i) => String(currentYear - i));
+
 export default function CourtInfoTab({
   caseData,
   handleChange,
@@ -57,6 +60,17 @@ export default function CourtInfoTab({
   handleBack,
   isLastTab,
   validationErrors = {},
+  caseAutoFill,
+  handleLoadAutoFillCaptcha,
+  handleAutoFillCaptchaChange,
+  handleRefreshAutoFillCaptcha,
+  handleFetchAutoFill,
+  cnrAutoFill = {},
+  handleCnrNumberChange,
+  handleLoadCnrCaptcha,
+  handleCnrCaptchaChange,
+  handleRefreshCnrCaptcha,
+  handleFetchCnrAutoFill,
 }) {
   const { states = [], districts = [], complexes = [], courts = [], caseTypes = [] } =
     courtDirectoryOptions || {};
@@ -92,6 +106,100 @@ export default function CourtInfoTab({
       </CardHeader>
       <CardContent>
         <div className="space-y-6">
+
+          {/* CNR Auto-fill — fills court dropdowns + all case data automatically */}
+          <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <Zap className="h-4 w-4 text-primary" />
+              <p className="text-sm font-semibold text-primary">Auto Case Creation from eCourts</p>
+              <span className="text-xs text-muted-foreground hidden sm:inline">— enter CNR to import all case details automatically</span>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+              <div className="space-y-1">
+                <Label htmlFor="cnrAutoFillInput" className="text-xs text-muted-foreground">
+                  CNR Number <span className="text-muted-foreground font-normal">(16 chars: 4 letters + 12 digits)</span>
+                </Label>
+                <Input
+                  id="cnrAutoFillInput"
+                  value={cnrAutoFill?.cnrNumber || ""}
+                  onChange={(e) => handleCnrNumberChange?.(e.target.value)}
+                  placeholder="e.g. PBCH010001232015"
+                  maxLength={16}
+                  className="font-mono tracking-wider uppercase"
+                />
+              </div>
+              <div className="flex items-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="gap-2 w-full sm:w-auto"
+                  onClick={handleLoadCnrCaptcha}
+                  disabled={cnrAutoFill?.isLoadingCaptcha || cnrAutoFill?.isFetching}
+                >
+                  {cnrAutoFill?.isLoadingCaptcha ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
+                  {cnrAutoFill?.captchaSessionId ? "Reload Captcha" : "Load Captcha"}
+                </Button>
+              </div>
+            </div>
+
+            {cnrAutoFill?.captchaImageUrl && (
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:items-center">
+                <div className="flex h-12 w-36 items-center justify-center rounded-md border bg-white px-2">
+                  <img
+                    src={cnrAutoFill.captchaImageUrl}
+                    alt="eCourts captcha"
+                    className="max-h-10 max-w-full"
+                  />
+                </div>
+                <Input
+                  value={cnrAutoFill?.captchaCode || ""}
+                  onChange={(e) => handleCnrCaptchaChange?.(e.target.value)}
+                  placeholder="Enter captcha"
+                  maxLength={6}
+                  disabled={cnrAutoFill?.isFetching}
+                  className="font-mono"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleFetchCnrAutoFill?.();
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={handleRefreshCnrCaptcha}
+                  disabled={cnrAutoFill?.isLoadingCaptcha || cnrAutoFill?.isFetching}
+                  aria-label="Refresh captcha"
+                >
+                  <RefreshCw className={cn("h-4 w-4", cnrAutoFill?.isLoadingCaptcha && "animate-spin")} />
+                </Button>
+                <Button
+                  type="button"
+                  className="gap-2"
+                  onClick={handleFetchCnrAutoFill}
+                  disabled={cnrAutoFill?.isFetching}
+                >
+                  {cnrAutoFill?.isFetching ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Search className="h-4 w-4" />
+                  )}
+                  Fetch & Fill
+                </Button>
+              </div>
+            )}
+
+            {cnrAutoFill?.error && (
+              <p className="mt-2 text-xs text-destructive">{cnrAutoFill.error}</p>
+            )}
+            {cnrAutoFill?.message && !cnrAutoFill?.error && (
+              <p className="mt-2 text-xs text-green-700 dark:text-green-400">{cnrAutoFill.message}</p>
+            )}
+          </div>
 
           {/* Step 1: Court Type Selector */}
           <div className="space-y-2">

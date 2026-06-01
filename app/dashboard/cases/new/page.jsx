@@ -65,6 +65,42 @@ const TAB_ORDER = ["court", "details", "party", "documents", "transfer", "associ
 const LIGHT_ERROR_TOAST_CLASSNAME =
   "!bg-red-50 !text-red-950 !border !border-red-200";
 const CNR_NUMBER_PATTERN = /^[A-Z]{4}\d{12}$/;
+const EMPTY_AUTO_FILL_STATE = {
+  isLoadingCaptcha: false,
+  isFetching: false,
+  captchaSessionId: "",
+  captchaImageUrl: "",
+  captchaCode: "",
+  message: "",
+};
+
+const EMPTY_CNR_AUTO_FILL_STATE = {
+  cnrNumber: "",
+  isLoadingCaptcha: false,
+  isFetching: false,
+  captchaSessionId: "",
+  captchaImageUrl: "",
+  captchaCode: "",
+  message: "",
+  error: "",
+};
+
+const toDateOrNull = (value) => {
+  if (!value) return null;
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  const parsedValue =
+    typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)
+      ? `${value}T00:00:00`
+      : value;
+  const parsedDate = new Date(parsedValue);
+  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+};
+
+const getNonEmptyArray = (value, fallback = []) =>
+  Array.isArray(value) && value.length > 0 ? value : fallback;
 
 const syncDerivedCaseFields = (caseInfo = {}) => {
   const caseYear = caseInfo.caseYear || DEFAULT_CASE_YEAR;
@@ -383,6 +419,8 @@ export default function NewCasePage() {
   const [validationErrors, setValidationErrors] = useState({});
   const [pendingFocusTarget, setPendingFocusTarget] = useState(null);
   const [showFinalOrderPrompt, setShowFinalOrderPrompt] = useState(false);
+  const [caseAutoFill, setCaseAutoFill] = useState(EMPTY_AUTO_FILL_STATE);
+  const [cnrAutoFill, setCnrAutoFill] = useState(EMPTY_CNR_AUTO_FILL_STATE);
   const [caseData, setCaseData] = useState(
     syncDerivedCaseFields({
       title: "",
@@ -633,6 +671,401 @@ export default function NewCasePage() {
     }
   };
 
+  const getAutoFillPayload = () => {
+    const eCourt = caseData.eCourt || {};
+    return {
+      stateCode: eCourt.stateCode || "",
+      districtCode: eCourt.districtCode || "",
+      complexCode: eCourt.complexCode || "",
+      courtCode: eCourt.courtCode || "",
+      caseTypeCode: eCourt.caseTypeCode || "",
+      caseTypeName: eCourt.caseTypeName || "",
+      caseNumber: normalizeCaseNumber(caseData.caseNumberMiddle || ""),
+      caseYear: caseData.caseYear || DEFAULT_CASE_YEAR,
+    };
+  };
+
+  const validateAutoFillPayload = () => {
+    if (courtSource !== "ecourts") {
+      toast({
+        title: "eCourts auto-fill unavailable",
+        description: "Case-number auto-fill is available for District Court eCourts records.",
+        variant: "destructive",
+        className: LIGHT_ERROR_TOAST_CLASSNAME,
+      });
+      return null;
+    }
+
+    const payload = getAutoFillPayload();
+    const missingFields = [];
+
+    if (!payload.stateCode) missingFields.push("state");
+    if (!payload.districtCode) missingFields.push("district");
+    if (!payload.complexCode) missingFields.push("court complex");
+    if (!payload.courtCode) missingFields.push("court");
+    if (!payload.caseTypeCode) missingFields.push("case type");
+    if (!payload.caseNumber) missingFields.push("filing number");
+    if (!payload.caseYear) missingFields.push("year");
+
+    if (missingFields.length > 0) {
+      toast({
+        title: "Complete eCourts lookup fields",
+        description: `Select or enter ${missingFields.join(", ")} first.`,
+        variant: "destructive",
+        className: LIGHT_ERROR_TOAST_CLASSNAME,
+      });
+      return null;
+    }
+
+    return payload;
+  };
+
+  const handleLoadAutoFillCaptcha = async () => {
+    const payload = validateAutoFillPayload();
+    if (!payload) return;
+
+    setCaseAutoFill((prev) => ({
+      ...prev,
+      isLoadingCaptcha: true,
+      message: "",
+    }));
+
+    try {
+      const response = await api.cases.loadAutoFillCaptcha(payload);
+      setCaseAutoFill((prev) => ({
+        ...prev,
+        isLoadingCaptcha: false,
+        captchaSessionId: response.captchaSessionId || "",
+        captchaImageUrl: response.captchaImageUrl || "",
+        captchaCode: "",
+        message: "Captcha loaded from eCourts.",
+      }));
+    } catch (error) {
+      setCaseAutoFill((prev) => ({
+        ...prev,
+        isLoadingCaptcha: false,
+        message: error.message || "Unable to load eCourts captcha.",
+      }));
+      toast({
+        title: "Unable to load captcha",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+        className: LIGHT_ERROR_TOAST_CLASSNAME,
+      });
+    }
+  };
+
+  const handleAutoFillCaptchaChange = (value) => {
+    setCaseAutoFill((prev) => ({
+      ...prev,
+      captchaCode: normalizeValue(value),
+    }));
+  };
+
+  const handleRefreshAutoFillCaptcha = async () => {
+    if (!caseAutoFill.captchaSessionId) {
+      await handleLoadAutoFillCaptcha();
+      return;
+    }
+
+    setCaseAutoFill((prev) => ({
+      ...prev,
+      isLoadingCaptcha: true,
+      message: "",
+    }));
+
+    try {
+      const response = await api.cases.refreshAutoFillCaptcha(
+        caseAutoFill.captchaSessionId
+      );
+      setCaseAutoFill((prev) => ({
+        ...prev,
+        isLoadingCaptcha: false,
+        captchaImageUrl: response.captchaImageUrl || prev.captchaImageUrl,
+        captchaCode: "",
+        message: "Captcha refreshed.",
+      }));
+    } catch (error) {
+      setCaseAutoFill((prev) => ({
+        ...prev,
+        isLoadingCaptcha: false,
+        message: error.message || "Unable to refresh captcha.",
+      }));
+      toast({
+        title: "Unable to refresh captcha",
+        description: error.message || "Please load a new captcha.",
+        variant: "destructive",
+        className: LIGHT_ERROR_TOAST_CLASSNAME,
+      });
+    }
+  };
+
+  const applyAutoFilledCaseData = (formData = {}) => {
+    setCaseData((prev) => {
+      const nextData = {
+        ...prev,
+        title: normalizeValue(formData.title) || prev.title,
+        cnrNumber: normalizeValue(formData.cnrNumber).toUpperCase() || prev.cnrNumber,
+        caseNumberMiddle:
+          normalizeCaseNumber(formData.caseNumberMiddle || "") ||
+          prev.caseNumberMiddle,
+        caseYear: normalizeValue(formData.caseYear) || prev.caseYear,
+        filingDate: toDateOrNull(formData.filingDate) || prev.filingDate,
+        registrationDate:
+          toDateOrNull(formData.registrationDate) || prev.registrationDate,
+        registrationNumber:
+          normalizeValue(formData.registrationNumber) || prev.registrationNumber,
+        nextHearingDate:
+          toDateOrNull(formData.nextHearingDate) || prev.nextHearingDate,
+        petitioners: getNonEmptyArray(formData.petitioners, prev.petitioners),
+        respondents: getNonEmptyArray(formData.respondents, prev.respondents),
+        petitionerLabel: formData.petitionerLabel || prev.petitionerLabel,
+        respondentLabel: formData.respondentLabel || prev.respondentLabel,
+        description: normalizeValue(formData.description) || prev.description,
+        actSections: normalizeValue(formData.actSections) || prev.actSections,
+        notes: normalizeValue(formData.notes) || prev.notes,
+        courtHall: normalizeValue(formData.courtHall) || prev.courtHall,
+        processes: getNonEmptyArray(formData.processes, prev.processes),
+        iaStatuses: getNonEmptyArray(formData.iaStatuses, prev.iaStatuses),
+        transferHistory: getNonEmptyArray(
+          formData.transferHistory,
+          prev.transferHistory
+        ),
+        interimOrders: getNonEmptyArray(formData.interimOrders, prev.interimOrders),
+        finalOrders: getNonEmptyArray(formData.finalOrders, prev.finalOrders),
+      };
+
+      return syncDerivedCaseFields(nextData);
+    });
+  };
+
+  const handleFetchAutoFill = async () => {
+    if (!caseAutoFill.captchaSessionId) {
+      await handleLoadAutoFillCaptcha();
+      return;
+    }
+
+    if (!normalizeValue(caseAutoFill.captchaCode)) {
+      toast({
+        title: "Enter captcha",
+        description: "Enter the captcha shown by eCourts.",
+        variant: "destructive",
+        className: LIGHT_ERROR_TOAST_CLASSNAME,
+      });
+      return;
+    }
+
+    setCaseAutoFill((prev) => ({
+      ...prev,
+      isFetching: true,
+      message: "",
+    }));
+
+    try {
+      const response = await api.cases.fetchAutoFill({
+        captchaSessionId: caseAutoFill.captchaSessionId,
+        captchaCode: caseAutoFill.captchaCode,
+      });
+      const formData = response?.formData || {};
+      applyAutoFilledCaseData(formData);
+
+      const missingFields = response?.missingRequiredFields || [];
+      setCaseAutoFill((prev) => ({
+        ...prev,
+        isFetching: false,
+        captchaCode: "",
+        message: missingFields.length
+          ? `Still required: ${missingFields.join(", ")}.`
+          : "Case details imported.",
+      }));
+
+      toast({
+        title: "eCourts details imported",
+        description: missingFields.length
+          ? `Still required: ${missingFields.join(", ")}.`
+          : "Review the populated fields before saving.",
+      });
+    } catch (error) {
+      setCaseAutoFill((prev) => ({
+        ...prev,
+        isFetching: false,
+        message: error.message || "Unable to fetch case details.",
+      }));
+      toast({
+        title: "Unable to fetch eCourts details",
+        description: error.message || "Please check the captcha and try again.",
+        variant: "destructive",
+        className: LIGHT_ERROR_TOAST_CLASSNAME,
+      });
+    }
+  };
+
+  const handleCnrNumberChange = (value) => {
+    setCnrAutoFill((prev) => ({
+      ...prev,
+      cnrNumber: normalizeValue(value).toUpperCase(),
+      error: "",
+      message: "",
+    }));
+  };
+
+  const handleLoadCnrCaptcha = async () => {
+    const cnr = normalizeValue(cnrAutoFill.cnrNumber).toUpperCase();
+    if (!CNR_NUMBER_PATTERN.test(cnr)) {
+      setCnrAutoFill((prev) => ({
+        ...prev,
+        error: "Enter a valid CNR number: 4 letters + 12 digits (e.g. PBCH010001232015).",
+      }));
+      return;
+    }
+
+    setCnrAutoFill((prev) => ({ ...prev, isLoadingCaptcha: true, error: "", message: "" }));
+
+    try {
+      const response = await api.cases.loadCnrAutoFillCaptcha({ cnrNumber: cnr });
+      setCnrAutoFill((prev) => ({
+        ...prev,
+        isLoadingCaptcha: false,
+        captchaSessionId: response.captchaSessionId || "",
+        captchaImageUrl: response.captchaImageUrl || "",
+        captchaCode: "",
+        message: "",
+      }));
+    } catch (error) {
+      setCnrAutoFill((prev) => ({
+        ...prev,
+        isLoadingCaptcha: false,
+        error: error.message || "Unable to load captcha from eCourts.",
+      }));
+    }
+  };
+
+  const handleCnrCaptchaChange = (value) => {
+    setCnrAutoFill((prev) => ({
+      ...prev,
+      captchaCode: normalizeValue(value),
+    }));
+  };
+
+  const handleRefreshCnrCaptcha = async () => {
+    if (!cnrAutoFill.captchaSessionId) {
+      await handleLoadCnrCaptcha();
+      return;
+    }
+
+    setCnrAutoFill((prev) => ({ ...prev, isLoadingCaptcha: true, error: "" }));
+    try {
+      const response = await api.cases.refreshAutoFillCaptcha(cnrAutoFill.captchaSessionId);
+      setCnrAutoFill((prev) => ({
+        ...prev,
+        isLoadingCaptcha: false,
+        captchaImageUrl: response.captchaImageUrl || prev.captchaImageUrl,
+        captchaCode: "",
+      }));
+    } catch (error) {
+      setCnrAutoFill((prev) => ({
+        ...prev,
+        isLoadingCaptcha: false,
+        error: error.message || "Unable to refresh captcha.",
+      }));
+    }
+  };
+
+  const handleFetchCnrAutoFill = async () => {
+    if (!cnrAutoFill.captchaSessionId) {
+      await handleLoadCnrCaptcha();
+      return;
+    }
+
+    if (!normalizeValue(cnrAutoFill.captchaCode)) {
+      setCnrAutoFill((prev) => ({ ...prev, error: "Enter the captcha shown by eCourts." }));
+      return;
+    }
+
+    setCnrAutoFill((prev) => ({ ...prev, isFetching: true, error: "", message: "" }));
+
+    try {
+      const response = await api.cases.fetchCnrAutoFill({
+        captchaSessionId: cnrAutoFill.captchaSessionId,
+        captchaCode: cnrAutoFill.captchaCode,
+      });
+
+      const formData = response?.formData || {};
+      const courtInfo = response?.courtInfo || null;
+
+      applyAutoFilledCaseData(formData);
+
+      if (courtInfo?.stateCode) {
+        setCourtSource("ecourts");
+        setCaseData((prev) =>
+          syncDerivedCaseFields({
+            ...prev,
+            courtType: "district_court",
+            eCourt: {
+              source: "ecourts",
+              stateCode: courtInfo.stateCode || "",
+              state: courtInfo.state || "",
+              districtCode: courtInfo.districtCode || "",
+              district: courtInfo.district || "",
+              complexCode: courtInfo.complexCode || "",
+              complex: courtInfo.complex || "",
+              courtCode: courtInfo.courtCode || "",
+              court: courtInfo.court || "",
+              caseTypeCode: courtInfo.caseTypeCode || "",
+              caseTypeName: courtInfo.caseTypeName || "",
+              requiresEstablishment: false,
+            },
+          })
+        );
+
+        await loadDistricts(courtInfo.stateCode, "ecourts");
+        await loadComplexes(courtInfo.stateCode, courtInfo.districtCode, "ecourts");
+        await loadCourts(courtInfo.stateCode, courtInfo.districtCode, courtInfo.complexCode, "ecourts");
+
+        if (courtInfo.courtCode) {
+          await loadCaseTypes(
+            courtInfo.stateCode,
+            courtInfo.districtCode,
+            courtInfo.complexCode,
+            courtInfo.courtCode,
+            "ecourts"
+          );
+        }
+      }
+
+      const missingFields = response?.missingRequiredFields || [];
+      setCnrAutoFill((prev) => ({
+        ...prev,
+        isFetching: false,
+        captchaCode: "",
+        message: missingFields.length
+          ? `Imported. Still required: ${missingFields.join(", ")}.`
+          : "Case details imported from eCourts.",
+        error: "",
+      }));
+
+      toast({
+        title: "eCourts CNR details imported",
+        description: courtInfo
+          ? "Court info and case details populated."
+          : "Case details populated. Fill court dropdowns manually.",
+      });
+    } catch (error) {
+      setCnrAutoFill((prev) => ({
+        ...prev,
+        isFetching: false,
+        captchaCode: "",
+        error: error.message || "Unable to fetch case details.",
+      }));
+      toast({
+        title: "CNR lookup failed",
+        description: error.message || "Check the captcha and try again.",
+        variant: "destructive",
+        className: LIGHT_ERROR_TOAST_CLASSNAME,
+      });
+    }
+  };
+
   // Fixed Supreme Court identifiers (only one court exists)
   const SUPREME_COURT_ECOURT = {
     source: "supremecourt",
@@ -684,6 +1117,28 @@ export default function NewCasePage() {
   useEffect(() => {
     loadStates("ecourts");
   }, []);
+
+  useEffect(() => {
+    setCaseAutoFill((prev) => {
+      if (!prev.captchaSessionId && !prev.captchaImageUrl && !prev.captchaCode) {
+        return prev;
+      }
+
+      return {
+        ...EMPTY_AUTO_FILL_STATE,
+        message: "eCourts lookup changed. Load a fresh captcha.",
+      };
+    });
+  }, [
+    courtSource,
+    caseData.eCourt?.stateCode,
+    caseData.eCourt?.districtCode,
+    caseData.eCourt?.complexCode,
+    caseData.eCourt?.courtCode,
+    caseData.eCourt?.caseTypeCode,
+    caseData.caseNumberMiddle,
+    caseData.caseYear,
+  ]);
 
   useEffect(() => {
     if (pageTopRef.current) {
@@ -2074,6 +2529,17 @@ export default function NewCasePage() {
             handleBack={handleBack}
             validationErrors={validationErrors}
             allowClosedStatus={false}
+            caseAutoFill={caseAutoFill}
+            handleLoadAutoFillCaptcha={handleLoadAutoFillCaptcha}
+            handleAutoFillCaptchaChange={handleAutoFillCaptchaChange}
+            handleRefreshAutoFillCaptcha={handleRefreshAutoFillCaptcha}
+            handleFetchAutoFill={handleFetchAutoFill}
+            cnrAutoFill={cnrAutoFill}
+            handleCnrNumberChange={handleCnrNumberChange}
+            handleLoadCnrCaptcha={handleLoadCnrCaptcha}
+            handleCnrCaptchaChange={handleCnrCaptchaChange}
+            handleRefreshCnrCaptcha={handleRefreshCnrCaptcha}
+            handleFetchCnrAutoFill={handleFetchCnrAutoFill}
           />
         </div>
 

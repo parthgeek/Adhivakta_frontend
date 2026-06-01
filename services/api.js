@@ -338,6 +338,75 @@ const api = {
       return data.data;
     },
 
+    loadAutoFillCaptcha: async (payload) => {
+      const response = await fetch(`${API_URL}/cases/auto-fill/captcha`, {
+        method: "POST",
+        headers: createHeaders(),
+        body: JSON.stringify(payload),
+      });
+
+      const data = await handleResponse(response);
+      const result = data.data || data;
+      if (result?.captchaImageUrl) {
+        result.captchaImageUrl = withApiBaseUrl(result.captchaImageUrl);
+      }
+      return result;
+    },
+
+    refreshAutoFillCaptcha: async (captchaSessionId) => {
+      const response = await fetch(
+        `${API_URL}/cases/auto-fill/captcha/${captchaSessionId}/refresh`,
+        {
+          method: "POST",
+          headers: createHeaders(),
+        }
+      );
+
+      const data = await handleResponse(response);
+      const result = data.data || data;
+      if (result?.captchaImageUrl) {
+        result.captchaImageUrl = withApiBaseUrl(result.captchaImageUrl);
+      }
+      return result;
+    },
+
+    fetchAutoFill: async ({ captchaSessionId, captchaCode }) => {
+      const response = await fetch(`${API_URL}/cases/auto-fill`, {
+        method: "POST",
+        headers: createHeaders(),
+        body: JSON.stringify({ captchaSessionId, captchaCode }),
+      });
+
+      const data = await handleResponse(response);
+      return data.data || data;
+    },
+
+    loadCnrAutoFillCaptcha: async ({ cnrNumber }) => {
+      const response = await fetch(`${API_URL}/cases/auto-fill/cnr/captcha`, {
+        method: "POST",
+        headers: createHeaders(),
+        body: JSON.stringify({ cnrNumber }),
+      });
+
+      const data = await handleResponse(response);
+      const result = data.data || data;
+      if (result?.captchaImageUrl) {
+        result.captchaImageUrl = withApiBaseUrl(result.captchaImageUrl);
+      }
+      return result;
+    },
+
+    fetchCnrAutoFill: async ({ captchaSessionId, captchaCode }) => {
+      const response = await fetch(`${API_URL}/cases/auto-fill/cnr`, {
+        method: "POST",
+        headers: createHeaders(),
+        body: JSON.stringify({ captchaSessionId, captchaCode }),
+      });
+
+      const data = await handleResponse(response);
+      return data.data || data;
+    },
+
     update: async (id, caseData) => {
       const response = await fetch(`${API_URL}/cases/${id}`, {
         method: "PUT",
@@ -1149,96 +1218,6 @@ const api = {
       });
       const data = await handleResponse(response);
       return data.data;
-    },
-  },
-
-  njdg: {
-    getNationalSummary: async (refresh = false) => {
-      const url = refresh
-        ? `${API_URL}/njdg/summary?refresh=true`
-        : `${API_URL}/njdg/summary`;
-      const response = await fetch(url, {
-        method: "GET",
-        headers: createHeaders(),
-      });
-      const data = await handleResponse(response);
-      return data.data;
-    },
-
-    getStates: async () => {
-      const response = await fetch(`${API_URL}/njdg/states`, {
-        method: "GET",
-        headers: createHeaders(),
-      });
-      const data = await handleResponse(response);
-      return data.data?.states || [];
-    },
-
-    getStateSummary: async (stateCode, refresh = false) => {
-      const encoded = encodeURIComponent(stateCode);
-      const url = refresh
-        ? `${API_URL}/njdg/state/${encoded}?refresh=true`
-        : `${API_URL}/njdg/state/${encoded}`;
-      const response = await fetch(url, {
-        method: "GET",
-        headers: createHeaders(),
-      });
-      const data = await handleResponse(response);
-      return data.data;
-    },
-
-    getDistricts: async (stateCode) => {
-      const encoded = encodeURIComponent(stateCode);
-      const response = await fetch(`${API_URL}/njdg/districts/${encoded}`, {
-        method: "GET",
-        headers: createHeaders(),
-      });
-      const data = await handleResponse(response);
-      return data.data?.districts || [];
-    },
-
-    getDistrictSummary: async (stateCode, districtCode, refresh = false) => {
-      const encodedState = encodeURIComponent(stateCode);
-      const encodedDistrict = encodeURIComponent(districtCode);
-      const url = refresh
-        ? `${API_URL}/njdg/district/${encodedState}/${encodedDistrict}?refresh=true`
-        : `${API_URL}/njdg/district/${encodedState}/${encodedDistrict}`;
-      const response = await fetch(url, {
-        method: "GET",
-        headers: createHeaders(),
-      });
-      const data = await handleResponse(response);
-      return data.data;
-    },
-
-    syncNational: async () => {
-      const response = await fetch(`${API_URL}/njdg/sync`, {
-        method: "POST",
-        headers: createHeaders(),
-      });
-      return handleResponse(response);
-    },
-
-    syncState: async (stateCode) => {
-      const encoded = encodeURIComponent(stateCode);
-      const response = await fetch(`${API_URL}/njdg/sync/state/${encoded}`, {
-        method: "POST",
-        headers: createHeaders(),
-      });
-      return handleResponse(response);
-    },
-
-    syncDistrict: async (stateCode, districtCode) => {
-      const encodedState = encodeURIComponent(stateCode);
-      const encodedDistrict = encodeURIComponent(districtCode);
-      const response = await fetch(
-        `${API_URL}/njdg/sync/district/${encodedState}/${encodedDistrict}`,
-        {
-          method: "POST",
-          headers: createHeaders(),
-        }
-      );
-      return handleResponse(response);
     },
   },
 

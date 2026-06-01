@@ -38,6 +38,17 @@ export default function CaseTabs({
   handleBack,
   validationErrors = {},
   allowClosedStatus = true,
+  caseAutoFill,
+  handleLoadAutoFillCaptcha,
+  handleAutoFillCaptchaChange,
+  handleRefreshAutoFillCaptcha,
+  handleFetchAutoFill,
+  cnrAutoFill,
+  handleCnrNumberChange,
+  handleLoadCnrCaptcha,
+  handleCnrCaptchaChange,
+  handleRefreshCnrCaptcha,
+  handleFetchCnrAutoFill,
 }) {
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -84,6 +95,12 @@ export default function CaseTabs({
           handleBack={handleBack}
           isLastTab={false}
           validationErrors={validationErrors.court}
+          cnrAutoFill={cnrAutoFill}
+          handleCnrNumberChange={handleCnrNumberChange}
+          handleLoadCnrCaptcha={handleLoadCnrCaptcha}
+          handleCnrCaptchaChange={handleCnrCaptchaChange}
+          handleRefreshCnrCaptcha={handleRefreshCnrCaptcha}
+          handleFetchCnrAutoFill={handleFetchCnrAutoFill}
         />
       </TabsContent>
 
@@ -102,6 +119,11 @@ export default function CaseTabs({
           isLastTab={false}
           validationErrors={validationErrors.details}
           allowClosedStatus={allowClosedStatus}
+          caseAutoFill={caseAutoFill}
+          handleLoadAutoFillCaptcha={handleLoadAutoFillCaptcha}
+          handleAutoFillCaptchaChange={handleAutoFillCaptchaChange}
+          handleRefreshAutoFillCaptcha={handleRefreshAutoFillCaptcha}
+          handleFetchAutoFill={handleFetchAutoFill}
         />
       </TabsContent>
 
