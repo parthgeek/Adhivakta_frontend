@@ -57,6 +57,10 @@ export default function CauseListSearchPage() {
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
   const [tableFilter, setTableFilter] = useState("");
+  const [personalizedLoading, setPersonalizedLoading] = useState(false);
+  const [personalizedError, setPersonalizedError] = useState("");
+  const [personalizedResult, setPersonalizedResult] = useState(null);
+  const [personalizedTableFilter, setPersonalizedTableFilter] = useState("");
 
   const setDirLoading = (key, value) =>
     setDirectoryLoading((prev) => ({ ...prev, [key]: value }));
@@ -85,6 +89,37 @@ export default function CauseListSearchPage() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (!selectedDate) return;
+
+    let cancelled = false;
+
+    (async () => {
+      setPersonalizedLoading(true);
+      setPersonalizedError("");
+
+      try {
+        const response = await api.causeList.getDaily(selectedDate);
+        if (!cancelled) {
+          setPersonalizedResult(response || null);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setPersonalizedResult(null);
+          setPersonalizedError(err?.message || "Unable to load your cause list.");
+        }
+      } finally {
+        if (!cancelled) {
+          setPersonalizedLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDate]);
 
   useEffect(() => {
     setDistrictOptions([]);
@@ -279,11 +314,39 @@ export default function CauseListSearchPage() {
     if (!term) return entries;
 
     return entries.filter((entry) =>
-      [entry.case_number, entry.party, entry.advocate, entry.judge_name, entry.stage]
+      [
+        entry.case_number,
+        entry.party,
+        entry.advocate,
+        entry.judge_name,
+        entry.category,
+        entry.stage,
+      ]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(term))
     );
   }, [result, tableFilter]);
+
+  const filteredPersonalizedEntries = useMemo(() => {
+    const entries = personalizedResult?.personalized_cases || [];
+    const term = personalizedTableFilter.trim().toLowerCase();
+    if (!term) return entries;
+
+    return entries.filter((entry) =>
+      [
+        entry.case_title,
+        entry.case_number,
+        entry.cnr_number,
+        entry.party,
+        entry.judge_name,
+        entry.stage,
+        entry.court_name,
+        entry.source_label,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(term))
+    );
+  }, [personalizedResult, personalizedTableFilter]);
 
   const courtTitle =
     courtJudgeOptions.find((option) => option.value === selectedCourtOptionValue)?.label ||
@@ -529,6 +592,151 @@ export default function CauseListSearchPage() {
         </CardContent>
       </Card>
 
+      <Card className="overflow-hidden border-[#d6deeb] shadow-sm">
+        <CardContent className="p-0">
+          <div className="border-b border-[#d6deeb] bg-[#eef4fb] px-4 py-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-[#03234b]">Your Personalized Cause List</h2>
+                <p className="mt-1 text-sm text-[#355487]">
+                  Filtered from your tracked district-court and supported high-court cases for{" "}
+                  {toDisplayDate(selectedDate)}.
+                </p>
+              </div>
+              <div className="text-sm text-[#355487]">
+                {personalizedLoading
+                  ? "Loading..."
+                  : `${personalizedResult?.personalized_total_entries || 0} matched entries across ${personalizedResult?.personalized_total_cases || 0} cases`}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <div className="text-sm text-[#4f5f77]">
+              Sources:{" "}
+              {(personalizedResult?.personalized_sources || []).length
+                ? personalizedResult.personalized_sources
+                    .map((source) =>
+                      source === "delhi_high_court" ? "Delhi High Court" : "District Courts"
+                    )
+                    .join(", ")
+                : "No source loaded yet"}
+            </div>
+            <div className="flex w-full max-w-md items-center gap-2">
+              <Input
+                value={personalizedTableFilter}
+                onChange={(e) => setPersonalizedTableFilter(e.target.value)}
+                placeholder="Search your cause list..."
+                className="h-10 border-[#d6deeb]"
+              />
+              <Button
+                type="button"
+                size="icon"
+                className="h-10 w-10 bg-[#03234b] text-white hover:bg-[#042d5e]"
+                aria-label="Search personalized cause list"
+              >
+                <Search className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {personalizedError ? (
+            <div className="px-4 pb-4 text-sm text-rose-700">{personalizedError}</div>
+          ) : null}
+
+          <div className="overflow-x-auto px-4 pb-5">
+            <table className="w-full min-w-[980px] border-collapse text-sm">
+              <thead>
+                <tr>
+                  <th className="bg-[#1e3a5f] px-3 py-3 text-left font-semibold text-white">
+                    Hearing Date
+                  </th>
+                  <th className="bg-[#1f4d3a] px-3 py-3 text-left font-semibold text-white">
+                    Case
+                  </th>
+                  <th className="bg-[#7a3320] px-3 py-3 text-left font-semibold text-white">
+                    Court
+                  </th>
+                  <th className="bg-[#3b2670] px-3 py-3 text-left font-semibold text-white">
+                    Judge / Stage
+                  </th>
+                  <th className="bg-[#5a2d20] px-3 py-3 text-left font-semibold text-white">
+                    Source
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {personalizedLoading ? (
+                  <tr>
+                    <td colSpan={5} className="px-3 py-6 text-center text-slate-500">
+                      Loading your personalized cause list...
+                    </td>
+                  </tr>
+                ) : filteredPersonalizedEntries.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-3 py-6 text-center text-slate-500">
+                      No personalized cause list entries found for this date.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredPersonalizedEntries.map((entry, idx) => (
+                    <tr
+                      key={`${entry.case_id}-${entry.case_number}-${idx}`}
+                      className="border-b border-[#d6deeb] align-top hover:bg-[#f6f9fc]"
+                    >
+                      <td className="px-3 py-3 text-[#20324a]">
+                        <div className="font-medium">
+                          {toDisplayDate(
+                            entry.scheduled_hearing_date || entry.next_hearing_date || selectedDate
+                          ) || "—"}
+                        </div>
+                        {entry.next_hearing_date &&
+                        entry.next_hearing_date !== entry.scheduled_hearing_date ? (
+                          <div className="mt-1 text-xs text-[#6b7a90]">
+                            Cause list date: {entry.next_hearing_date}
+                          </div>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="font-medium text-[#20324a]">
+                          {entry.case_title || entry.case_number || "—"}
+                        </div>
+                        <div className="mt-1 text-xs text-[#4f5f77]">
+                          {entry.case_number || "No case number"}
+                        </div>
+                        {entry.party ? (
+                          <div className="mt-2 text-xs text-[#6b7a90]">{entry.party}</div>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-3 text-[#20324a]">
+                        <div className="font-medium">{entry.court_name || "—"}</div>
+                        <div className="mt-1 text-xs text-[#6b7a90]">
+                          {[entry.court_state, entry.district].filter(Boolean).join(" / ") || "—"}
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 text-[#20324a]">
+                        <div>{entry.judge_name || "—"}</div>
+                        {entry.stage ? (
+                          <div className="mt-1 text-xs text-[#6b7a90]">Stage: {entry.stage}</div>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-3 text-[#20324a]">
+                        <div>{entry.source_label || "—"}</div>
+                        {entry.target_label ? (
+                          <div className="mt-1 text-xs text-[#6b7a90]">
+                            Target: {entry.target_label}
+                          </div>
+                        ) : null}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
       {error ? (
         <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           {error}
@@ -584,12 +792,15 @@ export default function CauseListSearchPage() {
                     <th className="bg-[#3b2670] px-3 py-3 text-left font-semibold text-white">
                       Advocate Name
                     </th>
+                    <th className="bg-[#5a2d20] px-3 py-3 text-left font-semibold text-white">
+                      Category
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredEntries.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="px-3 py-6 text-center text-slate-500">
+                      <td colSpan={5} className="px-3 py-6 text-center text-slate-500">
                         No cause list entries to display.
                       </td>
                     </tr>
@@ -622,6 +833,9 @@ export default function CauseListSearchPage() {
                         </td>
                         <td className="px-3 py-3 text-[#20324a]">
                           {entry.advocate || "—"}
+                        </td>
+                        <td className="px-3 py-3 text-[#20324a]">
+                          {entry.category || entry.stage || "—"}
                         </td>
                       </tr>
                     ))
