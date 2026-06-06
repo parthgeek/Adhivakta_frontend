@@ -815,6 +815,9 @@ export default function NewCasePage() {
           toDateOrNull(formData.registrationDate) || prev.registrationDate,
         registrationNumber:
           normalizeValue(formData.registrationNumber) || prev.registrationNumber,
+        eFilingNumber:
+          normalizeValue(formData.eFilingNumber) || prev.eFilingNumber,
+        eFilingDate: toDateOrNull(formData.eFilingDate) || prev.eFilingDate,
         nextHearingDate:
           toDateOrNull(formData.nextHearingDate) || prev.nextHearingDate,
         petitioners: getNonEmptyArray(formData.petitioners, prev.petitioners),
@@ -823,6 +826,9 @@ export default function NewCasePage() {
         respondentLabel: formData.respondentLabel || prev.respondentLabel,
         description: normalizeValue(formData.description) || prev.description,
         actSections: normalizeValue(formData.actSections) || prev.actSections,
+        policeStation: normalizeValue(formData.policeStation) || prev.policeStation,
+        firNumber: normalizeValue(formData.firNumber) || prev.firNumber,
+        firYear: normalizeValue(formData.firYear) || prev.firYear,
         notes: normalizeValue(formData.notes) || prev.notes,
         courtHall: normalizeValue(formData.courtHall) || prev.courtHall,
         processes: getNonEmptyArray(formData.processes, prev.processes),
