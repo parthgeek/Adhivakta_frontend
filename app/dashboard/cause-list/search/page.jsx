@@ -644,6 +644,12 @@ export default function CauseListSearchPage() {
             <div className="px-4 pb-4 text-sm text-rose-700">{personalizedError}</div>
           ) : null}
 
+          {!personalizedError && personalizedResult?.message ? (
+            <div className="px-4 pb-4 text-sm text-amber-700">
+              {personalizedResult.message}
+            </div>
+          ) : null}
+
           <div className="overflow-x-auto px-4 pb-5">
             <table className="w-full min-w-[980px] border-collapse text-sm">
               <thead>
