@@ -711,6 +711,65 @@ const api = {
 
       return data;
     },
+    startPersonalizedLive: async ({ date } = {}) => {
+      const response = await fetch(`${API_URL}/cause-list/personalized/live/start`, {
+        method: "POST",
+        headers: createHeaders(),
+        body: JSON.stringify({
+          date,
+        }),
+      });
+
+      const data = await handleResponse(response);
+      if (data?.captchaImageUrl) {
+        data.captchaImageUrl = withApiBaseUrl(data.captchaImageUrl);
+      }
+
+      return data;
+    },
+    searchPersonalizedLive: async ({
+      date,
+      listingType,
+      courtOptionValue,
+      captchaCode,
+      captchaSessionId,
+    } = {}) => {
+      const response = await fetch(`${API_URL}/cause-list/personalized/live/search`, {
+        method: "POST",
+        headers: createHeaders(),
+        body: JSON.stringify({
+          date,
+          listingType,
+          courtOptionValue,
+          captchaCode,
+          captchaSessionId,
+        }),
+      });
+
+      const data = await handleResponse(response);
+      if (data?.captchaImageUrl) {
+        data.captchaImageUrl = withApiBaseUrl(data.captchaImageUrl);
+      }
+
+      return data;
+    },
+    getHighCourtDisplayBoard: async (stateCode) => {
+      const queryParams = new URLSearchParams();
+
+      if (stateCode) {
+        queryParams.set("stateCode", stateCode);
+      }
+
+      const response = await fetch(
+        `${API_URL}/cause-list/display-board/high-courts${queryParams.toString() ? `?${queryParams.toString()}` : ""}`,
+        {
+          method: "GET",
+          headers: createHeaders(),
+        }
+      );
+
+      return handleResponse(response);
+    },
     getForCase: async (caseId, { date, judgeName } = {}) => {
       const queryParams = new URLSearchParams();
 

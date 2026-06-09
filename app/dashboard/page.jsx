@@ -846,7 +846,7 @@ const CauseListSearchCard = ({ cases = [] }) => {
               Search Your Daily Cause List
             </CardTitle>
             <p className="mt-1 text-sm text-slate-600">
-              Select one of your cases, load the live eCourts court and judge entries, solve the current captcha, then fetch the matching cause list result.
+              Select one of your cases, load the live eCourts court and judge entries, solve the current captcha, then fetch the cause list using your case number only.
             </p>
           </div>
           <Link
@@ -1058,53 +1058,80 @@ const CauseListSearchCard = ({ cases = [] }) => {
                   </Badge>
                 </div>
 
-                <div className="space-y-2">
-                  {(result.entries || []).slice(0, 6).map((item, index) => (
-                    <div
-                      key={`${item.case_number}-${item.serial || index}`}
-                      className="rounded-xl border border-slate-200 px-4 py-3"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-slate-900">
-                            {item.case_number || "Case number unavailable"}
-                          </p>
-                          <p className="mt-1 text-sm text-slate-600">{item.party || "Party details unavailable"}</p>
-                          {item.advocate ? (
-                            <p className="mt-1 text-xs text-slate-600">
-                              Advocate: {item.advocate}
-                            </p>
-                          ) : null}
-                          {item.next_hearing_date ? (
-                            <p className="mt-1 text-xs text-slate-600">
-                              Next hearing date:- {item.next_hearing_date}
-                            </p>
-                          ) : null}
-                          {item.judge_name ? (
-                            <p className="mt-1 text-xs font-medium uppercase tracking-wide text-slate-500">
-                              {item.judge_name}
-                            </p>
-                          ) : null}
-                        </div>
-                        {item.stage ? (
-                          <Badge className="border border-[#03234b]/10 bg-[#03234b]/5 text-[#03234b] hover:bg-[#03234b]/5">
-                            {item.stage}
-                          </Badge>
-                        ) : null}
-                      </div>
-                    </div>
-                  ))}
+                <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                  <table className="w-full min-w-[760px] border-collapse text-sm">
+                    <thead>
+                      <tr>
+                        <th className="bg-[#1e3a5f] px-3 py-3 text-left font-semibold text-white">
+                          Sr No
+                        </th>
+                        <th className="bg-[#1f4d3a] px-3 py-3 text-left font-semibold text-white">
+                          Cases
+                        </th>
+                        <th className="bg-[#7a3320] px-3 py-3 text-left font-semibold text-white">
+                          Party Name
+                        </th>
+                        <th className="bg-[#3b2670] px-3 py-3 text-left font-semibold text-white">
+                          Advocate Name
+                        </th>
+                        <th className="bg-[#5a2d20] px-3 py-3 text-left font-semibold text-white">
+                          Category
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(result.entries || []).map((item, index) => (
+                        <tr
+                          key={`${item.case_number}-${item.serial || index}`}
+                          className="border-b border-[#d6deeb] align-top hover:bg-[#f6f9fc]"
+                        >
+                          <td className="px-3 py-3 text-[#20324a]">
+                            {item.serial || index + 1}
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="font-medium text-[#20324a]">
+                              {item.case_number || "—"}
+                            </div>
+                            {item.next_hearing_date ? (
+                              <div className="mt-2 text-xs text-[#4f5f77]">
+                                Next hearing date:- {item.next_hearing_date}
+                              </div>
+                            ) : null}
+                            {item.stage ? (
+                              <div className="mt-1 text-xs text-[#6b7a90]">
+                                Stage: {item.stage}
+                              </div>
+                            ) : null}
+                            {item.judge_name ? (
+                              <div className="mt-1 text-xs font-medium uppercase tracking-wide text-[#6b7a90]">
+                                {item.judge_name}
+                              </div>
+                            ) : null}
+                          </td>
+                          <td className="px-3 py-3 whitespace-pre-line text-[#20324a]">
+                            {item.party || "—"}
+                          </td>
+                          <td className="px-3 py-3 text-[#20324a]">
+                            {item.advocate || "—"}
+                          </td>
+                          <td className="px-3 py-3 text-[#20324a]">
+                            {item.category || item.stage || "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             ) : (
               <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-600">
-                No cause-list entry matched this case for the selected date and judge filter.
+                No cause-list entry matched this case number for the selected date.
               </div>
             )}
           </div>
         ) : (
           <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-600">
-            Choose a case to auto-fill court details, load the live eCourts court and judge entry, solve the captcha, then fetch the matching cause list.
+            Choose a case to auto-fill court details, load the live eCourts court and judge entry, solve the captcha, then fetch the matching cause list by case number.
           </div>
         )}
 
