@@ -770,6 +770,23 @@ const api = {
 
       return handleResponse(response);
     },
+    getPersonalizedHighCourtDisplayBoard: async (stateCode) => {
+      const queryParams = new URLSearchParams();
+
+      if (stateCode) {
+        queryParams.set("stateCode", stateCode);
+      }
+
+      const response = await fetch(
+        `${API_URL}/cause-list/display-board/high-courts/personalized${queryParams.toString() ? `?${queryParams.toString()}` : ""}`,
+        {
+          method: "GET",
+          headers: createHeaders(),
+        }
+      );
+
+      return handleResponse(response);
+    },
     getForCase: async (caseId, { date, judgeName } = {}) => {
       const queryParams = new URLSearchParams();
 

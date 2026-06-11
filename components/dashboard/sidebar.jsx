@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   MessageSquare,
   Scale,
+  Monitor,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,7 @@ const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: FileText, label: "Cases", path: "/dashboard/cases" },
   { icon: Scale, label: "Cause List Search", path: "/dashboard/cause-list/search" },
+  { icon: Monitor, label: "Display Board", path: "/dashboard/display-board" },
   {
     icon: Users,
     label: "Clients & Parties",
