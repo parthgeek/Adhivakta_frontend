@@ -178,7 +178,7 @@ export default function CauseListSearchPage() {
       setDisplayBoardCountdownMs(DISPLAY_BOARD_REFRESH_INTERVAL_MS);
       setDisplayBoardFrameNonce((value) => value + 1);
 
-      if (!selectedState && response?.message) {
+      if (response?.message) {
         setDisplayBoardError(response.message);
       }
     } catch (err) {
@@ -530,11 +530,7 @@ export default function CauseListSearchPage() {
   const headingComplexName =
     complexOptions.find((option) => option.code === selectedComplex)?.name || "";
 
-  const displayBoardEmbedUrl = displayBoardSelectedState?.displayBoardUrl
-    ? `${displayBoardSelectedState.displayBoardUrl}${
-        displayBoardSelectedState.displayBoardUrl.includes("?") ? "&" : "?"
-      }refresh=${displayBoardFrameNonce}`
-    : "";
+  const displayBoardEmbedHtml = displayBoardSelectedState?.embedHtml || "";
 
   return (
     <div className="space-y-6">
@@ -1217,18 +1213,21 @@ export default function CauseListSearchPage() {
           </div>
 
           <div className="bg-[#f8fbff] px-4 py-4">
-            {displayBoardEmbedUrl ? (
+            {displayBoardEmbedHtml ? (
               <div className="overflow-hidden rounded-xl border border-[#d6deeb] bg-white">
                 <iframe
-                  key={displayBoardEmbedUrl}
-                  src={displayBoardEmbedUrl}
+                  key={`${displayBoardSelectedState?.code || "display-board"}-${displayBoardFrameNonce}`}
+                  srcDoc={displayBoardEmbedHtml}
                   title="High court display board"
                   className="h-[720px] w-full bg-white"
+                  sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
                 />
               </div>
             ) : (
               <div className="rounded-xl border border-dashed border-[#c7d4e4] bg-white px-4 py-10 text-center text-sm text-[#4f5f77]">
-                Select a state linked to your cases to load its live high court board.
+                {displayBoardSelectedState
+                  ? "The live board could not be rendered here. Use Open Official Site to view it directly on the court portal."
+                  : "Select a state linked to your cases to load its live high court board."}
               </div>
             )}
 
