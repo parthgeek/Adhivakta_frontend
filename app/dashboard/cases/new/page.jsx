@@ -140,15 +140,11 @@ const buildImportSummaryMessage = (response = {}) => {
     return warning || "No eCourts fields could be matched automatically.";
   }
 
-  const preview = filledFields
-    .slice(0, 8)
-    .map((item) => `${item.sourceLabel || item.label} -> ${item.field}: ${item.value}`)
-    .join(" | ");
+  const summary = `${filledFields.length} field${
+    filledFields.length === 1 ? "" : "s"
+  } imported from eCourts.`;
 
-  const suffix =
-    filledFields.length > 8 ? ` | +${filledFields.length - 8} more fields` : "";
-
-  return [warning, preview + suffix].filter(Boolean).join(" ");
+  return [warning, summary].filter(Boolean).join(" ");
 };
 
 const syncDerivedCaseFields = (caseInfo = {}) => {

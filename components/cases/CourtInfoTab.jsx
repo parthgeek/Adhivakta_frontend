@@ -75,9 +75,6 @@ export default function CourtInfoTab({
   const { states = [], districts = [], complexes = [], courts = [], caseTypes = [] } =
     courtDirectoryOptions || {};
   const selectedEcourt = caseData.eCourt || {};
-  const cnrImportSummaryFields = Array.isArray(cnrAutoFill?.importSummaryFields)
-    ? cnrAutoFill.importSummaryFields
-    : [];
   const fieldErrors = validationErrors?.fieldErrors || {};
   const getFieldError = (field) => fieldErrors[field];
   const getFieldClassName = (field) =>
@@ -111,52 +108,51 @@ export default function CourtInfoTab({
         <div className="space-y-6">
 
           {/* CNR Auto-fill — fills court dropdowns + all case data automatically */}
-          <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4">
+          <div className="rounded-xl border bg-muted/30 p-4">
             <div className="mb-3 flex items-center gap-2">
-              <Zap className="h-4 w-4 text-primary" />
-              <p className="text-sm font-semibold text-primary">Auto Case Creation from eCourts</p>
-              <span className="text-xs text-muted-foreground hidden sm:inline">— enter CNR to import all case details automatically</span>
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
+                <Zap className="h-4 w-4 text-primary" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold leading-tight">Auto-fill from eCourts</p>
+                <p className="text-xs text-muted-foreground leading-tight">
+                  Enter a CNR to import case details
+                </p>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-              <div className="space-y-1">
-                <Label htmlFor="cnrAutoFillInput" className="text-xs text-muted-foreground">
-                  CNR Number <span className="text-muted-foreground font-normal">(16 chars: 4 letters + 12 digits)</span>
-                </Label>
-                <Input
-                  id="cnrAutoFillInput"
-                  value={cnrAutoFill?.cnrNumber || ""}
-                  onChange={(e) => handleCnrNumberChange?.(e.target.value)}
-                  placeholder="e.g. PBCH010001232015"
-                  maxLength={16}
-                  className="font-mono tracking-wider uppercase"
-                />
-              </div>
-              <div className="flex items-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="gap-2 w-full sm:w-auto"
-                  onClick={handleLoadCnrCaptcha}
-                  disabled={cnrAutoFill?.isLoadingCaptcha || cnrAutoFill?.isFetching}
-                >
-                  {cnrAutoFill?.isLoadingCaptcha ? (
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-4 w-4" />
-                  )}
-                  {cnrAutoFill?.captchaSessionId ? "Reload Captcha" : "Load Captcha"}
-                </Button>
-              </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                id="cnrAutoFillInput"
+                value={cnrAutoFill?.cnrNumber || ""}
+                onChange={(e) => handleCnrNumberChange?.(e.target.value)}
+                placeholder="CNR number (4 letters + 12 digits)"
+                maxLength={16}
+                className="h-10 flex-1 font-mono uppercase tracking-wider"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 gap-2"
+                onClick={handleLoadCnrCaptcha}
+                disabled={cnrAutoFill?.isLoadingCaptcha || cnrAutoFill?.isFetching}
+              >
+                {cnrAutoFill?.isLoadingCaptcha ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                {cnrAutoFill?.captchaSessionId ? "Reload" : "Load captcha"}
+              </Button>
             </div>
 
             {cnrAutoFill?.captchaImageUrl && (
-              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] sm:items-center">
-                <div className="flex h-12 w-36 items-center justify-center rounded-md border bg-white px-2">
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="flex h-10 w-32 shrink-0 items-center justify-center rounded-md border bg-white px-2">
                   <img
                     src={cnrAutoFill.captchaImageUrl}
                     alt="eCourts captcha"
-                    className="max-h-10 max-w-full"
+                    className="max-h-8 max-w-full"
                   />
                 </div>
                 <Input
@@ -165,15 +161,16 @@ export default function CourtInfoTab({
                   placeholder="Enter captcha"
                   maxLength={6}
                   disabled={cnrAutoFill?.isFetching}
-                  className="font-mono"
+                  className="h-10 flex-1 font-mono"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleFetchCnrAutoFill?.();
                   }}
                 />
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                   size="icon"
+                  className="h-10 w-10 shrink-0"
                   onClick={handleRefreshCnrCaptcha}
                   disabled={cnrAutoFill?.isLoadingCaptcha || cnrAutoFill?.isFetching}
                   aria-label="Refresh captcha"
@@ -182,7 +179,7 @@ export default function CourtInfoTab({
                 </Button>
                 <Button
                   type="button"
-                  className="gap-2"
+                  className="h-10 gap-2"
                   onClick={handleFetchCnrAutoFill}
                   disabled={cnrAutoFill?.isFetching}
                 >
@@ -191,7 +188,7 @@ export default function CourtInfoTab({
                   ) : (
                     <Search className="h-4 w-4" />
                   )}
-                  Fetch & Fill
+                  Fetch &amp; Fill
                 </Button>
               </div>
             )}
@@ -200,40 +197,10 @@ export default function CourtInfoTab({
               <p className="mt-2 text-xs text-destructive">{cnrAutoFill.error}</p>
             )}
             {cnrAutoFill?.message && !cnrAutoFill?.error && (
-              <p className="mt-2 text-xs text-green-700 dark:text-green-400">{cnrAutoFill.message}</p>
-            )}
-            {cnrImportSummaryFields.length > 0 && !cnrAutoFill?.error && (
-              <div className="mt-3 overflow-hidden rounded-md border bg-background/80 text-xs">
-                <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] border-b bg-muted/60 font-medium text-muted-foreground">
-                  <div className="px-3 py-2">eCourts source</div>
-                  <div className="border-l px-3 py-2">App field</div>
-                </div>
-                <div className="max-h-56 overflow-auto">
-                  {cnrImportSummaryFields.map((item, index) => (
-                    <div
-                      key={`${item.field || item.label || "field"}-${index}`}
-                      className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] border-b last:border-b-0"
-                    >
-                      <div className="min-w-0 px-3 py-2">
-                        <div className="font-medium text-foreground">
-                          {item.sourceLabel || item.label}
-                        </div>
-                        <div className="truncate text-muted-foreground" title={String(item.sourceValue || item.value || "")}>
-                          {item.sourceValue || item.value}
-                        </div>
-                      </div>
-                      <div className="min-w-0 border-l px-3 py-2">
-                        <div className="font-mono text-[11px] text-muted-foreground">
-                          {item.field}
-                        </div>
-                        <div className="truncate text-foreground" title={String(item.value || "")}>
-                          {item.value}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                {cnrAutoFill.message}
+              </p>
             )}
           </div>
 
