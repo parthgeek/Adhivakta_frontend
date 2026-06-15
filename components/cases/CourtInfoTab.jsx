@@ -75,6 +75,9 @@ export default function CourtInfoTab({
   const { states = [], districts = [], complexes = [], courts = [], caseTypes = [] } =
     courtDirectoryOptions || {};
   const selectedEcourt = caseData.eCourt || {};
+  const cnrImportSummaryFields = Array.isArray(cnrAutoFill?.importSummaryFields)
+    ? cnrAutoFill.importSummaryFields
+    : [];
   const fieldErrors = validationErrors?.fieldErrors || {};
   const getFieldError = (field) => fieldErrors[field];
   const getFieldClassName = (field) =>
@@ -198,6 +201,39 @@ export default function CourtInfoTab({
             )}
             {cnrAutoFill?.message && !cnrAutoFill?.error && (
               <p className="mt-2 text-xs text-green-700 dark:text-green-400">{cnrAutoFill.message}</p>
+            )}
+            {cnrImportSummaryFields.length > 0 && !cnrAutoFill?.error && (
+              <div className="mt-3 overflow-hidden rounded-md border bg-background/80 text-xs">
+                <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] border-b bg-muted/60 font-medium text-muted-foreground">
+                  <div className="px-3 py-2">eCourts source</div>
+                  <div className="border-l px-3 py-2">App field</div>
+                </div>
+                <div className="max-h-56 overflow-auto">
+                  {cnrImportSummaryFields.map((item, index) => (
+                    <div
+                      key={`${item.field || item.label || "field"}-${index}`}
+                      className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] border-b last:border-b-0"
+                    >
+                      <div className="min-w-0 px-3 py-2">
+                        <div className="font-medium text-foreground">
+                          {item.sourceLabel || item.label}
+                        </div>
+                        <div className="truncate text-muted-foreground" title={String(item.sourceValue || item.value || "")}>
+                          {item.sourceValue || item.value}
+                        </div>
+                      </div>
+                      <div className="min-w-0 border-l px-3 py-2">
+                        <div className="font-mono text-[11px] text-muted-foreground">
+                          {item.field}
+                        </div>
+                        <div className="truncate text-foreground" title={String(item.value || "")}>
+                          {item.value}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
 

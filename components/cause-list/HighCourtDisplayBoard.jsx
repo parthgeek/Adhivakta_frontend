@@ -5,6 +5,12 @@ import { RefreshCcw } from "lucide-react";
 import api from "@/services/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 const DISPLAY_BOARD_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -277,146 +283,173 @@ export default function HighCourtDisplayBoard() {
               </div>
             ) : null}
           </div>
-
-          <div className="bg-[#f8fbff] px-4 py-4">
-            {displayBoardEmbedHtml ? (
-              <div className="overflow-hidden rounded-xl border border-[#d6deeb] bg-white">
-                <iframe
-                  key={`${displayBoardSelectedState?.code || "display-board"}-${displayBoardFrameNonce}`}
-                  srcDoc={displayBoardEmbedHtml}
-                  title="High court display board"
-                  className="h-[720px] w-full bg-white"
-                  sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
-                />
-              </div>
-            ) : (
-              <div className="rounded-xl border border-dashed border-[#c7d4e4] bg-white px-4 py-10 text-center text-sm text-[#4f5f77]">
-                {displayBoardSelectedState
-                  ? "The live board could not be rendered here. Use Open Official Site to view it directly on the court portal."
-                  : "Select a state linked to your cases to load its live high court board."}
-              </div>
-            )}
-
-            <p className="mt-3 text-xs text-[#6b7a90]">
-              District-court display boards are not included here. If the live board
-              does not render inside this page, use{" "}
-              <span className="font-medium">Open Official Site</span> to view it
-              directly on the high court portal.
-            </p>
-          </div>
         </CardContent>
       </Card>
 
-      <Card className="overflow-hidden border-[#d6deeb] shadow-sm">
-        <CardContent className="p-0">
-          <div className="border-b border-[#d6deeb] bg-[#eef4fb] px-4 py-4">
-            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-[#03234b]">
-                  Personalised Display Board
-                </h2>
-                <p className="mt-1 text-sm text-[#355487]">
-                  View only your tracked cases and court halls for the selected high
-                  court board.
-                </p>
+      <Accordion
+        type="multiple"
+        defaultValue={["personalized-display-board", "overall-display-board"]}
+        className="space-y-6"
+      >
+        <Card className="overflow-hidden border-[#d6deeb] shadow-sm">
+          <AccordionItem value="personalized-display-board" className="border-b-0">
+            <AccordionTrigger className="bg-[#eef4fb] px-4 py-4 text-left hover:no-underline">
+              <div className="flex w-full flex-col gap-2 pr-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-[#03234b]">
+                    Personalised Display Board
+                  </h2>
+                  <p className="mt-1 text-sm font-normal text-[#355487]">
+                    View only your tracked cases and court halls for the selected high
+                    court board.
+                  </p>
+                </div>
+                <div className="text-sm font-normal text-[#355487]">
+                  {personalizedBoardLoading ? "Refreshing..." : "Synced to selected state"}
+                </div>
               </div>
-              <div className="text-sm text-[#355487]">
-                {personalizedBoardLoading ? "Refreshing..." : "Synced to selected state"}
-              </div>
-            </div>
-          </div>
+            </AccordionTrigger>
 
-          <div className="bg-white px-4 py-4">
-            {personalizedSelectedState ? (
-              <div className="mb-4 text-sm text-[#4f5f77]">
-                <span className="font-medium text-[#20324a]">
-                  {personalizedSelectedState.highCourtName ||
-                    personalizedSelectedState.name}
-                </span>
-                {personalizedSelectedState.nextHearingDate
-                  ? ` • Next hearing ${formatHearingDate(
-                      personalizedSelectedState.nextHearingDate
-                    )}`
-                  : ""}
-                {personalizedBoardResult?.totalCourtHalls
-                  ? ` • ${personalizedBoardResult.totalCourtHalls} court hall${
-                      personalizedBoardResult.totalCourtHalls === 1 ? "" : "s"
-                    }`
-                  : ""}
-                {personalizedBoardResult?.totalCases
-                  ? ` • ${personalizedBoardResult.totalCases} tracked case${
-                      personalizedBoardResult.totalCases === 1 ? "" : "s"
-                    }`
-                  : ""}
-              </div>
-            ) : null}
+            <AccordionContent className="bg-white px-4 py-4">
+              {personalizedSelectedState ? (
+                <div className="mb-4 text-sm text-[#4f5f77]">
+                  <span className="font-medium text-[#20324a]">
+                    {personalizedSelectedState.highCourtName ||
+                      personalizedSelectedState.name}
+                  </span>
+                  {personalizedSelectedState.nextHearingDate
+                    ? ` • Next hearing ${formatHearingDate(
+                        personalizedSelectedState.nextHearingDate
+                      )}`
+                    : ""}
+                  {personalizedBoardResult?.totalCourtHalls
+                    ? ` • ${personalizedBoardResult.totalCourtHalls} court hall${
+                        personalizedBoardResult.totalCourtHalls === 1 ? "" : "s"
+                      }`
+                    : ""}
+                  {personalizedBoardResult?.totalCases
+                    ? ` • ${personalizedBoardResult.totalCases} tracked case${
+                        personalizedBoardResult.totalCases === 1 ? "" : "s"
+                      }`
+                    : ""}
+                </div>
+              ) : null}
 
-            {personalizedBoardError ? (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                {personalizedBoardError}
-              </div>
-            ) : null}
+              {personalizedBoardError ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  {personalizedBoardError}
+                </div>
+              ) : null}
 
-            {!displayBoardSelectedState ? (
-              <div className="rounded-xl border border-dashed border-[#c7d4e4] bg-[#f8fbff] px-4 py-10 text-center text-sm text-[#4f5f77]">
-                Select a state above to load your personalised display board.
-              </div>
-            ) : personalizedCourtHalls.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-[#c7d4e4] bg-[#f8fbff] px-4 py-10 text-center text-sm text-[#4f5f77]">
-                {personalizedBoardLoading
-                  ? "Loading your personalised display board..."
-                  : "No tracked court halls found for your cases in this state."}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {personalizedCourtHalls.map((group) => (
-                  <div
-                    key={group.courtHall}
-                    className="rounded-xl border border-[#d6deeb] bg-[#f8fbff] p-4"
-                  >
-                    <div className="flex flex-col gap-1 border-b border-[#d6deeb] pb-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <h3 className="text-lg font-semibold text-[#03234b]">
-                          Court Hall {group.courtHall}
-                        </h3>
-                        <p className="mt-1 text-sm text-[#4f5f77]">
-                          {group.courtName || "Court name unavailable"}
-                        </p>
-                        {group.judgeName ? (
+              {!displayBoardSelectedState ? (
+                <div className="rounded-xl border border-dashed border-[#c7d4e4] bg-[#f8fbff] px-4 py-10 text-center text-sm text-[#4f5f77]">
+                  Select a state above to load your personalised display board.
+                </div>
+              ) : personalizedCourtHalls.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-[#c7d4e4] bg-[#f8fbff] px-4 py-10 text-center text-sm text-[#4f5f77]">
+                  {personalizedBoardLoading
+                    ? "Loading your personalised display board..."
+                    : "No tracked court halls found for your cases in this state."}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {personalizedCourtHalls.map((group) => (
+                    <div
+                      key={group.courtHall}
+                      className="rounded-xl border border-[#d6deeb] bg-[#f8fbff] p-4"
+                    >
+                      <div className="flex flex-col gap-1 border-b border-[#d6deeb] pb-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <h3 className="text-lg font-semibold text-[#03234b]">
+                            Court Hall {group.courtHall}
+                          </h3>
                           <p className="mt-1 text-sm text-[#4f5f77]">
-                            Judge: {group.judgeName}
+                            {group.courtName || "Court name unavailable"}
                           </p>
-                        ) : null}
+                          {group.judgeName ? (
+                            <p className="mt-1 text-sm text-[#4f5f77]">
+                              Judge: {group.judgeName}
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="text-sm font-medium text-[#355487]">
+                          {group.totalCases} case{group.totalCases === 1 ? "" : "s"}
+                        </div>
                       </div>
-                      <div className="text-sm font-medium text-[#355487]">
-                        {group.totalCases} case{group.totalCases === 1 ? "" : "s"}
-                      </div>
-                    </div>
 
-                    <div className="mt-4 overflow-x-auto">
-                      {group.embedHtml ? (
-                        <div className="overflow-hidden rounded-xl border border-[#d6deeb] bg-white">
-                          <iframe
-                            key={`personalized-${group.courtHall}-${displayBoardFrameNonce}`}
-                            srcDoc={group.embedHtml}
-                            title={`Personalized display board for court hall ${group.courtHall}`}
-                            className="h-[420px] w-full bg-white"
-                            sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
-                          />
-                        </div>
-                      ) : (
-                        <div className="rounded-xl border border-dashed border-[#c7d4e4] bg-white px-4 py-8 text-center text-sm text-[#4f5f77]">
-                          Live court-hall display board is unavailable right now for this hall.
-                        </div>
-                      )}
+                      <div className="mt-4 overflow-x-auto">
+                        {group.embedHtml ? (
+                          <div className="overflow-hidden rounded-xl border border-[#d6deeb] bg-white">
+                            <iframe
+                              key={`personalized-${group.courtHall}-${displayBoardFrameNonce}`}
+                              srcDoc={group.embedHtml}
+                              title={`Personalized display board for court hall ${group.courtHall}`}
+                              className="h-[420px] w-full bg-white"
+                              sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
+                            />
+                          </div>
+                        ) : (
+                          <div className="rounded-xl border border-dashed border-[#c7d4e4] bg-white px-4 py-8 text-center text-sm text-[#4f5f77]">
+                            Live court-hall display board is unavailable right now for this hall.
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              )}
+            </AccordionContent>
+          </AccordionItem>
+        </Card>
+
+        <Card className="overflow-hidden border-[#d6deeb] shadow-sm">
+          <AccordionItem value="overall-display-board" className="border-b-0">
+            <AccordionTrigger className="bg-[#eef4fb] px-4 py-4 text-left hover:no-underline">
+              <div className="flex w-full flex-col gap-2 pr-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-[#03234b]">
+                    High Court Display Board
+                  </h2>
+                  <p className="mt-1 text-sm font-normal text-[#355487]">
+                    View the live board directly from supported high court websites for
+                    states mapped from your tracked cases.
+                  </p>
+                </div>
+                <div className="text-sm font-normal text-[#355487]">
+                  {formatMinutesAgo(displayBoardLastRefreshedAt)}
+                </div>
               </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            </AccordionTrigger>
+
+            <AccordionContent className="bg-[#f8fbff] px-4 py-4">
+              {displayBoardEmbedHtml ? (
+                <div className="overflow-hidden rounded-xl border border-[#d6deeb] bg-white">
+                  <iframe
+                    key={`${displayBoardSelectedState?.code || "display-board"}-${displayBoardFrameNonce}`}
+                    srcDoc={displayBoardEmbedHtml}
+                    title="High court display board"
+                    className="h-[720px] w-full bg-white"
+                    sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
+                  />
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-[#c7d4e4] bg-white px-4 py-10 text-center text-sm text-[#4f5f77]">
+                  {displayBoardSelectedState
+                    ? "The live board could not be rendered here. Use Open Official Site to view it directly on the court portal."
+                    : "Select a state linked to your cases to load its live high court board."}
+                </div>
+              )}
+
+              <p className="mt-3 text-xs text-[#6b7a90]">
+                District-court display boards are not included here. If the live board
+                does not render inside this page, use{" "}
+                <span className="font-medium">Open Official Site</span> to view it
+                directly on the high court portal.
+              </p>
+            </AccordionContent>
+          </AccordionItem>
+        </Card>
+      </Accordion>
     </div>
   );
 }

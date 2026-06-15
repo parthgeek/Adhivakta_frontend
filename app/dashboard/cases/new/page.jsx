@@ -83,6 +83,7 @@ const EMPTY_CNR_AUTO_FILL_STATE = {
   captchaCode: "",
   message: "",
   error: "",
+  importSummaryFields: [],
 };
 
 const toDateOrNull = (value) => {
@@ -141,7 +142,7 @@ const buildImportSummaryMessage = (response = {}) => {
 
   const preview = filledFields
     .slice(0, 8)
-    .map((item) => `${item.label}: ${item.value}`)
+    .map((item) => `${item.sourceLabel || item.label} -> ${item.field}: ${item.value}`)
     .join(" | ");
 
   const suffix =
@@ -963,6 +964,7 @@ export default function NewCasePage() {
       cnrNumber: normalizeValue(value).toUpperCase(),
       error: "",
       message: "",
+      importSummaryFields: [],
     }));
   };
 
@@ -972,11 +974,18 @@ export default function NewCasePage() {
       setCnrAutoFill((prev) => ({
         ...prev,
         error: "Enter a valid CNR number: 4 letters + 12 digits (e.g. PBCH010001232015).",
+        importSummaryFields: [],
       }));
       return;
     }
 
-    setCnrAutoFill((prev) => ({ ...prev, isLoadingCaptcha: true, error: "", message: "" }));
+    setCnrAutoFill((prev) => ({
+      ...prev,
+      isLoadingCaptcha: true,
+      error: "",
+      message: "",
+      importSummaryFields: [],
+    }));
 
     try {
       const response = await api.cases.loadCnrAutoFillCaptcha({ cnrNumber: cnr });
@@ -987,12 +996,14 @@ export default function NewCasePage() {
         captchaImageUrl: response.captchaImageUrl || "",
         captchaCode: "",
         message: "",
+        importSummaryFields: [],
       }));
     } catch (error) {
       setCnrAutoFill((prev) => ({
         ...prev,
         isLoadingCaptcha: false,
         error: error.message || "Unable to load captcha from eCourts.",
+        importSummaryFields: [],
       }));
     }
   };
@@ -1010,7 +1021,12 @@ export default function NewCasePage() {
       return;
     }
 
-    setCnrAutoFill((prev) => ({ ...prev, isLoadingCaptcha: true, error: "" }));
+    setCnrAutoFill((prev) => ({
+      ...prev,
+      isLoadingCaptcha: true,
+      error: "",
+      importSummaryFields: [],
+    }));
     try {
       const response = await api.cases.refreshAutoFillCaptcha(cnrAutoFill.captchaSessionId);
       setCnrAutoFill((prev) => ({
@@ -1018,12 +1034,14 @@ export default function NewCasePage() {
         isLoadingCaptcha: false,
         captchaImageUrl: response.captchaImageUrl || prev.captchaImageUrl,
         captchaCode: "",
+        importSummaryFields: [],
       }));
     } catch (error) {
       setCnrAutoFill((prev) => ({
         ...prev,
         isLoadingCaptcha: false,
         error: error.message || "Unable to refresh captcha.",
+        importSummaryFields: [],
       }));
     }
   };
@@ -1035,11 +1053,21 @@ export default function NewCasePage() {
     }
 
     if (!normalizeValue(cnrAutoFill.captchaCode)) {
-      setCnrAutoFill((prev) => ({ ...prev, error: "Enter the captcha shown by eCourts." }));
+      setCnrAutoFill((prev) => ({
+        ...prev,
+        error: "Enter the captcha shown by eCourts.",
+        importSummaryFields: [],
+      }));
       return;
     }
 
-    setCnrAutoFill((prev) => ({ ...prev, isFetching: true, error: "", message: "" }));
+    setCnrAutoFill((prev) => ({
+      ...prev,
+      isFetching: true,
+      error: "",
+      message: "",
+      importSummaryFields: [],
+    }));
 
     try {
       const response = await api.cases.fetchCnrAutoFill({
@@ -1050,6 +1078,9 @@ export default function NewCasePage() {
       const formData = response?.formData || {};
       const courtInfo = response?.courtInfo || null;
       const importSummaryMessage = buildImportSummaryMessage(response);
+      const importSummaryFields = Array.isArray(response?.importSummary?.filledFields)
+        ? response.importSummary.filledFields
+        : [];
 
       applyAutoFilledCaseData(formData);
 
@@ -1071,8 +1102,12 @@ export default function NewCasePage() {
               court: courtInfo.court || "",
               caseTypeCode: courtInfo.caseTypeCode || "",
               caseTypeName: courtInfo.caseTypeName || "",
-              requiresEstablishment: false,
+              requiresEstablishment: Boolean(courtInfo.requiresEstablishment),
             },
+            courtState: courtInfo.state || prev.courtState,
+            district: courtInfo.district || prev.district,
+            courtComplex: courtInfo.complex || prev.courtComplex,
+            court: courtInfo.court || prev.court,
           })
         );
 
@@ -1129,6 +1164,7 @@ export default function NewCasePage() {
           .filter(Boolean)
           .join(" "),
         error: "",
+        importSummaryFields,
       }));
 
       toast({
@@ -1144,6 +1180,7 @@ export default function NewCasePage() {
         isFetching: false,
         captchaCode: "",
         error: error.message || "Unable to fetch case details.",
+        importSummaryFields: [],
       }));
       toast({
         title: "CNR lookup failed",
