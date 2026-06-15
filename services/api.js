@@ -686,6 +686,11 @@ const api = {
       return data;
     },
     searchForCourt: async ({
+      source,
+      stateCode,
+      districtCode,
+      complexCode,
+      courtCode,
       date,
       listingType,
       courtOptionValue,
@@ -696,6 +701,11 @@ const api = {
         method: "POST",
         headers: createHeaders(),
         body: JSON.stringify({
+          source,
+          stateCode,
+          districtCode,
+          complexCode,
+          courtCode,
           date,
           listingType,
           courtOptionValue,

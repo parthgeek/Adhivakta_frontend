@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { RefreshCcw } from "lucide-react";
 import api from "@/services/api";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,6 +31,23 @@ const formatMinutesAgo = (timestamp) => {
   return `Refreshed ${elapsedMinutes} minute${elapsedMinutes === 1 ? "" : "s"} ago`;
 };
 
+const formatHearingDate = (value) => {
+  if (!value) {
+    return "";
+  }
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return "";
+  }
+
+  return parsedDate.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+};
+
 export default function HighCourtDisplayBoard() {
   const [displayBoardLoading, setDisplayBoardLoading] = useState(false);
   const [displayBoardError, setDisplayBoardError] = useState("");
@@ -45,13 +62,20 @@ export default function HighCourtDisplayBoard() {
   const [personalizedBoardLoading, setPersonalizedBoardLoading] = useState(false);
   const [personalizedBoardError, setPersonalizedBoardError] = useState("");
   const [personalizedBoardResult, setPersonalizedBoardResult] = useState(null);
+  const displayBoardRequestIdRef = useRef(0);
+  const personalizedBoardRequestIdRef = useRef(0);
 
   const loadHighCourtDisplayBoard = async (stateCode = "") => {
+    const requestId = displayBoardRequestIdRef.current + 1;
+    displayBoardRequestIdRef.current = requestId;
     setDisplayBoardLoading(true);
     setDisplayBoardError("");
 
     try {
       const response = await api.causeList.getHighCourtDisplayBoard(stateCode);
+      if (displayBoardRequestIdRef.current !== requestId) {
+        return;
+      }
       const states = Array.isArray(response?.states) ? response.states : [];
       const selectedState = response?.selectedState || states[0] || null;
 
@@ -66,32 +90,48 @@ export default function HighCourtDisplayBoard() {
         setDisplayBoardError(response.message);
       }
     } catch (err) {
+      if (displayBoardRequestIdRef.current !== requestId) {
+        return;
+      }
       setDisplayBoardError(
         err?.message || "Unable to load the high court display board right now."
       );
     } finally {
-      setDisplayBoardLoading(false);
+      if (displayBoardRequestIdRef.current === requestId) {
+        setDisplayBoardLoading(false);
+      }
     }
   };
 
   const loadPersonalizedHighCourtDisplayBoard = async (stateCode = "") => {
+    const requestId = personalizedBoardRequestIdRef.current + 1;
+    personalizedBoardRequestIdRef.current = requestId;
     setPersonalizedBoardLoading(true);
     setPersonalizedBoardError("");
+    setPersonalizedBoardResult(null);
 
     try {
       const response = await api.causeList.getPersonalizedHighCourtDisplayBoard(stateCode);
+      if (personalizedBoardRequestIdRef.current !== requestId) {
+        return;
+      }
       setPersonalizedBoardResult(response || null);
 
       if (response?.message) {
         setPersonalizedBoardError(response.message);
       }
     } catch (err) {
+      if (personalizedBoardRequestIdRef.current !== requestId) {
+        return;
+      }
       setPersonalizedBoardError(
         err?.message ||
           "Unable to load the personalized high court display board right now."
       );
     } finally {
-      setPersonalizedBoardLoading(false);
+      if (personalizedBoardRequestIdRef.current === requestId) {
+        setPersonalizedBoardLoading(false);
+      }
     }
   };
 
@@ -122,6 +162,8 @@ export default function HighCourtDisplayBoard() {
   }, [displayBoardSelectedState?.code]);
 
   const displayBoardEmbedHtml = displayBoardSelectedState?.embedHtml || "";
+  const personalizedSelectedState =
+    personalizedBoardResult?.selectedState || displayBoardSelectedState || null;
   const personalizedCourtHalls = personalizedBoardResult?.courtHalls || [];
 
   return (
@@ -166,7 +208,19 @@ export default function HighCourtDisplayBoard() {
                   </option>
                   {displayBoardStates.map((state) => (
                     <option key={state.code} value={state.code}>
-                      {state.name}
+                      {[
+                        state.name,
+                        state.sourceCaseCount
+                          ? `${state.sourceCaseCount} case${
+                              state.sourceCaseCount === 1 ? "" : "s"
+                            }`
+                          : "",
+                        state.nextHearingDate
+                          ? `next hearing ${formatHearingDate(state.nextHearingDate)}`
+                          : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" • ")}
                     </option>
                   ))}
                 </select>
@@ -273,11 +327,17 @@ export default function HighCourtDisplayBoard() {
           </div>
 
           <div className="bg-white px-4 py-4">
-            {displayBoardSelectedState ? (
+            {personalizedSelectedState ? (
               <div className="mb-4 text-sm text-[#4f5f77]">
                 <span className="font-medium text-[#20324a]">
-                  {displayBoardSelectedState.highCourtName || displayBoardSelectedState.name}
+                  {personalizedSelectedState.highCourtName ||
+                    personalizedSelectedState.name}
                 </span>
+                {personalizedSelectedState.nextHearingDate
+                  ? ` • Next hearing ${formatHearingDate(
+                      personalizedSelectedState.nextHearingDate
+                    )}`
+                  : ""}
                 {personalizedBoardResult?.totalCourtHalls
                   ? ` • ${personalizedBoardResult.totalCourtHalls} court hall${
                       personalizedBoardResult.totalCourtHalls === 1 ? "" : "s"

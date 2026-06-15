@@ -311,6 +311,7 @@ export default function CaseDetailsTab({
                   <SelectItem value="filing">Filing</SelectItem>
                   <SelectItem value="pre_trial">Pre-Trial</SelectItem>
                   <SelectItem value="trial">Trial</SelectItem>
+                  <SelectItem value="evidence">Evidence</SelectItem>
                   <SelectItem value="arguments">Arguments</SelectItem>
                   <SelectItem value="judgment">Judgment</SelectItem>
                   <SelectItem value="appeal">Appeal</SelectItem>

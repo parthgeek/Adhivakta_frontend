@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Search } from "lucide-react";
+import { ArrowLeft, RefreshCcw, Search } from "lucide-react";
 import api from "@/services/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ const toDisplayDate = (isoDate) => {
 
 export default function CauseListSearchPage() {
   const router = useRouter();
+  const [courtSource, setCourtSource] = useState("ecourts");
 
   const [stateOptions, setStateOptions] = useState([]);
   const [districtOptions, setDistrictOptions] = useState([]);
@@ -83,6 +84,15 @@ export default function CauseListSearchPage() {
     setTableFilter("");
   };
 
+  const isHighCourtSource = courtSource === "highcourts";
+  const stateLabel = "State";
+  const districtLabel = isHighCourtSource ? "High Court" : "District";
+  const complexLabel = isHighCourtSource ? "Bench" : "Court Complex";
+  const establishmentLabel = isHighCourtSource ? "Court / Division" : "Establishment";
+  const sourceDescription = isHighCourtSource
+    ? "Fetch the overall cause list published for a selected High Court bench."
+    : "Fetch the district eCourts cause list by court and listing type.";
+
   const resetPersonalizedFlow = () => {
     setPersonalizedError("");
     setPersonalizedResult(null);
@@ -117,7 +127,7 @@ export default function CauseListSearchPage() {
     (async () => {
       setDirLoading("states", true);
       try {
-        const states = await api.courtDirectory.getStates("ecourts");
+        const states = await api.courtDirectory.getStates(courtSource);
         setStateOptions(states || []);
       } catch (err) {
         setError(err?.message || "Failed to load states.");
@@ -125,11 +135,26 @@ export default function CauseListSearchPage() {
         setDirLoading("states", false);
       }
     })();
-  }, []);
+  }, [courtSource]);
 
   useEffect(() => {
     resetPersonalizedFlow();
   }, [selectedDate]);
+
+  useEffect(() => {
+    setError("");
+    setResult(null);
+    setTableFilter("");
+    setStateOptions([]);
+    setDistrictOptions([]);
+    setComplexOptions([]);
+    setEstablishmentOptions([]);
+    setSelectedState("");
+    setSelectedDistrict("");
+    setSelectedComplex("");
+    setSelectedEstablishment("");
+    resetCaptchaSession();
+  }, [courtSource]);
 
   useEffect(() => {
     setDistrictOptions([]);
@@ -146,7 +171,7 @@ export default function CauseListSearchPage() {
     (async () => {
       setDirLoading("districts", true);
       try {
-        const districts = await api.courtDirectory.getDistricts(selectedState, "ecourts");
+        const districts = await api.courtDirectory.getDistricts(selectedState, courtSource);
         if (!cancelled) setDistrictOptions(districts || []);
       } catch (err) {
         if (!cancelled) setError(err?.message || "Failed to load districts.");
@@ -158,7 +183,7 @@ export default function CauseListSearchPage() {
     return () => {
       cancelled = true;
     };
-  }, [selectedState]);
+  }, [selectedState, courtSource]);
 
   useEffect(() => {
     setComplexOptions([]);
@@ -176,7 +201,7 @@ export default function CauseListSearchPage() {
         const complexes = await api.courtDirectory.getComplexes(
           selectedState,
           selectedDistrict,
-          "ecourts"
+          courtSource
         );
         if (!cancelled) setComplexOptions(complexes || []);
       } catch (err) {
@@ -189,7 +214,7 @@ export default function CauseListSearchPage() {
     return () => {
       cancelled = true;
     };
-  }, [selectedState, selectedDistrict]);
+  }, [selectedState, selectedDistrict, courtSource]);
 
   useEffect(() => {
     setEstablishmentOptions([]);
@@ -206,7 +231,7 @@ export default function CauseListSearchPage() {
           selectedState,
           selectedDistrict,
           selectedComplex,
-          "ecourts"
+          courtSource
         );
         if (cancelled) return;
 
@@ -226,7 +251,7 @@ export default function CauseListSearchPage() {
     return () => {
       cancelled = true;
     };
-  }, [selectedState, selectedDistrict, selectedComplex]);
+  }, [selectedState, selectedDistrict, selectedComplex, courtSource]);
 
   const requiresEstablishmentChoice = establishmentOptions.length > 1;
 
@@ -246,6 +271,27 @@ export default function CauseListSearchPage() {
     setResult(null);
 
     try {
+      if (isHighCourtSource) {
+        const response = await api.causeList.searchForCourt({
+          source: "highcourts",
+          stateCode: selectedState,
+          districtCode: selectedDistrict,
+          complexCode: selectedComplex,
+          courtCode: selectedEstablishment,
+          date: selectedDate,
+        });
+
+        setCourtJudgeOptions([]);
+        setSelectedCourtOptionValue("");
+        setCaptchaSessionId("");
+        setCaptchaImageUrl("");
+        setCaptchaCode("");
+        setCaptchaNonce(0);
+        setResult(response || null);
+        setTableFilter("");
+        return;
+      }
+
       const response = await api.causeList.getJudgesForCourt({
         stateCode: selectedState,
         districtCode: selectedDistrict,
@@ -264,7 +310,7 @@ export default function CauseListSearchPage() {
       setError(
         err?.message ||
           err?.errors?.[0]?.msg ||
-          "Unable to load eCourts court/judge entries."
+          `Unable to load ${isHighCourtSource ? "High Court" : "eCourts"} entries.`
       );
     } finally {
       setLoadingJudges(false);
@@ -444,6 +490,13 @@ export default function CauseListSearchPage() {
 
   const headingComplexName =
     complexOptions.find((option) => option.code === selectedComplex)?.name || "";
+  const selectedDistrictLabel =
+    districtOptions.find((option) => option.code === selectedDistrict)?.name || "";
+  const selectedEstablishmentLabel =
+    establishmentOptions.find((option) => option.code === selectedEstablishment)?.name || "";
+  const highCourtResultTitle = [selectedDistrictLabel, headingComplexName, selectedEstablishmentLabel]
+    .filter(Boolean)
+    .join(" • ");
 
   return (
     <div className="space-y-6">
@@ -456,9 +509,20 @@ export default function CauseListSearchPage() {
 
       <Card className="overflow-hidden border-[#d6deeb] shadow-sm">
         <CardContent className="p-0">
-          <div className="grid grid-cols-1 gap-4 bg-[#1e2b3d] px-4 py-4 text-white sm:grid-cols-3 sm:gap-6">
+          <div className="grid grid-cols-1 gap-4 bg-[#1e2b3d] px-4 py-4 text-white sm:grid-cols-4 sm:gap-6">
             <div>
-              <label className="mb-1 block text-sm font-medium">Select State</label>
+              <label className="mb-1 block text-sm font-medium">Court Type</label>
+              <select
+                value={courtSource}
+                onChange={(e) => setCourtSource(e.target.value)}
+                className="h-11 w-full rounded-md border border-white/30 bg-white px-3 py-2 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              >
+                <option value="ecourts">District Court</option>
+                <option value="highcourts">High Court</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">Select {stateLabel}</label>
               <select
                 value={selectedState}
                 onChange={(e) => setSelectedState(e.target.value)}
@@ -476,7 +540,7 @@ export default function CauseListSearchPage() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Select District</label>
+              <label className="mb-1 block text-sm font-medium">Select {districtLabel}</label>
               <select
                 value={selectedDistrict}
                 onChange={(e) => setSelectedDistrict(e.target.value)}
@@ -484,7 +548,7 @@ export default function CauseListSearchPage() {
                 className="h-11 w-full rounded-md border border-white/30 bg-white px-3 py-2 text-sm text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
               >
                 <option value="">
-                  {directoryLoading.districts ? "Loading..." : "Select District"}
+                  {directoryLoading.districts ? "Loading..." : `Select ${districtLabel}`}
                 </option>
                 {districtOptions.map((opt) => (
                   <option key={opt.code} value={opt.code}>
@@ -494,7 +558,7 @@ export default function CauseListSearchPage() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Select Court Complex</label>
+              <label className="mb-1 block text-sm font-medium">Select {complexLabel}</label>
               <select
                 value={selectedComplex}
                 onChange={(e) => setSelectedComplex(e.target.value)}
@@ -502,7 +566,7 @@ export default function CauseListSearchPage() {
                 className="h-11 w-full rounded-md border border-white/30 bg-white px-3 py-2 text-sm text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
               >
                 <option value="">
-                  {directoryLoading.complexes ? "Loading..." : "Select Court Complex"}
+                  {directoryLoading.complexes ? "Loading..." : `Select ${complexLabel}`}
                 </option>
                 {complexOptions.map((opt) => (
                   <option key={opt.code} value={opt.code}>
@@ -515,8 +579,7 @@ export default function CauseListSearchPage() {
 
           <div className="px-4 py-4">
             <p className="text-sm font-medium text-[#355487]">
-              Cause list displayed may differ from the actual cause list. For further
-              queries, contact court administrator.
+              {sourceDescription}
             </p>
           </div>
 
@@ -529,7 +592,7 @@ export default function CauseListSearchPage() {
               <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-semibold text-[#355487]">
-                    <span className="text-rose-600">*</span> Establishment
+                    <span className="text-rose-600">*</span> {establishmentLabel}
                   </label>
                   <select
                     value={selectedEstablishment}
@@ -540,7 +603,7 @@ export default function CauseListSearchPage() {
                     <option value="">
                       {directoryLoading.establishments
                         ? "Loading..."
-                        : "Select Establishment"}
+                        : `Select ${establishmentLabel}`}
                     </option>
                     {establishmentOptions.map((opt) => (
                       <option key={opt.code} value={opt.code}>
@@ -555,28 +618,35 @@ export default function CauseListSearchPage() {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-end">
               <div>
                 <label className="mb-1 block text-sm font-semibold text-[#355487]">
-                  <span className="text-rose-600">*</span> Court Name
+                  <span className="text-rose-600">*</span>{" "}
+                  {isHighCourtSource ? "Overall Cause List" : "Court Name"}
                 </label>
                 <div className="flex gap-2">
-                  <select
-                    value={selectedCourtOptionValue}
-                    onChange={(e) => setSelectedCourtOptionValue(e.target.value)}
-                    disabled={courtJudgeOptions.length === 0}
-                    className="h-11 w-full rounded-md border border-[#d6deeb] bg-white px-3 py-2 text-sm text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#03234b]"
-                  >
-                    <option value="">
-                      {courtJudgeOptions.length > 0
-                        ? "Select Court Name"
-                        : loadingJudges
-                          ? "Loading entries..."
-                          : "Load entries first"}
-                    </option>
-                    {courtJudgeOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
+                  {isHighCourtSource ? (
+                    <div className="flex h-11 w-full items-center rounded-md border border-[#d6deeb] bg-slate-50 px-3 text-sm text-slate-700">
+                      {highCourtResultTitle || "Select High Court bench first"}
+                    </div>
+                  ) : (
+                    <select
+                      value={selectedCourtOptionValue}
+                      onChange={(e) => setSelectedCourtOptionValue(e.target.value)}
+                      disabled={courtJudgeOptions.length === 0}
+                      className="h-11 w-full rounded-md border border-[#d6deeb] bg-white px-3 py-2 text-sm text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#03234b]"
+                    >
+                      <option value="">
+                        {courtJudgeOptions.length > 0
+                          ? "Select Court Name"
+                          : loadingJudges
+                            ? "Loading entries..."
+                            : "Load entries first"}
                       </option>
-                    ))}
-                  </select>
+                      {courtJudgeOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                   <Button
                     type="button"
                     variant="outline"
@@ -584,7 +654,13 @@ export default function CauseListSearchPage() {
                     disabled={!allCourtCodesSelected || !selectedDate || loadingJudges}
                     className="h-11 shrink-0 border-[#d6deeb] text-[#03234b] hover:bg-[#eef4fb]"
                   >
-                    {loadingJudges ? "Loading..." : courtJudgeOptions.length ? "Reload" : "Load"}
+                    {loadingJudges
+                      ? "Loading..."
+                      : isHighCourtSource
+                        ? "Fetch"
+                        : courtJudgeOptions.length
+                          ? "Reload"
+                          : "Load"}
                   </Button>
                 </div>
               </div>
@@ -603,7 +679,7 @@ export default function CauseListSearchPage() {
               </div>
             </div>
 
-            {captchaSessionId ? (
+            {!isHighCourtSource && captchaSessionId ? (
               <div className="mt-5 grid grid-cols-1 items-end gap-4 md:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-semibold text-[#355487]">
@@ -650,34 +726,36 @@ export default function CauseListSearchPage() {
               </div>
             ) : null}
 
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-              <Button
-                type="button"
-                onClick={() => submitForListing("civ")}
-                disabled={
-                  loadingFetch ||
-                  !captchaSessionId ||
-                  !captchaCode ||
-                  !selectedCourtOptionValue
-                }
-                className="h-11 min-w-[120px] bg-[#03234b] text-white hover:bg-[#042d5e]"
-              >
-                {loadingFetch ? "Loading..." : "Civil"}
-              </Button>
-              <Button
-                type="button"
-                onClick={() => submitForListing("cri")}
-                disabled={
-                  loadingFetch ||
-                  !captchaSessionId ||
-                  !captchaCode ||
-                  !selectedCourtOptionValue
-                }
-                className="h-11 min-w-[120px] bg-[#03234b] text-white hover:bg-[#042d5e]"
-              >
-                {loadingFetch ? "Loading..." : "Criminal"}
-              </Button>
-            </div>
+            {!isHighCourtSource ? (
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                <Button
+                  type="button"
+                  onClick={() => submitForListing("civ")}
+                  disabled={
+                    loadingFetch ||
+                    !captchaSessionId ||
+                    !captchaCode ||
+                    !selectedCourtOptionValue
+                  }
+                  className="h-11 min-w-[120px] bg-[#03234b] text-white hover:bg-[#042d5e]"
+                >
+                  {loadingFetch ? "Loading..." : "Civil"}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => submitForListing("cri")}
+                  disabled={
+                    loadingFetch ||
+                    !captchaSessionId ||
+                    !captchaCode ||
+                    !selectedCourtOptionValue
+                  }
+                  className="h-11 min-w-[120px] bg-[#03234b] text-white hover:bg-[#042d5e]"
+                >
+                  {loadingFetch ? "Loading..." : "Criminal"}
+                </Button>
+              </div>
+            ) : null}
           </div>
         </CardContent>
       </Card>
@@ -689,8 +767,9 @@ export default function CauseListSearchPage() {
               <div>
                 <h2 className="text-xl font-semibold text-[#03234b]">Your Personalized Cause List</h2>
                 <p className="mt-1 text-sm text-[#355487]">
-                  Run the live eCourts flow court by court, solve each captcha, and build a personalized list that keeps only your tracked case numbers for{" "}
-                  {toDisplayDate(selectedDate)}.
+                  {isHighCourtSource
+                    ? "Personalized High Court cause-list matching is the next step. Use the search section above to fetch the overall High Court cause list first."
+                    : `Run the live eCourts flow court by court, solve each captcha, and build a personalized list that keeps only your tracked case numbers for ${toDisplayDate(selectedDate)}.`}
                 </p>
               </div>
               <div className="text-sm text-[#355487]">
@@ -698,6 +777,8 @@ export default function CauseListSearchPage() {
                   ? "Loading..."
                   : personalizedResult
                     ? `${personalizedResult?.personalized_total_entries || 0} matched entries across ${personalizedResult?.personalized_total_cases || 0} cases`
+                  : isHighCourtSource
+                    ? "Switch to District Court to start personalized flow"
                     : "Start the live personalized fetch"}
               </div>
             </div>
@@ -706,14 +787,16 @@ export default function CauseListSearchPage() {
           <div className="border-b border-[#d6deeb] bg-white px-4 py-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="text-sm text-[#355487]">
-                {personalizedResult?.workflow?.total_steps
+                {isHighCourtSource
+                  ? "Personalized High Court flow is not wired on this page yet."
+                  : personalizedResult?.workflow?.total_steps
                   ? `Progress: ${personalizedResult.workflow.completed_steps || 0}/${personalizedResult.workflow.total_steps} courts completed`
                   : "No live personalized session started yet."}
               </div>
               <Button
                 type="button"
                 onClick={startPersonalizedFlow}
-                disabled={!selectedDate || personalizedLoading}
+                disabled={!selectedDate || personalizedLoading || isHighCourtSource}
                 className="h-10 bg-[#03234b] text-white hover:bg-[#042d5e]"
               >
                 {personalizedLoading && !personalizedCaptchaSessionId
@@ -895,7 +978,11 @@ export default function CauseListSearchPage() {
               {(personalizedResult?.personalized_sources || []).length
                 ? personalizedResult.personalized_sources
                     .map((source) =>
-                      source === "delhi_high_court" ? "Delhi High Court" : "District Courts"
+                      source === "delhi_high_court"
+                        ? "Delhi High Court"
+                        : source === "highcourts"
+                          ? "High Courts"
+                          : "District Courts"
                     )
                     .join(", ")
                 : "No source loaded yet"}
@@ -1038,14 +1125,17 @@ export default function CauseListSearchPage() {
           <CardContent className="p-0">
             <div className="border-b border-[#d6deeb] bg-[#eef4fb] px-4 py-3 text-center">
               <p className="text-xl font-semibold text-[#03234b] sm:text-2xl">
-                {headingComplexName || courtTitle || "Cause List"}
+                {isHighCourtSource
+                  ? highCourtResultTitle || "High Court Cause List"
+                  : headingComplexName || courtTitle || "Cause List"}
               </p>
-              {courtTitle ? (
+              {!isHighCourtSource && courtTitle ? (
                 <p className="mt-1 text-sm text-[#355487]">In the court of : {courtTitle}</p>
               ) : null}
               <p className="mt-1 text-sm font-semibold text-[#355487]">
-                {(result.listingType === "criminal" ? "Criminal" : "Civil")} Cases Listed on{" "}
-                {toDisplayDate(result.date || selectedDate)}
+                {isHighCourtSource
+                  ? `Overall Cause List for ${toDisplayDate(result.date || selectedDate)}`
+                  : `${result.listingType === "criminal" ? "Criminal" : "Civil"} Cases Listed on ${toDisplayDate(result.date || selectedDate)}`}
               </p>
             </div>
 

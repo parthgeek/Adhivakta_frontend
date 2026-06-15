@@ -102,6 +102,54 @@ const toDateOrNull = (value) => {
 const getNonEmptyArray = (value, fallback = []) =>
   Array.isArray(value) && value.length > 0 ? value : fallback;
 
+const findImportedCaseType = (caseTypes = [], { caseTypeCode = "", caseTypeName = "" } = {}) => {
+  const normalizedCode = normalizeValue(caseTypeCode).toLowerCase();
+  const normalizedName = normalizeValue(caseTypeName).toLowerCase();
+
+  return (
+    caseTypes.find(
+      (caseType) =>
+        normalizedCode &&
+        normalizeValue(caseType.code).toLowerCase() === normalizedCode
+    ) ||
+    caseTypes.find(
+      (caseType) =>
+        normalizedName &&
+        normalizeValue(caseType.name).toLowerCase() === normalizedName
+    ) ||
+    caseTypes.find((caseType) => {
+      const candidateName = normalizeValue(caseType.name).toLowerCase();
+      return (
+        normalizedName &&
+        candidateName &&
+        (candidateName.includes(normalizedName) || normalizedName.includes(candidateName))
+      );
+    }) ||
+    null
+  );
+};
+
+const buildImportSummaryMessage = (response = {}) => {
+  const warning = normalizeValue(response?.warning);
+  const filledFields = Array.isArray(response?.importSummary?.filledFields)
+    ? response.importSummary.filledFields
+    : [];
+
+  if (!filledFields.length) {
+    return warning || "No eCourts fields could be matched automatically.";
+  }
+
+  const preview = filledFields
+    .slice(0, 8)
+    .map((item) => `${item.label}: ${item.value}`)
+    .join(" | ");
+
+  const suffix =
+    filledFields.length > 8 ? ` | +${filledFields.length - 8} more fields` : "";
+
+  return [warning, preview + suffix].filter(Boolean).join(" ");
+};
+
 const syncDerivedCaseFields = (caseInfo = {}) => {
   const caseYear = caseInfo.caseYear || DEFAULT_CASE_YEAR;
   const caseTypeName = caseInfo.eCourt?.caseTypeName || "";
@@ -829,7 +877,10 @@ export default function NewCasePage() {
         policeStation: normalizeValue(formData.policeStation) || prev.policeStation,
         firNumber: normalizeValue(formData.firNumber) || prev.firNumber,
         firYear: normalizeValue(formData.firYear) || prev.firYear,
+        reliefSought: normalizeValue(formData.reliefSought) || prev.reliefSought,
         notes: normalizeValue(formData.notes) || prev.notes,
+        status: normalizeValue(formData.status) || prev.status,
+        caseStage: normalizeValue(formData.caseStage) || prev.caseStage,
         courtHall: normalizeValue(formData.courtHall) || prev.courtHall,
         processes: getNonEmptyArray(formData.processes, prev.processes),
         iaStatuses: getNonEmptyArray(formData.iaStatuses, prev.iaStatuses),
@@ -998,6 +1049,7 @@ export default function NewCasePage() {
 
       const formData = response?.formData || {};
       const courtInfo = response?.courtInfo || null;
+      const importSummaryMessage = buildImportSummaryMessage(response);
 
       applyAutoFilledCaseData(formData);
 
@@ -1028,13 +1080,37 @@ export default function NewCasePage() {
         await loadComplexes(courtInfo.stateCode, courtInfo.districtCode, "ecourts");
         await loadCourts(courtInfo.stateCode, courtInfo.districtCode, courtInfo.complexCode, "ecourts");
 
+        let importedCaseTypes = [];
         if (courtInfo.courtCode) {
-          await loadCaseTypes(
+          importedCaseTypes = await loadCaseTypes(
             courtInfo.stateCode,
             courtInfo.districtCode,
             courtInfo.complexCode,
             courtInfo.courtCode,
             "ecourts"
+          );
+        }
+
+        const resolvedImportedCaseType = findImportedCaseType(importedCaseTypes, {
+          caseTypeCode: courtInfo.caseTypeCode,
+          caseTypeName: courtInfo.caseTypeName,
+        });
+
+        if (resolvedImportedCaseType || courtInfo.caseTypeName) {
+          setCaseData((prev) =>
+            syncDerivedCaseFields({
+              ...prev,
+              eCourt: {
+                ...prev.eCourt,
+                caseTypeCode:
+                  resolvedImportedCaseType?.code || prev.eCourt?.caseTypeCode || "",
+                caseTypeName:
+                  resolvedImportedCaseType?.name ||
+                  courtInfo.caseTypeName ||
+                  prev.eCourt?.caseTypeName ||
+                  "",
+              },
+            })
           );
         }
       }
@@ -1044,17 +1120,23 @@ export default function NewCasePage() {
         ...prev,
         isFetching: false,
         captchaCode: "",
-        message: missingFields.length
-          ? `Imported. Still required: ${missingFields.join(", ")}.`
-          : "Case details imported from eCourts.",
+        message: [
+          missingFields.length
+            ? `Imported. Still required: ${missingFields.join(", ")}.`
+            : "Case details imported from eCourts.",
+          importSummaryMessage,
+        ]
+          .filter(Boolean)
+          .join(" "),
         error: "",
       }));
 
       toast({
         title: "eCourts CNR details imported",
-        description: courtInfo
-          ? "Court info and case details populated."
-          : "Case details populated. Fill court dropdowns manually.",
+        description: importSummaryMessage ||
+          (courtInfo
+            ? "Court info and case details populated."
+            : "Case details populated. Fill court dropdowns manually."),
       });
     } catch (error) {
       setCnrAutoFill((prev) => ({
