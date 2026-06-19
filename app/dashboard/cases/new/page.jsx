@@ -2606,7 +2606,7 @@ export default function NewCasePage() {
   };
 
   return (
-    <div className="space-y-6" ref={pageTopRef}>
+    <div className="mx-auto w-full max-w-7xl space-y-6" ref={pageTopRef}>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Add Case</h1>
@@ -2616,7 +2616,7 @@ export default function NewCasePage() {
         </div>
       </div>
 
-      <div className={`grid grid-cols-1 gap-6 ${activeTab === "party" ? "" : "md:grid-cols-3"}`}>
+      <div className={`grid grid-cols-1 items-start gap-6 ${activeTab === "party" ? "" : "md:grid-cols-3"}`}>
         <div className={activeTab === "party" ? "" : "md:col-span-2"}>
           <CaseTabs
             caseData={caseData}
@@ -2664,7 +2664,7 @@ export default function NewCasePage() {
           />
         </div>
 
-        <div className="hidden md:block">
+        <div className="hidden md:block md:sticky md:top-0 md:self-start">
           <SidebarGuide />
         </div>
       </div>
