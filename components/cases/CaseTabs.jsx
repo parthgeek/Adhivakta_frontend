@@ -131,6 +131,7 @@ export default function CaseTabs({
         <PartySectionTab
           caseData={caseData}
           setCaseData={setCaseData}
+          isLawyer={isLawyer}
           isSubmitting={isSubmitting}
           handleSubmit={handleSubmit}
           router={router}

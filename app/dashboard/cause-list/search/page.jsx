@@ -59,6 +59,7 @@ export default function CauseListSearchPage() {
   const [result, setResult] = useState(null);
   const [tableFilter, setTableFilter] = useState("");
   const [personalizedLoading, setPersonalizedLoading] = useState(false);
+  const [savedPersonalizedLoading, setSavedPersonalizedLoading] = useState(true);
   const [personalizedError, setPersonalizedError] = useState("");
   const [personalizedResult, setPersonalizedResult] = useState(null);
   const [personalizedTableFilter, setPersonalizedTableFilter] = useState("");
@@ -93,20 +94,31 @@ export default function CauseListSearchPage() {
     ? "Fetch the overall cause list published for a selected High Court bench."
     : "Fetch the district eCourts cause list by court and listing type.";
 
-  const resetPersonalizedFlow = () => {
-    setPersonalizedError("");
-    setPersonalizedResult(null);
-    setPersonalizedTableFilter("");
-    setPersonalizedCaptchaCode("");
-    setPersonalizedCaptchaSessionId("");
-    setPersonalizedCaptchaImageUrl("");
-    setPersonalizedCaptchaNonce(0);
-    setPersonalizedCourtOptions([]);
-    setPersonalizedSelectedCourtOptionValue("");
-  };
-
   const applyPersonalizedResponse = (response) => {
-    setPersonalizedResult(response || null);
+    setPersonalizedResult((previousResult) => {
+      const responseEntries = response?.personalized_cases || [];
+      const shouldKeepSavedEntries =
+        !response?.completed &&
+        responseEntries.length === 0 &&
+        previousResult?.saved &&
+        (previousResult?.personalized_cases || []).length > 0;
+
+      if (!shouldKeepSavedEntries) {
+        return response || null;
+      }
+
+      return {
+        ...response,
+        saved: true,
+        displayedSavedDate: previousResult.date,
+        personalized_total_entries:
+          previousResult.personalized_total_entries || 0,
+        personalized_total_cases:
+          previousResult.personalized_total_cases || 0,
+        personalized_sources: previousResult.personalized_sources || [],
+        personalized_cases: previousResult.personalized_cases || [],
+      };
+    });
 
     const options = Array.isArray(response?.courtOptions) ? response.courtOptions : [];
     const nextSessionId = response?.captchaSessionId || "";
@@ -138,7 +150,45 @@ export default function CauseListSearchPage() {
   }, [courtSource]);
 
   useEffect(() => {
-    resetPersonalizedFlow();
+    let cancelled = false;
+
+    (async () => {
+      setSavedPersonalizedLoading(true);
+      try {
+        const response = await api.causeList.getLatestSavedPersonalized();
+        if (
+          !cancelled &&
+          Array.isArray(response?.personalized_cases) &&
+          response.personalized_cases.length > 0
+        ) {
+          setPersonalizedResult(response);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setPersonalizedError(
+            err?.message || "Unable to load the previous personalized cause list."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setSavedPersonalizedLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    setPersonalizedError("");
+    setPersonalizedCaptchaCode("");
+    setPersonalizedCaptchaSessionId("");
+    setPersonalizedCaptchaImageUrl("");
+    setPersonalizedCaptchaNonce(0);
+    setPersonalizedCourtOptions([]);
+    setPersonalizedSelectedCourtOptionValue("");
   }, [selectedDate]);
 
   useEffect(() => {
@@ -791,7 +841,9 @@ export default function CauseListSearchPage() {
                   ? "Personalized High Court flow is not wired on this page yet."
                   : personalizedResult?.workflow?.total_steps
                   ? `Progress: ${personalizedResult.workflow.completed_steps || 0}/${personalizedResult.workflow.total_steps} courts completed`
-                  : "No live personalized session started yet."}
+                  : personalizedResult?.saved
+                    ? `Showing saved personalized cause list for ${toDisplayDate(personalizedResult.date)}`
+                    : "No live personalized session started yet."}
               </div>
               <Button
                 type="button"
@@ -1015,6 +1067,20 @@ export default function CauseListSearchPage() {
             </div>
           ) : null}
 
+          {personalizedResult?.saved ? (
+            <div className="mx-4 mb-4 rounded-lg border border-[#c7d4e4] bg-[#f8fbff] px-4 py-3 text-sm text-[#355487]">
+              Showing the saved personalized cause list for{" "}
+              <span className="font-semibold text-[#20324a]">
+                {toDisplayDate(
+                  personalizedResult.displayedSavedDate || personalizedResult.date
+                )}
+              </span>
+              {personalizedResult?.workflow?.total_steps
+                ? ". It will remain visible until the new personalized flow is completed."
+                : "."}
+            </div>
+          ) : null}
+
           <div className="overflow-x-auto px-4 pb-5">
             <table className="w-full min-w-[980px] border-collapse text-sm">
               <thead>
@@ -1040,7 +1106,14 @@ export default function CauseListSearchPage() {
                 </tr>
               </thead>
               <tbody>
-                {personalizedLoading ? (
+                {savedPersonalizedLoading ? (
+                  <tr>
+                    <td colSpan={6} className="px-3 py-6 text-center text-slate-500">
+                      Loading your previously saved personalized cause list...
+                    </td>
+                  </tr>
+                ) : personalizedLoading &&
+                  (personalizedResult?.personalized_cases || []).length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-3 py-6 text-center text-slate-500">
                       Loading your personalized cause list...

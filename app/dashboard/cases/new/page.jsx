@@ -103,6 +103,137 @@ const toDateOrNull = (value) => {
 const getNonEmptyArray = (value, fallback = []) =>
   Array.isArray(value) && value.length > 0 ? value : fallback;
 
+const normalizePersonName = (value) =>
+  normalizeValue(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+
+const partyMatchesCurrentUser = (party, currentUser) => {
+  const partyName = normalizePersonName(party?.name);
+  const userName = normalizePersonName(currentUser?.name);
+
+  if (!partyName || !userName) return false;
+
+  return (
+    partyName === userName ||
+    (partyName.length >= 5 &&
+      userName.length >= 5 &&
+      (partyName.includes(userName) || userName.includes(partyName)))
+  );
+};
+
+const resolveImportedClientSide = (formData, currentUser, fallbackSide) => {
+  const petitionerMatches = (formData?.petitioners || []).some((party) =>
+    partyMatchesCurrentUser(party, currentUser)
+  );
+  const respondentMatches = (formData?.respondents || []).some((party) =>
+    partyMatchesCurrentUser(party, currentUser)
+  );
+
+  if (petitionerMatches !== respondentMatches) {
+    return petitionerMatches ? "petitioner" : "respondent";
+  }
+
+  const petitionerHasAdvocate = (formData?.petitioners || []).some((party) =>
+    normalizeValue(party?.advocateName)
+  );
+  const respondentHasAdvocate = (formData?.respondents || []).some((party) =>
+    normalizeValue(party?.opposingCounsel)
+  );
+
+  if (petitionerHasAdvocate !== respondentHasAdvocate) {
+    return petitionerHasAdvocate ? "petitioner" : "respondent";
+  }
+
+  return fallbackSide || "petitioner";
+};
+
+const getImportedAdvocateNames = (formData, clientSide) => {
+  const parties =
+    clientSide === "respondent"
+      ? formData?.respondents || []
+      : formData?.petitioners || [];
+  const advocateField =
+    clientSide === "respondent" ? "opposingCounsel" : "advocateName";
+  const seenNames = new Set();
+
+  return parties.reduce((names, party) => {
+    const name = normalizeValue(party?.[advocateField]);
+    const normalizedName = normalizePersonName(name);
+
+    if (name && normalizedName && !seenNames.has(normalizedName)) {
+      seenNames.add(normalizedName);
+      names.push(name);
+    }
+
+    return names;
+  }, []);
+};
+
+const synchronizeSelectedSideAdvocates = (
+  existingAdvocates,
+  caseInfo,
+  clientSide
+) => {
+  const existing = Array.isArray(existingAdvocates)
+    ? existingAdvocates.map((advocate) => ({ ...advocate }))
+    : [];
+  const selectedNames = getImportedAdvocateNames(caseInfo, clientSide);
+  const allPartyNames = new Set([
+    ...getImportedAdvocateNames(caseInfo, "petitioner"),
+    ...getImportedAdvocateNames(caseInfo, "respondent"),
+  ].map(normalizePersonName));
+  const existingByName = new Map(
+    existing
+      .filter((advocate) => normalizePersonName(advocate?.name))
+      .map((advocate) => [normalizePersonName(advocate.name), advocate])
+  );
+  let emptyAdvocate = existing.find(
+    (advocate) => !normalizeValue(advocate?.name)
+  );
+
+  const selectedAdvocates = selectedNames.map((name, index) => {
+    const normalizedName = normalizePersonName(name);
+    const matchingAdvocate = existingByName.get(normalizedName);
+
+    if (matchingAdvocate) {
+      return {
+        ...matchingAdvocate,
+        name,
+        isLead: matchingAdvocate.isLead || index === 0,
+      };
+    }
+
+    if (emptyAdvocate) {
+      const populatedAdvocate = {
+        ...emptyAdvocate,
+        name,
+        isLead: emptyAdvocate.isLead || index === 0,
+      };
+      emptyAdvocate = null;
+      return populatedAdvocate;
+    }
+
+    return {
+      name,
+      email: "",
+      contact: "",
+      company: "",
+      gst: "",
+      poc: "",
+      level: "Senior",
+      isLead: index === 0,
+    };
+  });
+
+  const manualAdvocates = existing.filter((advocate) => {
+    const normalizedName = normalizePersonName(advocate?.name);
+    return normalizedName && !allPartyNames.has(normalizedName);
+  });
+
+  return [...selectedAdvocates, ...manualAdvocates];
+};
+
 const findImportedCaseType = (caseTypes = [], { caseTypeCode = "", caseTypeName = "" } = {}) => {
   const normalizedCode = normalizeValue(caseTypeCode).toLowerCase();
   const normalizedName = normalizeValue(caseTypeName).toLowerCase();
@@ -553,6 +684,28 @@ export default function NewCasePage() {
     });
   }, [user, isLawyer]);
 
+  useEffect(() => {
+    if (!user || isLawyer) return;
+
+    setCaseData((prev) => {
+      const nextAdvocates = synchronizeSelectedSideAdvocates(
+        prev.advocates,
+        prev,
+        prev.clientSide || "petitioner"
+      );
+
+      return JSON.stringify(nextAdvocates) === JSON.stringify(prev.advocates || [])
+        ? prev
+        : { ...prev, advocates: nextAdvocates };
+    });
+  }, [
+    user,
+    isLawyer,
+    caseData.clientSide,
+    caseData.petitioners,
+    caseData.respondents,
+  ]);
+
   const setCourtLookupLoading = (key, value) => {
     setCourtDirectoryLoading((prev) => ({
       ...prev,
@@ -845,8 +998,15 @@ export default function NewCasePage() {
     }
   };
 
-  const applyAutoFilledCaseData = (formData = {}) => {
+  const applyAutoFilledCaseData = (
+    formData = {},
+    { importClientAdvocates = false } = {}
+  ) => {
     setCaseData((prev) => {
+      const importedClientSide =
+        importClientAdvocates && !isLawyer
+          ? resolveImportedClientSide(formData, user, prev.clientSide)
+          : prev.clientSide;
       const nextData = {
         ...prev,
         title: normalizeValue(formData.title) || prev.title,
@@ -887,7 +1047,16 @@ export default function NewCasePage() {
         ),
         interimOrders: getNonEmptyArray(formData.interimOrders, prev.interimOrders),
         finalOrders: getNonEmptyArray(formData.finalOrders, prev.finalOrders),
+        clientSide: importedClientSide,
       };
+
+      if (importClientAdvocates && !isLawyer) {
+        nextData.advocates = synchronizeSelectedSideAdvocates(
+          prev.advocates,
+          nextData,
+          importedClientSide
+        );
+      }
 
       return syncDerivedCaseFields(nextData);
     });
@@ -1078,7 +1247,7 @@ export default function NewCasePage() {
         ? response.importSummary.filledFields
         : [];
 
-      applyAutoFilledCaseData(formData);
+      applyAutoFilledCaseData(formData, { importClientAdvocates: true });
 
       if (courtInfo?.stateCode) {
         setCourtSource("ecourts");
@@ -1860,9 +2029,7 @@ export default function NewCasePage() {
             email: normalizeValue(p.email),
             contact: normalizeValue(p.contact),
             address: normalizeValue(p.address),
-            ...(caseData.clientSide === "respondent"
-              ? { advocateName: normalizeValue(p.advocateName) }
-              : {}),
+            advocateName: normalizeValue(p.advocateName),
           })),
           respondent: (caseData.respondents || []).map((r) => ({
             name: normalizeValue(r.name),
@@ -1871,9 +2038,7 @@ export default function NewCasePage() {
             email: normalizeValue(r.email),
             contact: normalizeValue(r.contact),
             address: normalizeValue(r.address),
-            ...(caseData.clientSide !== "respondent"
-              ? { opposingCounsel: normalizeValue(r.opposingCounsel) }
-              : {}),
+            opposingCounsel: normalizeValue(r.opposingCounsel),
           })),
         },
         clientSide: caseData.clientSide || "petitioner",

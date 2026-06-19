@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { UserPlus, Users, Trash2, Shield, Swords } from "lucide-react";
+import { UserPlus, Users, Trash2, Shield, Swords, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function PartyForm({
@@ -17,6 +17,11 @@ function PartyForm({
   nameError,
   showAdvocateField,
 }) {
+  const advocateName =
+    fieldKey === "petitioners"
+      ? party.advocateName || ""
+      : party.opposingCounsel || "";
+
   const update = (field, value) => {
     const arr = [...partyList];
     arr[idx] = { ...arr[idx], [field]: value };
@@ -100,11 +105,7 @@ function PartyForm({
           <div className="space-y-1.5 md:col-span-2">
             <Label>Advocate</Label>
             <Input
-              value={
-                fieldKey === "petitioners"
-                  ? party.advocateName || ""
-                  : party.opposingCounsel || ""
-              }
+              value={advocateName}
               onChange={(e) =>
                 update(
                   fieldKey === "petitioners" ? "advocateName" : "opposingCounsel",
@@ -113,6 +114,21 @@ function PartyForm({
               }
               placeholder="e.g. Adv. Neha Sharma"
             />
+            {advocateName.trim() && (
+              <div className="mt-2 flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700">
+                  <Scale className="h-3.5 w-3.5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-blue-600">
+                    Advocate
+                  </p>
+                  <p className="truncate text-sm font-semibold text-blue-950">
+                    {advocateName}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -243,6 +259,7 @@ function PartyColumn({
 export default function PartySectionTab({
   caseData,
   setCaseData,
+  isLawyer,
   isSubmitting,
   handleSubmit,
   router,
@@ -274,10 +291,6 @@ export default function PartySectionTab({
                 setCaseData((prev) => ({
                   ...prev,
                   clientSide: "petitioner",
-                  petitioners: (prev.petitioners || []).map((party) => ({
-                    ...party,
-                    advocateName: "",
-                  })),
                 }))
               }
               className={cn(
@@ -305,10 +318,6 @@ export default function PartySectionTab({
                 setCaseData((prev) => ({
                   ...prev,
                   clientSide: "respondent",
-                  respondents: (prev.respondents || []).map((party) => ({
-                    ...party,
-                    opposingCounsel: "",
-                  })),
                 }))
               }
               className={cn(
@@ -348,7 +357,7 @@ export default function PartySectionTab({
             caseData={caseData}
             setCaseData={setCaseData}
             validationErrors={validationErrors}
-            showAdvocateField={!petitionerIsClient}
+            showAdvocateField={!isLawyer || !petitionerIsClient}
           />
 
           {/* Divider */}
@@ -378,7 +387,7 @@ export default function PartySectionTab({
             caseData={caseData}
             setCaseData={setCaseData}
             validationErrors={validationErrors}
-            showAdvocateField={petitionerIsClient}
+            showAdvocateField={!isLawyer || petitionerIsClient}
           />
         </div>
       </CardContent>

@@ -737,6 +737,17 @@ const api = {
 
       return data;
     },
+    getLatestSavedPersonalized: async () => {
+      const response = await fetch(
+        `${API_URL}/cause-list/personalized/saved/latest`,
+        {
+          method: "GET",
+          headers: createHeaders(),
+        }
+      );
+
+      return handleResponse(response);
+    },
     searchPersonalizedLive: async ({
       date,
       listingType,
