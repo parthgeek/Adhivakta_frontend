@@ -15,6 +15,7 @@ import {
   MessageSquare,
   Scale,
   Monitor,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,7 @@ import { useRealTimeCounts } from "@/context/realtime-counts-context";
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: FileText, label: "Cases", path: "/dashboard/cases" },
+  { icon: Sparkles, label: "AI Prep Room", path: "/dashboard/ai-prep-room" },
   { icon: Scale, label: "Cause List Search", path: "/dashboard/cause-list/search" },
   { icon: Monitor, label: "Display Board", path: "/dashboard/display-board" },
   {
