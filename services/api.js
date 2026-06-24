@@ -16,9 +16,17 @@ const handleResponse = async (response) => {
   }
 
   if (!response.ok) {
-    // Handle 401 Unauthorized - trigger logout
+    const isAuthAttempt = /\/auth\/(login|google-login|register|forgot-password|reset-password)(\/|$)/.test(
+      response.url || ""
+    );
+    const hasStoredToken = Boolean(getToken());
+
+    // Handle expired/invalid sessions on protected requests, but do not reload
+    // the login page when a sign-in attempt itself returns 401.
     if (
       response.status === 401 &&
+      hasStoredToken &&
+      !isAuthAttempt &&
       typeof window !== "undefined" &&
       window.__authLogout
     ) {
