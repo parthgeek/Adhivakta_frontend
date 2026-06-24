@@ -137,12 +137,8 @@ export default function CourtInfoTab({
                 onClick={handleLoadCnrCaptcha}
                 disabled={cnrAutoFill?.isLoadingCaptcha || cnrAutoFill?.isFetching}
               >
-                {cnrAutoFill?.isLoadingCaptcha ? (
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Sparkles className="h-4 w-4" />
-                )}
-                {cnrAutoFill?.captchaSessionId ? "Reload" : "Load captcha"}
+             
+                {cnrAutoFill?.captchaSessionId ? "Reload" : " Captcha"}
               </Button>
             </div>
 

@@ -1651,32 +1651,51 @@ const NewDashboard = () => {
   }, [dashboardData.events]);
 
   useEffect(() => {
+    let cancelled = false;
+    const t0 = typeof performance !== "undefined" ? performance.now() : Date.now();
+
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const cases = Array.isArray(await api.cases.getAll()) ? await api.cases.getAll() : [];
-        const events = Array.isArray(await api.events.getAll()) ? await api.events.getAll() : [];
-        let notifications = [];
-        let documents = [];
-        try { const r = await api.notifications.getAll(); notifications = Array.isArray(r) ? r : []; } catch {}
-        try { const r = await api.documents.getAll(); documents = Array.isArray(r) ? r : []; } catch {}
-        const stats = (await api.dashboard.getSummary()) || {
-          totalCases: cases.length,
-          activeCases: cases.filter((c) => c.status === "active").length,
-          closedCases: cases.filter((c) => c.status === "closed").length,
-          urgentCases: 0,
-          upcomingHearings: events.length,
-          documents: documents.length,
-          activeClients: 0,
-        };
-        setDashboardData({ cases, events, notifications, documents, stats });
+        // Fire all requests in parallel (was a 7-call sequential waterfall, with
+        // cases/events fetched twice each via the old `await ... ? await ...`).
+        const toArray = (r) => (Array.isArray(r) ? r : []);
+        const [stats, cases, events, notifications, documents] = await Promise.all([
+          api.dashboard.getSummary().catch(() => null),
+          api.cases.getAll().then(toArray).catch(() => []),
+          api.events.getAll().then(toArray).catch(() => []),
+          api.notifications.getAll().then(toArray).catch(() => []),
+          api.documents.getAll().then(toArray).catch(() => []),
+        ]);
+        if (cancelled) return;
+        setDashboardData({
+          cases,
+          events,
+          notifications,
+          documents,
+          stats: stats || {
+            totalCases: cases.length,
+            activeCases: cases.filter((c) => c.status === "active").length,
+            closedCases: cases.filter((c) => c.status === "closed").length,
+            urgentCases: 0,
+            upcomingHearings: events.length,
+            documents: documents.length,
+            activeClients: 0,
+          },
+        });
       } catch (err) {
         console.error("Error fetching dashboard data:", err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
+        const t1 = typeof performance !== "undefined" ? performance.now() : Date.now();
+        console.debug(`[perf] dashboard load ${Math.round(t1 - t0)}ms`);
       }
     };
+
     fetchDashboardData();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {

@@ -38,9 +38,7 @@ const handleResponse = async (response) => {
 // Helper function to get auth token
 const getToken = () => {
   if (typeof window !== "undefined") {
-    const token = localStorage.getItem("auth_token");
-    console.log("Retrieved token:", token); // Debugging log
-    return token;
+    return localStorage.getItem("auth_token");
   }
   return null;
 };
@@ -54,7 +52,6 @@ const createHeaders = (contentType = "application/json") => {
   const token = getToken();
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
-    console.log("Request headers:", headers); // Debugging log
   }
 
   return headers;
@@ -287,12 +284,6 @@ const api = {
       );
 
       const data = await handleResponse(response);
-      console.log("API service - Raw response data:", data);
-      console.log("API service - data.data:", data.data);
-      console.log(
-        "API service - data.data length:",
-        data.data ? data.data.length : "No data.data"
-      );
       return data.data || [];
     },
 
