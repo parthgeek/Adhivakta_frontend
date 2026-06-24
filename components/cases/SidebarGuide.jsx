@@ -5,7 +5,7 @@ export default function SidebarGuide() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Case Filing Guide</CardTitle>
+        <CardTitle>How to add a case in Adhivakta?</CardTitle>
         <CardDescription>Follow the tabs from left to right to create a case correctly</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
