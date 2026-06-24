@@ -36,6 +36,7 @@ import {
 import { caseTypes as CASE_TYPE_OPTIONS } from "@/lib/caseTypes";
 
 const DEFAULT_CASE_YEAR = String(new Date().getFullYear());
+const TERMINAL_CASE_STATUSES = ["closed", "disposed"];
 const EDIT_CASE_TYPE_SUGGESTIONS = Object.values(CASE_TYPE_OPTIONS)
   .flat()
   .map((caseType) => ({
@@ -309,12 +310,12 @@ export default function EditCasePage() {
   };
 
   const handleSelectChange = (name, value) => {
-    if (name === "status" && value === "closed" && caseData?.status !== "closed") {
+    if (name === "status" && TERMINAL_CASE_STATUSES.includes(value) && !TERMINAL_CASE_STATUSES.includes(caseData?.status)) {
       setShowFinalOrderPrompt(true);
       return;
     }
 
-    if (name === "status" && value !== "closed") {
+    if (name === "status" && !TERMINAL_CASE_STATUSES.includes(value)) {
       setCaseData((prev) => ({
         ...prev,
         status: value,
@@ -383,7 +384,7 @@ export default function EditCasePage() {
     setActiveTab("transfer");
     toast({
       title: "Add final judgment",
-      description: "Complete the Final order / judgment section before saving the closed case.",
+      description: "Complete the Final order / judgment section before saving the closed/disposed case.",
     });
   };
 
@@ -501,11 +502,11 @@ export default function EditCasePage() {
     if (e && e.preventDefault) e.preventDefault();
     if (!caseData) return;
 
-    if (caseData.status === "closed" && (!caseData.finalOrders || caseData.finalOrders.length === 0)) {
+    if (TERMINAL_CASE_STATUSES.includes(caseData.status) && (!caseData.finalOrders || caseData.finalOrders.length === 0)) {
       setActiveTab("transfer");
       toast({
         title: "Final judgment required",
-        description: "Add at least one Final order / judgment entry before saving a closed case.",
+        description: "Add at least one Final order / judgment entry before saving a closed/disposed case.",
         variant: "destructive",
       });
       return;
@@ -620,7 +621,7 @@ export default function EditCasePage() {
           caseSubType: caseData.caseSubType || "",
           status: caseData.status || "active",
           closedAt:
-            caseData.status === "closed"
+            TERMINAL_CASE_STATUSES.includes(caseData.status)
               ? caseData.closedAt
                 ? new Date(caseData.closedAt).toISOString()
                 : new Date().toISOString()
@@ -905,7 +906,8 @@ export default function EditCasePage() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="closed">Closed</SelectItem>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="closed">Closed/Disposed</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -1891,9 +1893,9 @@ export default function EditCasePage() {
       <Dialog open={showFinalOrderPrompt} onOpenChange={setShowFinalOrderPrompt}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Case is being closed</DialogTitle>
+            <DialogTitle>Case is being closed/disposed</DialogTitle>
             <DialogDescription>
-              Closed cases require a Final order / judgment entry. Continue to the judgment section now.
+              Closed/disposed cases require a Final order / judgment entry. Continue to the judgment section now.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

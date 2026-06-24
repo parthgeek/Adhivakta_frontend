@@ -62,6 +62,19 @@ const EMPTY_COURT_DIRECTORY_LOADING = {
 
 const DEFAULT_CASE_YEAR = String(new Date().getFullYear());
 const TAB_ORDER = ["court", "details", "party", "documents", "transfer", "associatedParties"];
+const TERMINAL_CASE_STATUSES = ["closed", "disposed"];
+
+// Auto-save draft so a half-filled "New Case" form survives navigating away / reload.
+const DRAFT_STORAGE_PREFIX = "adhivakta:new-case-draft:";
+const DRAFT_DATE_FIELDS = [
+  "filingDate",
+  "registrationDate",
+  "eFilingDate",
+  "nextHearingDate",
+  "closedAt",
+];
+const getDraftStorageKey = (currentUser) =>
+  `${DRAFT_STORAGE_PREFIX}${getCurrentUserId(currentUser) || "anon"}`;
 const LIGHT_ERROR_TOAST_CLASSNAME =
   "!bg-red-50 !text-red-950 !border !border-red-200";
 const CNR_NUMBER_PATTERN = /^[A-Z]{4}\d{12}$/;
@@ -98,6 +111,17 @@ const toDateOrNull = (value) => {
       : value;
   const parsedDate = new Date(parsedValue);
   return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+};
+
+// JSON.stringify turns Date fields into strings; turn them back into Date objects.
+const reviveDraftDates = (draft = {}) => {
+  const revived = { ...draft };
+  DRAFT_DATE_FIELDS.forEach((field) => {
+    if (revived[field]) {
+      revived[field] = toDateOrNull(revived[field]);
+    }
+  });
+  return revived;
 };
 
 const getNonEmptyArray = (value, fallback = []) =>
@@ -592,6 +616,9 @@ export default function NewCasePage() {
   const isLawyer = user?.role === "lawyer" || user?.role === "admin";
 
   const pageTopRef = useRef(null);
+  const draftRestoredRef = useRef(false);
+  const draftSaveTimerRef = useRef(null);
+  const skipDraftSaveRef = useRef(false);
   const [validationErrors, setValidationErrors] = useState({});
   const [pendingFocusTarget, setPendingFocusTarget] = useState(null);
   const [showFinalOrderPrompt, setShowFinalOrderPrompt] = useState(false);
@@ -654,6 +681,58 @@ export default function NewCasePage() {
       transferHistory: [],
     })
   );
+
+  // Restore a previously auto-saved draft once we know which user it belongs to.
+  useEffect(() => {
+    if (!user || draftRestoredRef.current) return;
+    draftRestoredRef.current = true;
+
+    try {
+      const raw = localStorage.getItem(getDraftStorageKey(user));
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw);
+      if (!parsed?.caseData) return;
+
+      setCaseData(syncDerivedCaseFields(reviveDraftDates(parsed.caseData)));
+      if (parsed.activeTab && TAB_ORDER.includes(parsed.activeTab)) {
+        setActiveTab(parsed.activeTab);
+      }
+
+      toast({
+        title: "Draft restored",
+        description: "We brought back your unsaved case. Continue where you left off.",
+      });
+    } catch (error) {
+      console.error("Failed to restore case draft:", error);
+    }
+  }, [user]);
+
+  // Debounced auto-save of the in-progress form to localStorage.
+  useEffect(() => {
+    if (!user || !draftRestoredRef.current || skipDraftSaveRef.current) return;
+
+    if (draftSaveTimerRef.current) {
+      clearTimeout(draftSaveTimerRef.current);
+    }
+
+    draftSaveTimerRef.current = setTimeout(() => {
+      try {
+        localStorage.setItem(
+          getDraftStorageKey(user),
+          JSON.stringify({ caseData, activeTab, savedAt: Date.now() })
+        );
+      } catch (error) {
+        console.error("Failed to save case draft:", error);
+      }
+    }, 800);
+
+    return () => {
+      if (draftSaveTimerRef.current) {
+        clearTimeout(draftSaveTimerRef.current);
+      }
+    };
+  }, [caseData, activeTab, user]);
 
   useEffect(() => {
     if (!user) return;
@@ -1491,8 +1570,11 @@ export default function NewCasePage() {
     }
 
     const normalizedCnrNumber = normalizeValue(caseData.cnrNumber).toUpperCase();
+    const isCnrRequired = !["high_court", "supreme_court"].includes(
+      caseData.courtType
+    );
 
-    if (!normalizedCnrNumber) {
+    if (isCnrRequired && !normalizedCnrNumber) {
       errors.push({
         tab: "details",
         field: "cnrNumber",
@@ -1500,7 +1582,10 @@ export default function NewCasePage() {
         summary: "CNR number",
         message: "Enter CNR number",
       });
-    } else if (!CNR_NUMBER_PATTERN.test(normalizedCnrNumber)) {
+    } else if (
+      normalizedCnrNumber &&
+      !CNR_NUMBER_PATTERN.test(normalizedCnrNumber)
+    ) {
       errors.push({
         tab: "details",
         field: "cnrNumber",
@@ -1890,11 +1975,11 @@ export default function NewCasePage() {
     e.preventDefault();
 
     try {
-      if (caseData.status === "closed" && (!caseData.finalOrders || caseData.finalOrders.length === 0)) {
+      if (TERMINAL_CASE_STATUSES.includes(caseData.status) && (!caseData.finalOrders || caseData.finalOrders.length === 0)) {
         setActiveTab("transfer");
         toast({
           title: "Final judgment required",
-          description: "Add at least one Final order / judgment entry before saving a closed case.",
+          description: "Add at least one Final order / judgment entry before saving a closed/disposed case.",
           variant: "destructive",
           className: LIGHT_ERROR_TOAST_CLASSNAME,
         });
@@ -1971,11 +2056,11 @@ export default function NewCasePage() {
         caseNumber: normalizeFormattedCaseNumber(caseData.caseNumber),
         caseType: getBackendCaseType(caseData.category),
         caseSubType: normalizeValue(caseData.eCourt?.caseTypeName),
-        status: isUpdatingExistingCase ? caseData.status || "active" : "active",
-        ...(isUpdatingExistingCase
+        status: caseData.status || "active",
+        ...(isUpdatingExistingCase || TERMINAL_CASE_STATUSES.includes(caseData.status)
           ? {
               closedAt:
-                caseData.status === "closed"
+                TERMINAL_CASE_STATUSES.includes(caseData.status)
                   ? caseData.closedAt
                     ? new Date(caseData.closedAt).toISOString()
                     : new Date().toISOString()
@@ -2228,6 +2313,17 @@ export default function NewCasePage() {
           description: `Case ${section} saved successfully`,
         });
       } else {
+        // Case created — drop the saved draft so it doesn't reappear next time.
+        skipDraftSaveRef.current = true;
+        if (draftSaveTimerRef.current) {
+          clearTimeout(draftSaveTimerRef.current);
+        }
+        try {
+          localStorage.removeItem(getDraftStorageKey(user));
+        } catch (error) {
+          console.error("Failed to clear case draft:", error);
+        }
+
         toast({
           title: "Success",
           description: hasPendingReviewDocuments
@@ -2320,22 +2416,12 @@ export default function NewCasePage() {
   };
 
   const handleSelectChange = async (name, value) => {
-    if (name === "status" && value === "closed" && !caseData._id) {
-      toast({
-        title: "Create the case first",
-        description: "You can close a case and add the closed date from the edit screen after creation.",
-        variant: "destructive",
-        className: LIGHT_ERROR_TOAST_CLASSNAME,
-      });
-      return;
-    }
-
-    if (name === "status" && value === "closed" && caseData.status !== "closed") {
+    if (name === "status" && TERMINAL_CASE_STATUSES.includes(value) && !TERMINAL_CASE_STATUSES.includes(caseData.status)) {
       setShowFinalOrderPrompt(true);
       return;
     }
 
-    if (name === "status" && value !== "closed") {
+    if (name === "status" && !TERMINAL_CASE_STATUSES.includes(value)) {
       setCaseData((prev) => ({
         ...prev,
         status: value,
@@ -2642,7 +2728,7 @@ export default function NewCasePage() {
     setActiveTab("transfer");
     toast({
       title: "Add final judgment",
-      description: "Complete the Final order / judgment section before saving the closed case.",
+      description: "Complete the Final order / judgment section before saving the closed/disposed case.",
     });
   };
 
@@ -2814,7 +2900,7 @@ export default function NewCasePage() {
             handleNext={handleNext}
             handleBack={handleBack}
             validationErrors={validationErrors}
-            allowClosedStatus={false}
+            allowClosedStatus={true}
             caseAutoFill={caseAutoFill}
             handleLoadAutoFillCaptcha={handleLoadAutoFillCaptcha}
             handleAutoFillCaptchaChange={handleAutoFillCaptchaChange}
@@ -2837,9 +2923,9 @@ export default function NewCasePage() {
       <Dialog open={showFinalOrderPrompt} onOpenChange={setShowFinalOrderPrompt}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Case is being closed</DialogTitle>
+            <DialogTitle>Case is being closed/disposed</DialogTitle>
             <DialogDescription>
-              Closed cases require a Final order / judgment entry. Continue to the judgment section now.
+              Closed/disposed cases require a Final order / judgment entry. Continue to the judgment section now.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

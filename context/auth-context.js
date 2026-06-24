@@ -180,6 +180,18 @@ export const AuthProvider = ({ children }) => {
     }
   }, [isAuthenticated, logout, clearAuthData, pathname])
 
+  // Expose logout to the API layer so a 401 response can force a client logout.
+  // services/api.js calls window.__authLogout() on 401; without this it was a no-op.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    window.__authLogout = logout
+    return () => {
+      if (window.__authLogout === logout) {
+        delete window.__authLogout
+      }
+    }
+  }, [logout])
+
   // Initial auth check
   useEffect(() => {
     const initAuth = async () => {
@@ -675,12 +687,14 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    logoutOtherSessions,
     loginWithGoogle,
     resetPassword,
     changePassword,
     sendVerificationEmail,
     checkEmailVerified,
     validateSession: () => validateSession(true),
+    refreshUser: () => validateSession(true),
   }
 
   return (

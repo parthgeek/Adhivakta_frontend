@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { useAuth } from "@/context/auth-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,10 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Loader2, Bell, Shield, Mail, Pencil, Crown } from "lucide-react"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Loader2, Bell, Clock, LogOut, Mail, Pencil, Crown } from "lucide-react"
 import api from "@/services/api"
-import { useTheme } from "next-themes"
 import SubscriptionSettings from "@/components/subscription/subscription-settings"
 import { useLanguage } from "@/context/language-context"
 
@@ -27,16 +24,11 @@ const DEFAULT_NOTIFICATION_SETTINGS = {
 }
 
 const DEFAULT_SECURITY_SETTINGS = {
-  twoFactorAuth: false,
   loginAlerts: true,
   sessionTimeout: "30",
 }
 
-const DEFAULT_APPEARANCE_SETTINGS = {
-  theme: "system",
-  fontSize: "medium",
-  language: "english",
-}
+const SESSION_TIMEOUT_OPTIONS = ["15", "30", "60", "120", "240"]
 
 const mergeBooleanSettings = (settings, defaults) =>
   Object.keys(defaults).reduce((acc, key) => {
@@ -44,33 +36,22 @@ const mergeBooleanSettings = (settings, defaults) =>
     return acc
   }, {})
 
-const normalizeSecuritySettings = (settings) => ({
-  ...DEFAULT_SECURITY_SETTINGS,
-  ...mergeBooleanSettings(settings, {
-    twoFactorAuth: DEFAULT_SECURITY_SETTINGS.twoFactorAuth,
-    loginAlerts: DEFAULT_SECURITY_SETTINGS.loginAlerts,
-  }),
-  sessionTimeout: String(settings?.sessionTimeout ?? DEFAULT_SECURITY_SETTINGS.sessionTimeout),
-})
-
-const normalizeAppearanceSettings = (settings) => ({
-  ...DEFAULT_APPEARANCE_SETTINGS,
-  theme: ["light", "dark", "system"].includes(settings?.theme) ? settings.theme : DEFAULT_APPEARANCE_SETTINGS.theme,
-  fontSize: ["small", "medium", "large"].includes(settings?.fontSize)
-    ? settings.fontSize
-    : DEFAULT_APPEARANCE_SETTINGS.fontSize,
-  language: ["english", "hindi", "kannada", "tamil", "telugu", "marathi"].includes(settings?.language)
-    ? settings.language
-    : DEFAULT_APPEARANCE_SETTINGS.language,
-})
+const normalizeSecuritySettings = (settings) => {
+  const sessionTimeout = String(settings?.sessionTimeout ?? DEFAULT_SECURITY_SETTINGS.sessionTimeout)
+  return {
+    loginAlerts: typeof settings?.loginAlerts === "boolean" ? settings.loginAlerts : DEFAULT_SECURITY_SETTINGS.loginAlerts,
+    sessionTimeout: SESSION_TIMEOUT_OPTIONS.includes(sessionTimeout)
+      ? sessionTimeout
+      : DEFAULT_SECURITY_SETTINGS.sessionTimeout,
+  }
+}
 
 export default function SettingsPage() {
-  const { user, refreshUser } = useAuth()
-  const { theme, setTheme } = useTheme()
-  const { language, changeLanguage, t } = useLanguage()
-  const router = useRouter()
+  const { user, refreshUser, logoutOtherSessions } = useAuth()
+  const { t } = useLanguage()
   const [isLoading, setIsLoading] = useState(false)
-  const [isFetching, setIsFetching] = useState(true) // New state for initial fetch
+  const [isFetching, setIsFetching] = useState(true)
+  const [isSigningOutSessions, setIsSigningOutSessions] = useState(false)
   const [profileData, setProfileData] = useState({
     name: "",
     email: "",
@@ -89,11 +70,20 @@ export default function SettingsPage() {
   })
   const [notificationSettings, setNotificationSettings] = useState(DEFAULT_NOTIFICATION_SETTINGS)
   const [securitySettings, setSecuritySettings] = useState(DEFAULT_SECURITY_SETTINGS)
-  const [appearanceSettings, setAppearanceSettings] = useState(DEFAULT_APPEARANCE_SETTINGS)
   const [successMessage, setSuccessMessage] = useState("")
   const [errorMessage, setErrorMessage] = useState("")
   const [phoneError, setPhoneError] = useState("")
-  const [currentFontSize, setCurrentFontSize] = useState("medium")
+  const [passwordError, setPasswordError] = useState("")
+
+  // Auto-clear feedback banners
+  useEffect(() => {
+    if (!successMessage && !errorMessage) return
+    const id = setTimeout(() => {
+      setSuccessMessage("")
+      setErrorMessage("")
+    }, 4000)
+    return () => clearTimeout(id)
+  }, [successMessage, errorMessage])
 
   // Skeleton Component for Settings
   const SettingsSkeleton = () => (
@@ -161,30 +151,11 @@ export default function SettingsPage() {
       })
 
       setNotificationSettings(mergeBooleanSettings(profile.data.notificationSettings, DEFAULT_NOTIFICATION_SETTINGS))
-      setSecuritySettings(normalizeSecuritySettings(profile.data.securitySettings))
 
-      // Set appearance settings if available
-      if (profile.data.appearanceSettings) {
-        const nextAppearanceSettings = normalizeAppearanceSettings(profile.data.appearanceSettings)
-        setAppearanceSettings(nextAppearanceSettings)
-
-        // Apply font size from settings
-        if (nextAppearanceSettings.fontSize) {
-          setCurrentFontSize(nextAppearanceSettings.fontSize)
-          applyFontSize(nextAppearanceSettings.fontSize)
-        }
-
-        // Apply language from settings
-        // Apply language from settings
-        if (nextAppearanceSettings.language) {
-          changeLanguage(nextAppearanceSettings.language)
-        }
-
-        // Apply theme from settings
-        if (nextAppearanceSettings.theme) {
-          setTheme(nextAppearanceSettings.theme)
-        }
-      }
+      const nextSecurity = normalizeSecuritySettings(profile.data.securitySettings)
+      setSecuritySettings(nextSecurity)
+      // Keep the inactivity auto-logout (dashboard layout) in sync with the saved value.
+      localStorage.setItem("sessionTimeout", nextSecurity.sessionTimeout)
     } catch (error) {
       console.error("Error fetching profile:", error)
       // Fallback to user data from auth context
@@ -202,21 +173,15 @@ export default function SettingsPage() {
 
   useEffect(() => {
     fetchUserProfile()
-
-    // Initialize font size from localStorage or default
-    const savedFontSize = localStorage.getItem("fontSize") || "medium"
-    setCurrentFontSize(savedFontSize)
-    applyFontSize(savedFontSize)
-
-    // Initialize language from localStorage or default
-    // const savedLanguage = localStorage.getItem("language") || "english"
-    // setCurrentLanguage(savedLanguage)
-  }, [user, setTheme])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user])
 
   // Handle tab change
   const [activeTab, setActiveTab] = useState("profile")
   const handleTabChange = (value) => {
     setActiveTab(value)
+    setSuccessMessage("")
+    setErrorMessage("")
     if (value === "profile") {
       fetchUserProfile()
       setIsEditing(false)
@@ -226,9 +191,8 @@ export default function SettingsPage() {
   const handleProfileChange = (e) => {
     const { name, value } = e.target
     if (name === "phone") {
-      // Only allow digits
+      // Only allow up to 10 digits
       if (!/^\d*$/.test(value)) return
-      // Validate length
       if (value.length > 10) return
       setProfileData((prev) => ({ ...prev, [name]: value }))
       setPhoneError("")
@@ -240,6 +204,7 @@ export default function SettingsPage() {
   const handlePasswordChange = (e) => {
     const { name, value } = e.target
     setPasswordData((prev) => ({ ...prev, [name]: value }))
+    setPasswordError("")
   }
 
   const handleNotificationChange = (name, value) => {
@@ -250,77 +215,25 @@ export default function SettingsPage() {
     setSecuritySettings((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleAppearanceChange = (name, value) => {
-    setAppearanceSettings((prev) => ({ ...prev, [name]: value }))
-
-    // Apply changes immediately
-    if (name === "theme") {
-      setTheme(value)
-    } else if (name === "fontSize") {
-      setCurrentFontSize(value)
-      applyFontSize(value)
-      localStorage.setItem("fontSize", value)
-    } else if (name === "language") {
-      changeLanguage(value)
-    }
-  }
-
-  // Enhanced: Persist theme change immediately
-  const handleThemeChange = async (value) => {
-    setAppearanceSettings((prev) => ({ ...prev, theme: value }))
-    setTheme(value)
-    try {
-      const response = await api.users.updateAppearance({ theme: value })
-      setAppearanceSettings(normalizeAppearanceSettings(response.data))
-      setSuccessMessage("Theme preference saved!")
-    } catch (error) {
-      setErrorMessage("Failed to save theme preference.")
-    }
-  }
-
-  // Function to apply font size to the document
-  const applyFontSize = (size) => {
-    const html = document.documentElement
-
-    // Remove any existing font size classes
-    html.classList.remove("text-sm", "text-base", "text-lg")
-
-    // Apply the appropriate class based on the selected size
-    switch (size) {
-      case "small":
-        html.classList.add("text-sm")
-        break
-      case "medium":
-        html.classList.add("text-base")
-        break
-      case "large":
-        html.classList.add("text-lg")
-        break
-      default:
-        html.classList.add("text-base")
-    }
-  }
-
   const updateProfile = async (e) => {
     e.preventDefault()
-    setIsLoading(true)
     setSuccessMessage("")
     setErrorMessage("")
     setPhoneError("")
-    // Frontend phone validation
+
     if (profileData.phone && !/^\d{10}$/.test(profileData.phone)) {
       setPhoneError("Phone number must be exactly 10 digits.")
-      setIsLoading(false)
       return
     }
+
+    setIsLoading(true)
     try {
       await api.users.updateProfile(profileData)
       setSuccessMessage("Profile updated successfully")
       setIsEditing(false)
-      fetchUserProfile()
-      if (refreshUser) await refreshUser(); // Update AuthContext and localStorage
+      await fetchUserProfile()
+      if (refreshUser) await refreshUser()
     } catch (error) {
-      // Show backend error if available
       setErrorMessage(error.message || "Failed to update profile. Please try again.")
     } finally {
       setIsLoading(false)
@@ -329,16 +242,24 @@ export default function SettingsPage() {
 
   const updatePassword = async (e) => {
     e.preventDefault()
-    setIsLoading(true)
     setSuccessMessage("")
     setErrorMessage("")
+    setPasswordError("")
 
+    if (passwordData.newPassword.length < 8) {
+      setPasswordError("New password must be at least 8 characters.")
+      return
+    }
+    if (passwordData.newPassword === passwordData.currentPassword) {
+      setPasswordError("New password must be different from the current password.")
+      return
+    }
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setErrorMessage("New passwords do not match")
-      setIsLoading(false)
+      setPasswordError("New passwords do not match.")
       return
     }
 
+    setIsLoading(true)
     try {
       await api.users.changePassword(passwordData)
       setSuccessMessage("Password updated successfully")
@@ -349,7 +270,7 @@ export default function SettingsPage() {
       })
     } catch (error) {
       console.error("Error updating password:", error)
-      setErrorMessage("Failed to update password. Please check your current password and try again.")
+      setErrorMessage(error.message || "Failed to update password. Please check your current password and try again.")
     } finally {
       setIsLoading(false)
     }
@@ -381,8 +302,15 @@ export default function SettingsPage() {
     setErrorMessage("")
 
     try {
-      const response = await api.users.updateSecurity(securitySettings)
-      setSecuritySettings(normalizeSecuritySettings(response.data))
+      const payload = {
+        loginAlerts: securitySettings.loginAlerts,
+        sessionTimeout: Number(securitySettings.sessionTimeout),
+      }
+      const response = await api.users.updateSecurity(payload)
+      const nextSecurity = normalizeSecuritySettings(response.data)
+      setSecuritySettings(nextSecurity)
+      // Apply the new timeout to the active inactivity watcher immediately.
+      localStorage.setItem("sessionTimeout", nextSecurity.sessionTimeout)
       setSuccessMessage("Security settings updated successfully")
     } catch (error) {
       console.error("Error updating security settings:", error)
@@ -392,25 +320,18 @@ export default function SettingsPage() {
     }
   }
 
-  const updateAppearance = async (e) => {
-    e.preventDefault()
-    setIsLoading(true)
+  const handleSignOutOtherSessions = async () => {
+    setIsSigningOutSessions(true)
     setSuccessMessage("")
     setErrorMessage("")
-
     try {
-      const response = await api.users.updateAppearance(appearanceSettings)
-      setAppearanceSettings(normalizeAppearanceSettings(response.data))
-      setSuccessMessage("Appearance settings updated successfully")
+      await logoutOtherSessions()
     } catch (error) {
-      console.error("Error updating appearance settings:", error)
-      setErrorMessage("Failed to update appearance settings. Please try again.")
+      // logoutOtherSessions surfaces its own toast; nothing extra needed here.
     } finally {
-      setIsLoading(false)
+      setIsSigningOutSessions(false)
     }
   }
-
-
 
   if (isFetching) {
     return <SettingsSkeleton />
@@ -427,12 +348,11 @@ export default function SettingsPage() {
       {errorMessage && <div className="bg-red-50 text-red-800 p-4 rounded-md mb-4">{errorMessage}</div>}
 
       <Tabs defaultValue="profile" value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="profile">{t.profile}</TabsTrigger>
           <TabsTrigger value="password">{t.password}</TabsTrigger>
           <TabsTrigger value="notifications">{t.notifications}</TabsTrigger>
           <TabsTrigger value="security">{t.security}</TabsTrigger>
-          <TabsTrigger value="appearance">{t.appearance}</TabsTrigger>
           <TabsTrigger value="subscription" className="flex items-center gap-1">
             <Crown className="h-3 w-3" />
             Subscription
@@ -466,17 +386,26 @@ export default function SettingsPage() {
                       name="email"
                       type="email"
                       value={profileData.email}
-                      onChange={handleProfileChange}
-                      required
-                      readOnly={!isEditing}
+                      readOnly
+                      disabled
+                      className="bg-muted/50"
                     />
+                    <p className="text-xs text-muted-foreground">Email is your sign-in identity and cannot be changed here.</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="phone">Phone Number</Label>
-                    <Input id="phone" name="phone" value={profileData.phone} onChange={handleProfileChange} readOnly={!isEditing} />
+                    <Input
+                      id="phone"
+                      name="phone"
+                      inputMode="numeric"
+                      value={profileData.phone}
+                      onChange={handleProfileChange}
+                      readOnly={!isEditing}
+                      placeholder="10-digit mobile number"
+                    />
                     {phoneError && <div className="text-red-600 text-xs mt-1">{phoneError}</div>}
                   </div>
                   {user?.role === "lawyer" && (
@@ -510,6 +439,8 @@ export default function SettingsPage() {
                       <Input
                         id="yearsOfExperience"
                         name="yearsOfExperience"
+                        type="number"
+                        min="0"
                         value={profileData.yearsOfExperience}
                         onChange={handleProfileChange}
                         readOnly={!isEditing}
@@ -538,12 +469,28 @@ export default function SettingsPage() {
                     value={profileData.bio}
                     onChange={handleProfileChange}
                     rows={4}
+                    maxLength={500}
                     placeholder="Tell us about your professional background and expertise"
                     readOnly={!isEditing}
                   />
+                  {isEditing && (
+                    <p className="text-xs text-muted-foreground text-right">{profileData.bio.length}/500</p>
+                  )}
                 </div>
                 {isEditing && (
-                  <div className="flex justify-end">
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setIsEditing(false)
+                        setPhoneError("")
+                        fetchUserProfile()
+                      }}
+                      disabled={isLoading}
+                    >
+                      Cancel
+                    </Button>
                     <Button type="submit" form="profile-form" disabled={isLoading}>
                       {isLoading ? (
                         <>
@@ -575,6 +522,7 @@ export default function SettingsPage() {
                     id="currentPassword"
                     name="currentPassword"
                     type="password"
+                    autoComplete="current-password"
                     value={passwordData.currentPassword}
                     onChange={handlePasswordChange}
                     required
@@ -586,10 +534,13 @@ export default function SettingsPage() {
                     id="newPassword"
                     name="newPassword"
                     type="password"
+                    autoComplete="new-password"
                     value={passwordData.newPassword}
                     onChange={handlePasswordChange}
                     required
+                    minLength={8}
                   />
+                  <p className="text-xs text-muted-foreground">Use at least 8 characters.</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword">Confirm New Password</Label>
@@ -597,11 +548,13 @@ export default function SettingsPage() {
                     id="confirmPassword"
                     name="confirmPassword"
                     type="password"
+                    autoComplete="new-password"
                     value={passwordData.confirmPassword}
                     onChange={handlePasswordChange}
                     required
                   />
                 </div>
+                {passwordError && <div className="text-red-600 text-xs">{passwordError}</div>}
               </form>
             </CardContent>
             <CardFooter className="flex justify-end">
@@ -711,9 +664,7 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
               <form id="security-form" onSubmit={updateSecurity} className="space-y-6">
-
-
-                <div className="flex items-center justify-between border-t pt-4">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Bell className="h-5 w-5 text-muted-foreground" />
                     <div>
@@ -728,26 +679,61 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="border-t pt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="sessionTimeout">Session Timeout (minutes)</Label>
-                    <Select
-                      value={securitySettings.sessionTimeout}
-                      onValueChange={(value) => handleSecurityChange("sessionTimeout", value)}
-                    >
-                      <SelectTrigger id="sessionTimeout">
-                        <SelectValue placeholder="Select timeout duration" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="15">15 minutes</SelectItem>
-                        <SelectItem value="30">30 minutes</SelectItem>
-                        <SelectItem value="60">1 hour</SelectItem>
-                        <SelectItem value="120">2 hours</SelectItem>
-                        <SelectItem value="240">4 hours</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="flex items-start space-x-2">
+                    <Clock className="mt-0.5 h-5 w-5 text-muted-foreground" />
+                    <div className="flex-1 space-y-2">
+                      <Label htmlFor="sessionTimeout">Session Timeout</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Automatically sign out after this period of inactivity.
+                      </p>
+                      <Select
+                        value={securitySettings.sessionTimeout}
+                        onValueChange={(value) => handleSecurityChange("sessionTimeout", value)}
+                      >
+                        <SelectTrigger id="sessionTimeout" className="max-w-xs">
+                          <SelectValue placeholder="Select timeout duration" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="15">15 minutes</SelectItem>
+                          <SelectItem value="30">30 minutes</SelectItem>
+                          <SelectItem value="60">1 hour</SelectItem>
+                          <SelectItem value="120">2 hours</SelectItem>
+                          <SelectItem value="240">4 hours</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
               </form>
+
+              <div className="mt-6 border-t pt-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start space-x-2">
+                    <LogOut className="mt-0.5 h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">Active Sessions</p>
+                      <p className="text-sm text-muted-foreground">
+                        Sign out everywhere else while staying logged in here.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleSignOutOtherSessions}
+                    disabled={isSigningOutSessions}
+                  >
+                    {isSigningOutSessions ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Signing out...
+                      </>
+                    ) : (
+                      "Sign out other sessions"
+                    )}
+                  </Button>
+                </div>
+              </div>
             </CardContent>
             <CardFooter className="flex justify-end">
               <Button type="submit" form="security-form" disabled={isLoading}>
@@ -758,157 +744,6 @@ export default function SettingsPage() {
                   </>
                 ) : (
                   t.saveSettings
-                )}
-              </Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="appearance">
-          <Card>
-            <CardHeader>
-              <CardTitle>Appearance Settings</CardTitle>
-              <CardDescription>Customize how the application looks and feels</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form id="appearance-form" onSubmit={updateAppearance} className="space-y-6">
-                <div className="space-y-4">
-                  <h3 className="text-sm font-medium">Theme</h3>
-                  <RadioGroup
-                    value={appearanceSettings.theme}
-                    onValueChange={handleThemeChange}
-                    className="grid grid-cols-3 gap-4"
-                  >
-                    <div>
-                      <RadioGroupItem value="light" id="theme-light" className="peer sr-only" />
-                      <Label
-                        htmlFor="theme-light"
-                        className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="mb-3 h-6 w-6"
-                        >
-                          <circle cx="12" cy="12" r="4" />
-                          <path d="M12 2v2" />
-                          <path d="M12 20v2" />
-                          <path d="m4.93 4.93 1.41 1.41" />
-                          <path d="m17.66 17.66 1.41 1.41" />
-                          <path d="M2 12h2" />
-                          <path d="M20 12h2" />
-                          <path d="m6.34 17.66-1.41 1.41" />
-                          <path d="m19.07 4.93-1.41 1.41" />
-                        </svg>
-                        Light
-                      </Label>
-                    </div>
-                    <div>
-                      <RadioGroupItem value="dark" id="theme-dark" className="peer sr-only" />
-                      <Label
-                        htmlFor="theme-dark"
-                        className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="mb-3 h-6 w-6"
-                        >
-                          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
-                        </svg>
-                        Dark
-                      </Label>
-                    </div>
-                    <div>
-                      <RadioGroupItem value="system" id="theme-system" className="peer sr-only" />
-                      <Label
-                        htmlFor="theme-system"
-                        className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="mb-3 h-6 w-6"
-                        >
-                          <rect width="20" height="14" x="2" y="3" rx="2" />
-                          <line x1="8" x2="16" y1="21" y2="21" />
-                          <line x1="12" x2="12" />
-                          <line x1="8" x2="16" y1="21" y2="21" />
-                          <line x1="12" x2="12" y1="17" y2="21" />
-                        </svg>
-                        System
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                <div className="space-y-4 border-t pt-4">
-                  <h3 className="text-sm font-medium">Font Size</h3>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <RadioGroup
-                        value={appearanceSettings.fontSize}
-                        onValueChange={(value) => handleAppearanceChange("fontSize", value)}
-                      >
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="small" id="font-small" />
-                          <Label htmlFor="font-small">Small</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="medium" id="font-medium" />
-                          <Label htmlFor="font-medium">Medium</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="large" id="font-large" />
-                          <Label htmlFor="font-large">Large</Label>
-                        </div>
-                      </RadioGroup>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4 border-t pt-4">
-                  <h3 className="text-sm font-medium">Language</h3>
-                  <Select
-                    value={appearanceSettings.language}
-                    onValueChange={(value) => handleAppearanceChange("language", value)}
-                  >
-                    <SelectTrigger id="language">
-                      <SelectValue placeholder="Select language" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="english">English</SelectItem>
-                      <SelectItem value="hindi">Hindi</SelectItem>
-                      <SelectItem value="kannada">Kannada</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </form>
-            </CardContent>
-            <CardFooter className="flex justify-end">
-              <Button type="submit" form="appearance-form" disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t.saving}
-                  </>
-                ) : (
-                  t.savePreferences
                 )}
               </Button>
             </CardFooter>

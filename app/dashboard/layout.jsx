@@ -40,6 +40,39 @@ export default function DashboardLayout({ children }) {
     checkAuth();
   }, [mounted]);
 
+  // Inactivity auto-logout, driven by the user's saved "Session Timeout" security setting.
+  useEffect(() => {
+    if (!mounted || !user) return;
+
+    let timer;
+    const getTimeoutMs = () => {
+      const minutes = parseInt(localStorage.getItem("sessionTimeout") || "30", 10);
+      const safeMinutes = Number.isFinite(minutes) && minutes > 0 ? minutes : 30;
+      return safeMinutes * 60 * 1000;
+    };
+
+    const doLogout = () => {
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("user");
+      sessionStorage.clear();
+      window.location.href = "/auth/login?reason=timeout";
+    };
+
+    const resetTimer = () => {
+      clearTimeout(timer);
+      timer = setTimeout(doLogout, getTimeoutMs());
+    };
+
+    const activityEvents = ["mousemove", "mousedown", "keydown", "scroll", "touchstart"];
+    activityEvents.forEach((evt) => window.addEventListener(evt, resetTimer, { passive: true }));
+    resetTimer();
+
+    return () => {
+      clearTimeout(timer);
+      activityEvents.forEach((evt) => window.removeEventListener(evt, resetTimer));
+    };
+  }, [mounted, user]);
+
   if (!mounted || loading) {
     return (
       <div className="flex h-screen items-center justify-center">

@@ -108,6 +108,13 @@ export function LoginForm() {
         return
       }
 
+      // New Google user with no account yet: ask them to pick a role, then complete sign-up.
+      if (error.requiresRole) {
+        setShowRoleDialog(true)
+        setError("")
+        return
+      }
+
       // Handle specific error for new users
       if (error.message && error.message.includes("Please register first")) {
         setError("Account not found. Please register first from the sign-up page.")

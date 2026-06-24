@@ -33,6 +33,9 @@ export default function CaseDetailsTab({
   const getInputClassName = (field) =>
     getFieldError(field) ? "border-destructive/50 bg-red-50 focus-visible:ring-red-300" : "";
   const getLabelClassName = (field) => (getFieldError(field) ? "text-red-800" : "");
+  const isCnrRequired = !["high_court", "supreme_court"].includes(
+    caseData?.courtType
+  );
   const selectedCaseType = [
     caseData.caseCode,
     typeof caseData.eCourt?.caseTypeName === "string"
@@ -141,7 +144,7 @@ export default function CaseDetailsTab({
 
           <div className="space-y-2">
             <Label htmlFor="cnrNumber" className={getLabelClassName("cnrNumber")}>
-              CNR Number <span className="text-red-500">*</span>
+              CNR Number {isCnrRequired ? <span className="text-red-500">*</span> : null}
             </Label>
             <Input
               id="cnrNumber"
@@ -151,7 +154,7 @@ export default function CaseDetailsTab({
               placeholder="MHAU019999992015"
               className={getInputClassName("cnrNumber")}
               maxLength={16}
-              required
+              required={isCnrRequired}
             />
             {/* <p className="text-xs text-muted-foreground">
               Example: MHAU019999992015
@@ -175,7 +178,8 @@ export default function CaseDetailsTab({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="active">Active</SelectItem>
-                {allowClosedStatus && <SelectItem value="closed">Closed</SelectItem>}
+                <SelectItem value="pending">Pending</SelectItem>
+                {allowClosedStatus && <SelectItem value="closed">Closed/Disposed</SelectItem>}
               </SelectContent>
             </Select>
             {getFieldError("status") && (
