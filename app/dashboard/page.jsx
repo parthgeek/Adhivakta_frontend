@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/context/auth-context";
 import {
   FileText,
-  Users,
   Calendar,
   AlertCircle,
   Briefcase,
@@ -140,6 +139,46 @@ const getTodayIsoDate = () => {
   return `${now.getFullYear()}-${padDatePart(now.getMonth() + 1)}-${padDatePart(now.getDate())}`;
 };
 
+const formatDashboardDate = (value) => {
+  if (!value) {
+    return "";
+  }
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return String(value);
+  }
+
+  return parsedDate.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+const formatNumericDate = (value, separator = "/") => {
+  if (!value) {
+    return "";
+  }
+
+  const stringValue = String(value);
+  const isoDateMatch = stringValue.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoDateMatch) {
+    return [isoDateMatch[3], isoDateMatch[2], isoDateMatch[1]].join(separator);
+  }
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return stringValue;
+  }
+
+  return [
+    padDatePart(parsedDate.getDate()),
+    padDatePart(parsedDate.getMonth() + 1),
+    parsedDate.getFullYear(),
+  ].join(separator);
+};
+
 const getCaseDisplayLabel = (caseItem = {}) =>
   caseItem.title || caseItem.caseNumber || caseItem.cnrNumber || "Untitled case";
 
@@ -256,7 +295,7 @@ const DashboardSkeleton = () => (
 
 // ─── WelcomeBanner ───────────────────────────────────────────────────────────
 
-const WelcomeBanner = ({ user, todayHearings, overdueTasks }) => {
+const WelcomeBanner = ({ user, todayHearings, overdueTasks, statsCards = [] }) => {
   const today = new Date();
   const hour = today.getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
@@ -267,7 +306,7 @@ const WelcomeBanner = ({ user, todayHearings, overdueTasks }) => {
 
   return (
     <div
-      className="relative overflow-hidden rounded-2xl p-8 text-white"
+      className="relative overflow-hidden rounded-2xl p-5 text-white sm:p-6"
       style={{ background: `linear-gradient(135deg, ${BRAND} 0%, #1a4a8a 60%, #0d3a6e 100%)` }}
     >
       {/* decorative circles */}
@@ -276,13 +315,13 @@ const WelcomeBanner = ({ user, todayHearings, overdueTasks }) => {
 
       <div className="relative flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-2">
             <Sparkles className="h-4 w-4 text-blue-300" />
             <span className="text-xs font-semibold uppercase tracking-widest text-blue-200">
               Advocate Workspace
             </span>
           </div>
-          <h1 className="text-3xl font-bold mb-2">
+          <h1 className="text-2xl font-bold mb-2 sm:text-3xl">
             {greeting}, {firstName}
           </h1>
           <p className="text-blue-100 text-sm leading-relaxed">
@@ -299,13 +338,42 @@ const WelcomeBanner = ({ user, todayHearings, overdueTasks }) => {
           <span>{dateStr}</span>
         </div>
       </div>
+
+      {statsCards.length > 0 ? (
+        <div className="relative mt-5 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+          {statsCards.map((card) => (
+            <StatsCard key={card.title} {...card} compact />
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 };
 
 // ─── StatsCard ───────────────────────────────────────────────────────────────
 
-const StatsCard = ({ title, value, sub, icon: Icon, iconBg, iconColor, href }) => {
+const StatsCard = ({ title, value, sub, icon: Icon, iconBg, iconColor, href, compact = false }) => {
+  if (compact) {
+    const content = (
+      <div className="group rounded-xl border border-white/15 bg-white/10 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-sm transition duration-300 hover:bg-white/15 active:translate-y-[1px]">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15">
+            <Icon className={cn("h-4 w-4", iconColor)} />
+          </div>
+          <TrendingUp className="h-3.5 w-3.5 text-emerald-200 opacity-80 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+        </div>
+        <p className="mt-3 truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-100">
+          {title}
+        </p>
+        <div className="mt-1 flex items-end gap-2">
+          <p className="font-mono text-2xl font-bold leading-none text-white">{value ?? 0}</p>
+          <p className="min-w-0 truncate pb-0.5 text-[11px] font-medium text-blue-100/85">{sub}</p>
+        </div>
+      </div>
+    );
+    return href ? <Link href={href}>{content}</Link> : content;
+  }
+
   const content = (
     <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-3">
@@ -340,11 +408,11 @@ const UpcomingHearingsTable = ({ events = [], cases = [] }) => {
     .slice(0, 5);
 
   return (
-    <Card>
+    <Card className="flex h-full flex-col">
       <CardHeader className="flex flex-row items-start justify-between pb-2">
         <div>
           <CardTitle className="font-heading text-lg font-bold text-gray-900">Upcoming Hearings</CardTitle>
-          <p className="text-xs text-gray-400 mt-0.5">Next {Math.min(upcoming.length || 5, 5)} scheduled across all advocates</p>
+          <p className="text-xs text-gray-400 mt-0.5">Your next {Math.min(upcoming.length || 5, 5)} scheduled hearings</p>
         </div>
         <Link href="/dashboard/calendar">
           <span className="text-sm font-medium text-[#03234b] hover:underline cursor-pointer">
@@ -352,14 +420,14 @@ const UpcomingHearingsTable = ({ events = [], cases = [] }) => {
           </span>
         </Link>
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent className="flex flex-1 flex-col p-0">
         {upcoming.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+          <div className="flex flex-1 flex-col items-center justify-center py-12 text-gray-400">
             <Calendar className="h-12 w-12 mb-3 text-gray-200" />
             <p className="font-medium text-gray-500">No upcoming hearings</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="flex-1 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100">
@@ -426,7 +494,7 @@ const UpcomingHearingsTable = ({ events = [], cases = [] }) => {
           </div>
         )}
         {upcoming.length > 0 && (
-          <div className="px-4 py-3 border-t border-gray-100">
+          <div className="mt-auto px-4 py-3 border-t border-gray-100">
             <Link href="/dashboard/hearings" className="text-sm font-medium text-[#03234b] hover:underline">
               View all hearings →
             </Link>
@@ -590,88 +658,133 @@ const CasesByCategoryChart = ({ cases = [] }) => {
   );
 };
 
-// ─── TasksAndTeam ─────────────────────────────────────────────────────────────
+// ─── CasesByCourtState ──────────────────────────────────────────────────────
 
-const TasksAndTeam = ({ cases = [], notifications = [] }) => {
-  const pendingCount = notifications.filter((n) => !n.read).length;
-  const doneCount = notifications.filter((n) => n.read).length;
-  const overdueCount = notifications.filter((n) => n.meta?.priority === "high" && !n.read).length;
+const getCaseCourtLabel = (caseItem = {}) =>
+  safeText(caseItem.eCourt?.court) ||
+  safeText(caseItem.court) ||
+  safeText(caseItem.courtName) ||
+  safeText(caseItem.courtComplex) ||
+  safeText(caseItem.eCourt?.complex) ||
+  "Court not specified";
 
-  const topAdvocates = useMemo(() => {
-    const map = {};
-    cases.forEach((c) => {
-      const name =
-        formatLegalTeamSummary(c) ||
-        safeText(c.lawyer) ||
-        safeText(c.assignedTo) ||
-        safeText(c.advocate);
-      if (name) {
-        if (!map[name]) map[name] = { name, count: 0 };
-        map[name].count++;
-      }
-    });
-    return Object.values(map)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 4);
-  }, [cases]);
+const getCaseStateLabel = (caseItem = {}) => {
+  const courtLabel = safeText(caseItem.eCourt?.court) || safeText(caseItem.court) || "";
+  const isSupremeCourt =
+    caseItem.courtType === "supreme_court" ||
+    caseItem.eCourt?.source === "supremecourt" ||
+    caseItem.eCourt?.stateCode === "IND" ||
+    /supreme court of india/i.test(courtLabel);
 
-  const taskCards = [
-    { label: "Pending", value: pendingCount, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
-    { label: "Done",    value: doneCount,    color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
-    { label: "Overdue", value: overdueCount, color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-100" },
-  ];
+  if (isSupremeCourt) {
+    return "Supreme Court of India";
+  }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-lg font-bold text-gray-900">Tasks &amp; Team</CardTitle>
-        <Link href="/dashboard/notifications" className="text-xs font-medium text-[#03234b] hover:underline">
-          All
-        </Link>
-      </CardHeader>
-      <CardContent className="space-y-5">
-        {/* Task metric cards */}
-        <div className="grid grid-cols-3 gap-3">
-          {taskCards.map((card) => (
-            <div key={card.label} className={cn("rounded-xl border p-3 text-center", card.bg, card.border)}>
-              <p className={cn("text-2xl font-bold", card.color)}>{card.value}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{card.label}</p>
-            </div>
+    safeText(caseItem.eCourt?.state) ||
+    safeText(caseItem.courtState) ||
+    safeText(caseItem.state) ||
+    "State not specified"
+  );
+};
+
+const CasesByCourtState = ({ cases = [] }) => {
+  const [groupBy, setGroupBy] = useState("court");
+
+  const data = useMemo(() => {
+    const counts = new Map();
+
+    cases.forEach((caseItem) => {
+      const label =
+        groupBy === "state"
+          ? getCaseStateLabel(caseItem)
+          : getCaseCourtLabel(caseItem);
+      counts.set(label, (counts.get(label) || 0) + 1);
+    });
+
+    return Array.from(counts.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name))
+      .slice(0, 6);
+  }, [cases, groupBy]);
+
+  const total = cases.length;
+  const topCount = data[0]?.value || 0;
+
+  return (
+    <Card className="h-full">
+      <CardHeader className="flex flex-row items-start justify-between gap-3 pb-2">
+        <div>
+          <CardTitle className="text-lg font-bold text-gray-900">
+            Cases by {groupBy === "state" ? "State" : "Court"}
+          </CardTitle>
+          <p className="text-xs text-gray-400">
+            Distribution across {total} case{total !== 1 ? "s" : ""}
+          </p>
+        </div>
+        <div className="grid grid-cols-2 rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-xs font-semibold">
+          {[
+            { value: "court", label: "Courts" },
+            { value: "state", label: "States" },
+          ].map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setGroupBy(option.value)}
+              className={cn(
+                "rounded-md px-2.5 py-1.5 transition active:translate-y-[1px]",
+                groupBy === option.value
+                  ? "bg-white text-[#03234b] shadow-sm"
+                  : "text-slate-500 hover:text-slate-800"
+              )}
+            >
+              {option.label}
+            </button>
           ))}
         </div>
-
-        {/* Top Advocates */}
-        {topAdvocates.length > 0 && (
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
-              Top Advocates
-            </p>
-            <div className="space-y-3">
-              {topAdvocates.map((adv, idx) => (
-                <div key={adv.name} className="flex items-center gap-3">
-                  <div className={cn(
-                    "h-9 w-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
-                    AVATAR_COLORS[idx % AVATAR_COLORS.length]
-                  )}>
-                    {getInitials(adv.name)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-gray-800 truncate">{adv.name}</p>
-                    <p className="text-xs text-gray-400">Advocate</p>
-                  </div>
-                  <span className="shrink-0 rounded-full bg-[#03234b]/10 px-2.5 py-0.5 text-xs font-semibold text-[#03234b]">
-                    {adv.count}
-                  </span>
-                </div>
-              ))}
-            </div>
+      </CardHeader>
+      <CardContent>
+        {total === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+            <Scale className="h-10 w-10 mb-2 text-gray-200" />
+            <p className="text-sm">No court data yet</p>
           </div>
-        )}
+        ) : (
+          <div className="space-y-3">
+            {data.map((entry, index) => {
+              const percentage = total > 0 ? Math.round((entry.value / total) * 100) : 0;
+              const barWidth = topCount > 0 ? Math.max(8, (entry.value / topCount) * 100) : 0;
 
-        {topAdvocates.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-4 text-gray-400">
-            <Users className="h-8 w-8 mb-2 text-gray-200" />
-            <p className="text-sm">No advocate data yet</p>
+              return (
+                <div key={entry.name} className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: CATEGORY_COLORS[index % CATEGORY_COLORS.length] }}
+                        />
+                        <p className="truncate text-sm font-semibold text-slate-900">
+                          {entry.name}
+                        </p>
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {entry.value} case{entry.value !== 1 ? "s" : ""} • {percentage}%
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-[#03234b]/10 px-2.5 py-0.5 text-xs font-semibold text-[#03234b]">
+                      {entry.value}
+                    </span>
+                  </div>
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
+                    <div
+                      className="h-full rounded-full bg-[#03234b]"
+                      style={{ width: `${barWidth}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </CardContent>
@@ -1147,6 +1260,216 @@ const CauseListSearchCard = ({ cases = [] }) => {
   );
 };
 
+// ─── Personalized Cause List Preview ────────────────────────────────────────
+
+const PersonalizedCauseListPreview = () => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadPersonalizedList = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const response = await api.causeList.getLatestSavedPersonalized();
+        if (!cancelled) {
+          setResult(response || null);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err?.message || "Unable to load your personalised cause list right now.");
+          setResult(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadPersonalizedList();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const entries = Array.isArray(result?.personalized_cases)
+    ? result.personalized_cases.slice(0, 8)
+    : [];
+  const totalCases = result?.personalized_total_cases ?? entries.length;
+  const totalEntries = result?.personalized_total_entries ?? entries.length;
+  const displayedDate = result?.displayedSavedDate || result?.date;
+
+  return (
+    <Card className="overflow-hidden border-[#d6deeb] bg-white shadow-sm">
+      <CardHeader className="border-b border-slate-100 bg-white px-4 py-4 sm:px-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="mb-1.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#03234b]">
+              <Scale className="h-4 w-4" />
+              Cause List
+            </div>
+            <CardTitle className="text-lg font-bold text-slate-900">
+              Saved Personalised cause list
+            </CardTitle>
+            <p className="mt-1 text-sm text-slate-500">
+              {displayedDate
+                ? `Latest saved list for ${formatDashboardDate(displayedDate)}`
+                : "Latest saved personalised cause list"}
+            </p>
+          </div>
+          <Link
+            href="/dashboard/cause-list/search"
+            className="inline-flex h-9 items-center rounded-lg border border-[#03234b]/15 px-3 text-sm font-semibold text-[#03234b] transition hover:bg-[#03234b]/5 active:translate-y-[1px]"
+          >
+            Open full list
+          </Link>
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="grid grid-cols-2 border-b border-slate-100 bg-slate-50/70 sm:grid-cols-3">
+          <div className="px-4 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Cases
+            </p>
+            <p className="mt-1 font-mono text-xl font-bold text-slate-900">{totalCases || 0}</p>
+          </div>
+          <div className="border-l border-slate-100 px-4 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Entries
+            </p>
+            <p className="mt-1 font-mono text-xl font-bold text-slate-900">{totalEntries || 0}</p>
+          </div>
+          <div className="col-span-2 border-t border-slate-100 px-4 py-3 sm:col-span-1 sm:border-l sm:border-t-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Source
+            </p>
+            <p className="mt-1 truncate text-sm font-semibold text-slate-800">
+              {(result?.personalized_sources || []).length
+                ? result.personalized_sources
+                    .map((source) =>
+                      source === "delhi_high_court"
+                        ? "Delhi High Court"
+                        : source === "highcourts"
+                          ? "High Courts"
+                          : "District Courts"
+                    )
+                    .join(", ")
+                : "Not loaded"}
+            </p>
+          </div>
+        </div>
+
+        {error ? (
+          <div className="m-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {error}
+          </div>
+        ) : loading ? (
+          <div className="space-y-2 p-4">
+            {[...Array(4)].map((_, index) => (
+              <div key={index} className="h-12 rounded-lg bg-slate-100 animate-pulse" />
+            ))}
+          </div>
+        ) : entries.length === 0 ? (
+          <div className="m-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-600">
+            No saved personalised cause-list entries are available yet.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1180px] border-collapse text-sm">
+              <thead>
+                <tr className="text-left font-semibold text-white">
+                  <th className="w-[7%] bg-[#26364d] px-3 py-3">Sr No</th>
+                  <th className="w-[16%] bg-[#1e3a5f] px-3 py-3">Hearing Date</th>
+                  <th className="w-[22%] bg-[#1f4d3a] px-3 py-3">Case</th>
+                  <th className="w-[20%] bg-[#7a3320] px-3 py-3">Court</th>
+                  <th className="w-[16%] bg-[#3b2670] px-3 py-3">Judge / Stage</th>
+                  <th className="w-[19%] bg-[#5a2d20] px-3 py-3">Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                {entries.map((entry, index) => {
+                  const hearingDate =
+                    entry.scheduled_hearing_date || entry.next_hearing_date || displayedDate;
+                  const causeListDate = entry.next_hearing_date || displayedDate;
+                  const shouldShowCauseListDate =
+                    causeListDate && String(causeListDate) !== String(hearingDate);
+
+                  return (
+                    <tr
+                      key={`${entry.case_id || entry.case_number || "case"}-${index}`}
+                      className="border-b border-[#d6deeb] align-top transition hover:bg-[#f6f9fc]"
+                    >
+                      <td className="px-3 py-3 text-[#20324a]">
+                        {entry.serial || index + 1}
+                      </td>
+                      <td className="px-3 py-3">
+                        <p className="font-medium text-[#20324a]">
+                          {formatNumericDate(hearingDate) || "—"}
+                        </p>
+                        {shouldShowCauseListDate ? (
+                          <p className="mt-1 text-xs text-[#6b7a90]">
+                            Cause list date: {formatNumericDate(causeListDate, "-")}
+                          </p>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-3">
+                        <p className="font-medium text-[#20324a]">
+                          {entry.case_title || entry.case_number || "—"}
+                        </p>
+                        <p className="mt-1 text-xs font-medium text-[#4f5f77]">
+                          {entry.case_number || "No case number"}
+                        </p>
+                        {entry.party ? (
+                          <p className="mt-2 max-w-[34rem] whitespace-pre-line text-xs uppercase leading-5 text-[#6b7a90]">
+                            {entry.party}
+                          </p>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-3">
+                        <p className="font-medium text-[#20324a]">
+                          {entry.court_name || "—"}
+                        </p>
+                        <p className="mt-1 text-xs text-[#6b7a90]">
+                          {[entry.court_state, entry.district].filter(Boolean).join(" / ") || "—"}
+                        </p>
+                      </td>
+                      <td className="px-3 py-3">
+                        <p className="text-[#20324a]">
+                          {entry.judge_name || "—"}
+                        </p>
+                        {entry.stage ? (
+                          <p className="mt-1 text-xs text-[#6b7a90]">
+                            Stage: {entry.stage}
+                          </p>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-3">
+                        <p className="text-[#20324a]">
+                          {entry.source_label || "—"}
+                        </p>
+                        {entry.target_label ? (
+                          <p className="mt-1 text-xs text-[#6b7a90]">
+                            Target: {entry.target_label}
+                          </p>
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
 // ─── ApprovalPopup (unchanged logic) ─────────────────────────────────────────
 
 const ApprovalNotificationsPopup = ({
@@ -1318,6 +1641,15 @@ const NewDashboard = () => {
     [dashboardData.notifications]
   );
 
+  const totalUpcomingHearings = useMemo(() => {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    return dashboardData.events.filter((event) => {
+      const eventDate = new Date(event.start);
+      return eventDate >= todayStart;
+    }).length;
+  }, [dashboardData.events]);
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
@@ -1425,16 +1757,16 @@ const NewDashboard = () => {
       sub: `+${Math.max(1, Math.floor(stats.totalCases * 0.09))} from last month`,
       icon: Briefcase,
       iconBg: "bg-[#03234b]/10",
-      iconColor: "text-[#03234b]",
+      iconColor: "text-blue-100",
       href: "/dashboard/cases",
     },
     {
       title: "Upcoming Hearings",
-      value: stats.upcomingHearings,
+      value: totalUpcomingHearings,
       sub: `Today: ${todayHearings} hearing${todayHearings !== 1 ? "s" : ""}`,
       icon: Calendar,
       iconBg: "bg-emerald-50",
-      iconColor: "text-emerald-600",
+      iconColor: "text-emerald-100",
       href: "/dashboard/calendar",
     },
     {
@@ -1443,7 +1775,7 @@ const NewDashboard = () => {
       sub: "Requires attention",
       icon: AlertCircle,
       iconBg: "bg-orange-50",
-      iconColor: "text-orange-500",
+      iconColor: "text-orange-100",
       href: "/dashboard/cases?filter=urgent",
     },
     {
@@ -1452,7 +1784,7 @@ const NewDashboard = () => {
       sub: `+${Math.max(1, Math.floor(stats.closedCases * 0.18))} from last month`,
       icon: CheckCircle,
       iconBg: "bg-gray-100",
-      iconColor: "text-gray-500",
+      iconColor: "text-slate-100",
       href: "/dashboard/cases?filter=closed",
     },
   ];
@@ -1471,31 +1803,29 @@ const NewDashboard = () => {
 
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Welcome Banner */}
-        <WelcomeBanner user={user} todayHearings={todayHearings} overdueTasks={overdueTasks} />
+        <WelcomeBanner
+          user={user}
+          todayHearings={todayHearings}
+          overdueTasks={overdueTasks}
+          statsCards={statsCards}
+        />
 
-        {/* Stats Row — 4 cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {statsCards.map((card) => (
-            <StatsCard key={card.title} {...card} />
-          ))}
-        </div>
+        <PersonalizedCauseListPreview />
 
         {/* Hearings Table + Cases by Status */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 h-full">
             <UpcomingHearingsTable events={events} cases={cases} />
           </div>
-          <div>
+          <div className="h-full">
             <CasesByStatusChart cases={cases} />
           </div>
         </div>
 
-        <CauseListSearchCard cases={cases} />
-
-        {/* Cases by Category + Tasks & Team */}
+        {/* Cases by Category + Court/State distribution */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <CasesByCategoryChart cases={cases} />
-          <TasksAndTeam cases={cases} notifications={notifications} />
+          <CasesByCourtState cases={cases} />
         </div>
       </div>
     </div>
