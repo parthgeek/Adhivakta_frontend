@@ -12,6 +12,7 @@ export default function SidebarGuide() {
         <div className="relative h-40 w-full">
           <Image
             src="/images/law-library.jpg"
+    
             alt="Legal documents"
             fill
             className="object-cover rounded-md hover:scale-105 transition-transform duration-700"

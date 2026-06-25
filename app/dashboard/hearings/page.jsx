@@ -79,30 +79,30 @@ const normalizeType = (type) => {
 const getTypeColor = (type) => {
   switch (type) {
     case "hearing":
-      return "bg-[#03234b]/20 text-[#03234b] border border-[#03234b]/30";
+      return "bg-[#03234b]/10 text-[#03234b] border border-[#03234b]/20 hover:bg-[#03234b]/10";
     case "argument":
-      return "bg-purple-100 text-purple-800 border border-purple-200";
+      return "bg-purple-100 text-purple-800 border border-purple-200 hover:bg-purple-100";
     case "judgment":
-      return "bg-yellow-100 text-yellow-800 border border-yellow-200";
+      return "bg-yellow-100 text-yellow-800 border border-yellow-200 hover:bg-yellow-100";
     case "case_management":
-      return "bg-green-100 text-green-800 border border-green-200";
+      return "bg-green-100 text-green-800 border border-green-200 hover:bg-green-100";
     default:
-      return "bg-muted text-foreground";
+      return "bg-muted text-foreground hover:bg-muted";
   }
 };
 
 const getStatusColor = (status) => {
   switch (status) {
     case "scheduled":
-      return "bg-primary text-primary-foreground";
+      return "bg-[#03234b]/10 text-[#03234b] border border-[#03234b]/20 hover:bg-[#03234b]/10";
     case "completed":
-      return "bg-green-600 text-white";
+      return "bg-green-100 text-green-800 border border-green-200 hover:bg-green-100";
     case "postponed":
-      return "bg-amber-500 text-white";
+      return "bg-amber-100 text-amber-800 border border-amber-200 hover:bg-amber-100";
     case "cancelled":
-      return "bg-red-600 text-white";
+      return "bg-red-100 text-red-800 border border-red-200 hover:bg-red-100";
     default:
-      return "bg-muted text-foreground";
+      return "bg-muted text-foreground hover:bg-muted";
   }
 };
 
