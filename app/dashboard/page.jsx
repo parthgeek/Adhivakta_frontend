@@ -23,6 +23,7 @@ import {
 } from "recharts";
 import api from "@/services/api";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { getNotificationTarget } from "@/lib/notification-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -181,6 +182,22 @@ const formatNumericDate = (value, separator = "/") => {
 
 const getCaseDisplayLabel = (caseItem = {}) =>
   caseItem.title || caseItem.caseNumber || caseItem.cnrNumber || "Untitled case";
+
+const getEventCaseId = (event = {}) => {
+  const candidates = [
+    event.case?._id,
+    event.case?.id,
+    typeof event.case === "string" ? event.case : null,
+    event.caseId?._id,
+    event.caseId?.id,
+    typeof event.caseId === "string" ? event.caseId : null,
+    event.case_id?._id,
+    event.case_id?.id,
+    typeof event.case_id === "string" ? event.case_id : null,
+  ];
+
+  return String(candidates.find(Boolean) || "");
+};
 
 const toValidDate = (value) => {
   if (!value) {
@@ -393,6 +410,7 @@ const StatsCard = ({ title, value, sub, icon: Icon, iconBg, iconColor, href, com
 // ─── UpcomingHearingsTable ────────────────────────────────────────────────────
 
 const UpcomingHearingsTable = ({ events = [], cases = [] }) => {
+  const router = useRouter();
   const caseMap = useMemo(() => {
     const map = new Map();
     cases.forEach((c) => {
@@ -440,7 +458,7 @@ const UpcomingHearingsTable = ({ events = [], cases = [] }) => {
               </thead>
               <tbody>
                 {upcoming.map((event, idx) => {
-                  const caseId = String(event.case?._id || event.case || "");
+                  const caseId = getEventCaseId(event);
                   const caseObj = caseMap.get(caseId);
                   const status = getHearingStatus(event.start);
                   const advocateName =
@@ -452,9 +470,32 @@ const UpcomingHearingsTable = ({ events = [], cases = [] }) => {
                   const caseNum = safeText(event.caseNumber) || safeText(event.caseId?.caseNumber) || "";
                   const d = new Date(event.start);
                   const dateStr = d.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
+                  const caseHref = caseId ? `/dashboard/cases/${caseId}` : null;
+                  const openCase = () => {
+                    if (caseHref) router.push(caseHref);
+                  };
 
                   return (
-                    <tr key={event._id || idx} className="border-b border-gray-50 hover:bg-gray-50/70 transition-colors">
+                    <tr
+                      key={event._id || idx}
+                      onClick={openCase}
+                      onKeyDown={(keyboardEvent) => {
+                        if (!caseHref) return;
+                        if (keyboardEvent.key === "Enter" || keyboardEvent.key === " ") {
+                          keyboardEvent.preventDefault();
+                          openCase();
+                        }
+                      }}
+                      role={caseHref ? "link" : undefined}
+                      tabIndex={caseHref ? 0 : undefined}
+                      aria-label={caseHref ? `Open case ${event.title || caseNum || caseId}` : undefined}
+                      className={cn(
+                        "border-b border-gray-50 transition-colors",
+                        caseHref
+                          ? "cursor-pointer hover:bg-gray-50/70 focus-visible:bg-gray-50/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#03234b]"
+                          : "hover:bg-gray-50/70"
+                      )}
+                    >
                       <td className="px-4 py-3.5 max-w-[200px]">
                         <p className="font-semibold text-gray-900 line-clamp-2 text-sm leading-snug">
                           {event.title || "Untitled Hearing"}

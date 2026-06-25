@@ -9,6 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -476,15 +481,57 @@ ${printFooter}
 
 // ─── Components ──────────────────────────────────────────────────────────────
 
-function StatCard({ icon, value, label, iconBg }) {
+function StatCard({ icon, value, label, iconBg, active = false, onClick }) {
   return (
-    <div className="bg-white border rounded-lg p-4 flex items-center gap-3">
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`w-full bg-white border rounded-lg p-4 flex items-center gap-3 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1a2332]/30 active:scale-[0.99] ${
+        active
+          ? "border-[#1a2332] bg-slate-50 shadow-sm ring-1 ring-[#1a2332]/15"
+          : "hover:-translate-y-[1px] hover:border-[#1a2332]/30 hover:shadow-sm"
+      }`}
+    >
       <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${iconBg}`}>
         {icon}
       </div>
       <div>
         <p className="text-2xl font-bold text-foreground leading-none">{value}</p>
         <p className="text-xs text-muted-foreground mt-1">{label}</p>
+      </div>
+    </button>
+  );
+}
+
+function FilterOptionGroup({ title, options, value, onChange }) {
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {title}
+      </p>
+      <div className="grid grid-cols-1 gap-1">
+        {options.map((option) => {
+          const selected = value === option.value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => onChange(option.value)}
+              aria-pressed={selected}
+              className={`flex items-center justify-between rounded-md border px-3 py-2 text-left text-sm transition-colors active:scale-[0.99] ${
+                selected
+                  ? "border-[#1a2332] bg-slate-50 text-[#1a2332]"
+                  : "border-transparent text-muted-foreground hover:border-gray-200 hover:bg-gray-50 hover:text-foreground"
+              }`}
+            >
+              <span className="font-medium">{option.label}</span>
+              <span className={selected ? "text-[#1a2332]/70" : "text-muted-foreground/70"}>
+                {option.count}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -508,6 +555,10 @@ function getCaseHearingTime(raw = {}) {
 
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date.getTime();
+}
+
+function hasCaseHearing(raw = {}) {
+  return Boolean(raw.nextHearingDate || raw.nextHearing || raw.hearingDate);
 }
 
 function getUpcomingHearingTime(raw = {}, nowTime = Date.now()) {
@@ -582,6 +633,9 @@ export default function CasesPage() {
   const [isLawyer, setIsLawyer] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("All Cases");
+  const [activeQuickFilter, setActiveQuickFilter] = useState(null);
+  const [hearingFilter, setHearingFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -614,7 +668,20 @@ export default function CasesPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeTab, searchTerm]);
+  }, [activeTab, hearingFilter, priorityFilter, searchTerm]);
+
+  const clearCaseFilters = useCallback(() => {
+    setActiveTab("All Cases");
+    setHearingFilter("all");
+    setPriorityFilter("all");
+    setActiveQuickFilter(null);
+    setCurrentPage(1);
+  }, []);
+
+  const handleStatusTab = useCallback((tab) => {
+    setActiveTab(tab);
+    setActiveQuickFilter(null);
+  }, []);
 
   const uniqueCases = useMemo(
     () => Array.from(new Map(cases.map((c) => [getCaseId(c), c])).values()),
@@ -666,15 +733,87 @@ export default function CasesPage() {
   const stats = useMemo(() => ({
     total:        uniqueCases.length,
     ongoing:      tabCounts["Ongoing"],
-    withHearings: uniqueCases.filter((c) => !!(c.nextHearingDate || c.nextHearing || c.hearingDate)).length,
+    withHearings: uniqueCases.filter(hasCaseHearing).length,
     highPriority: priorityCaseIds.size,
   }), [uniqueCases, tabCounts, priorityCaseIds]);
+
+  const hearingCounts = useMemo(() => ({
+    all: uniqueCases.length,
+    with: uniqueCases.filter(hasCaseHearing).length,
+    upcoming: uniqueCases.filter((c) => !!getUpcomingHearingTime(c)).length,
+    without: uniqueCases.filter((c) => !hasCaseHearing(c)).length,
+  }), [uniqueCases]);
+
+  const priorityCounts = useMemo(() => ({
+    all: uniqueCases.length,
+    high: priorityCaseIds.size,
+    standard: Math.max(0, uniqueCases.length - priorityCaseIds.size),
+  }), [uniqueCases, priorityCaseIds]);
+
+  const activeFilterCount = [
+    activeTab !== "All Cases",
+    hearingFilter !== "all",
+    priorityFilter !== "all",
+  ].filter(Boolean).length;
+
+  const activeFilterLabels = useMemo(() => {
+    const labels = [];
+    if (activeTab !== "All Cases") labels.push(activeTab);
+    if (hearingFilter === "with") labels.push("With hearings");
+    if (hearingFilter === "upcoming") labels.push("Upcoming hearings");
+    if (hearingFilter === "without") labels.push("No hearing date");
+    if (priorityFilter === "high") labels.push("High priority");
+    if (priorityFilter === "standard") labels.push("Standard priority");
+    return labels;
+  }, [activeTab, hearingFilter, priorityFilter]);
+
+  const applyStatFilter = useCallback((filterKey) => {
+    if (activeQuickFilter === filterKey) {
+      clearCaseFilters();
+      return;
+    }
+
+    setCurrentPage(1);
+
+    if (filterKey === "total") {
+      clearCaseFilters();
+      return;
+    }
+
+    setActiveQuickFilter(filterKey);
+    setActiveTab(filterKey === "ongoing" ? "Ongoing" : "All Cases");
+    setHearingFilter(filterKey === "withHearings" ? "with" : "all");
+    setPriorityFilter(filterKey === "highPriority" ? "high" : "all");
+  }, [activeQuickFilter, clearCaseFilters]);
+
+  const statusFilterOptions = useMemo(
+    () => STATUS_TABS.map((tab) => ({ value: tab, label: tab, count: tabCounts[tab] })),
+    [tabCounts]
+  );
+
+  const hearingFilterOptions = useMemo(() => ([
+    { value: "all", label: "All hearing states", count: hearingCounts.all },
+    { value: "with", label: "With hearings", count: hearingCounts.with },
+    { value: "upcoming", label: "Upcoming hearings", count: hearingCounts.upcoming },
+    { value: "without", label: "No hearing date", count: hearingCounts.without },
+  ]), [hearingCounts]);
+
+  const priorityFilterOptions = useMemo(() => ([
+    { value: "all", label: "All priorities", count: priorityCounts.all },
+    { value: "high", label: "High priority", count: priorityCounts.high },
+    { value: "standard", label: "Standard priority", count: priorityCounts.standard },
+  ]), [priorityCounts]);
 
   const filtered = useMemo(() => {
     return uniqueCases
       .filter((raw) => {
         const c = mapCase(raw);
         if (activeTab !== "All Cases" && c.tabStatus !== activeTab) return false;
+        if (hearingFilter === "with" && !hasCaseHearing(raw)) return false;
+        if (hearingFilter === "upcoming" && !getUpcomingHearingTime(raw)) return false;
+        if (hearingFilter === "without" && hasCaseHearing(raw)) return false;
+        if (priorityFilter === "high" && !priorityCaseIds.has(getCaseId(raw))) return false;
+        if (priorityFilter === "standard" && priorityCaseIds.has(getCaseId(raw))) return false;
         if (searchTerm) {
           const q = searchTerm.toLowerCase();
           return (
@@ -687,7 +826,7 @@ export default function CasesPage() {
         return true;
       })
       .sort((a, b) => compareCasesByPriorityAndHearing(a, b, priorityCaseIds));
-  }, [uniqueCases, activeTab, searchTerm, priorityCaseIds, mapCase]);
+  }, [uniqueCases, activeTab, hearingFilter, priorityFilter, searchTerm, priorityCaseIds, mapCase]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / CASES_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -840,10 +979,37 @@ export default function CasesPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard icon={<Briefcase className="h-5 w-5 text-blue-600" />}   value={stats.total}        label="Total Cases"   iconBg="bg-blue-50" />
-        <StatCard icon={<Activity   className="h-5 w-5 text-green-600" />} value={stats.ongoing}      label="Ongoing"       iconBg="bg-green-50" />
-        <StatCard icon={<Clock      className="h-5 w-5 text-blue-500" />}  value={stats.withHearings} label="With Hearings" iconBg="bg-blue-50" />
-        <StatCard icon={<AlertTriangle className="h-5 w-5 text-orange-500" />} value={stats.highPriority} label="High Priority" iconBg="bg-orange-50" />
+        <StatCard
+          icon={<Briefcase className="h-5 w-5 text-blue-600" />}
+          value={stats.total}
+          label="Total Cases"
+          iconBg="bg-blue-50"
+          onClick={() => applyStatFilter("total")}
+        />
+        <StatCard
+          icon={<Activity className="h-5 w-5 text-green-600" />}
+          value={stats.ongoing}
+          label="Ongoing"
+          iconBg="bg-green-50"
+          active={activeQuickFilter === "ongoing"}
+          onClick={() => applyStatFilter("ongoing")}
+        />
+        <StatCard
+          icon={<Clock className="h-5 w-5 text-blue-500" />}
+          value={stats.withHearings}
+          label="With Hearings"
+          iconBg="bg-blue-50"
+          active={activeQuickFilter === "withHearings"}
+          onClick={() => applyStatFilter("withHearings")}
+        />
+        <StatCard
+          icon={<AlertTriangle className="h-5 w-5 text-orange-500" />}
+          value={stats.highPriority}
+          label="High Priority"
+          iconBg="bg-orange-50"
+          active={activeQuickFilter === "highPriority"}
+          onClick={() => applyStatFilter("highPriority")}
+        />
       </div>
 
       {/* Tabs + Search */}
@@ -852,7 +1018,7 @@ export default function CasesPage() {
           {STATUS_TABS.map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => handleStatusTab(tab)}
               className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 activeTab === tab
                   ? "bg-[#1a2332] text-white"
@@ -876,12 +1042,86 @@ export default function CasesPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
-            <SlidersHorizontal className="h-3.5 w-3.5" />
-            Priority
-          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={`h-8 gap-1.5 text-xs ${
+                  activeFilterCount > 0
+                    ? "border-[#1a2332] bg-slate-50 text-[#1a2332]"
+                    : ""
+                }`}
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                Filters
+                {activeFilterCount > 0 && (
+                  <span className="ml-0.5 rounded-full bg-[#1a2332] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="max-h-[min(520px,calc(100vh-7rem))] w-80 overflow-hidden p-0">
+              <div className="flex items-center justify-between border-b px-3 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Filters</p>
+                  <p className="text-xs text-muted-foreground">Refine the case register</p>
+                </div>
+                {activeFilterCount > 0 && (
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={clearCaseFilters}>
+                    Clear
+                  </Button>
+                )}
+              </div>
+              <div className="max-h-[calc(min(520px,100vh-7rem)-61px)] space-y-4 overflow-y-auto px-3 py-3 overscroll-contain">
+                <FilterOptionGroup
+                  title="Case status"
+                  options={statusFilterOptions}
+                  value={activeTab}
+                  onChange={(value) => {
+                    setActiveTab(value);
+                    setActiveQuickFilter(null);
+                  }}
+                />
+                <FilterOptionGroup
+                  title="Hearing"
+                  options={hearingFilterOptions}
+                  value={hearingFilter}
+                  onChange={(value) => {
+                    setHearingFilter(value);
+                    setActiveQuickFilter(null);
+                  }}
+                />
+                <FilterOptionGroup
+                  title="Priority"
+                  options={priorityFilterOptions}
+                  value={priorityFilter}
+                  onChange={(value) => {
+                    setPriorityFilter(value);
+                    setActiveQuickFilter(null);
+                  }}
+                />
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
+
+      {activeFilterLabels.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-slate-50 px-3 py-2 text-sm text-muted-foreground">
+          <SlidersHorizontal className="h-4 w-4" />
+          <span>
+            Showing:{" "}
+            <span className="font-medium text-foreground">
+              {activeFilterLabels.join(" + ")}
+            </span>
+          </span>
+          <button className="ml-1 text-[#1a2332] underline" onClick={clearCaseFilters}>
+            Clear
+          </button>
+        </div>
+      )}
 
       {selectedCount > 0 && (
         <div className="flex flex-col gap-2 rounded-lg border bg-white px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
