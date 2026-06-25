@@ -32,7 +32,6 @@ import {
 import {
   Upload,
   Search,
-  Filter,
   Download,
   Eye,
   MoreVertical,
@@ -421,9 +420,78 @@ export default function DocumentsPage() {
     [documents]
   );
 
+  const activeStatFilter = useMemo(() => {
+    if (searchTerm || filterStatus !== "all") {
+      return filterStatus === "pending" && filterCategory === "all" ? "pending" : null;
+    }
+
+    if (filterCategory === "pleading") return "pleadings";
+    if (filterCategory === "evidence") return "evidence";
+    return filterCategory === "all" ? "total" : null;
+  }, [filterCategory, filterStatus, searchTerm]);
+
+  const statCards = useMemo(
+    () => [
+      {
+        key: "total",
+        label: "Total Documents",
+        value: stats.totalDocuments,
+        icon: FileText,
+        iconClassName: "text-primary",
+      },
+      {
+        key: "pending",
+        label: "Pending Review",
+        value: stats.pendingReview,
+        icon: FolderOpen,
+        iconClassName: "text-amber-500",
+      },
+      {
+        key: "pleadings",
+        label: "Pleadings",
+        value: stats.pleadings,
+        icon: FileText,
+        iconClassName: "text-[#03234b]",
+      },
+      {
+        key: "evidence",
+        label: "Evidence",
+        value: stats.evidence,
+        icon: FileText,
+        iconClassName: "text-green-500",
+      },
+    ],
+    [stats]
+  );
+
   const caseModalDocuments = selectedCaseForDocuments
     ? documentsByCase[selectedCaseForDocuments]?.documents || []
     : [];
+
+  const applyStatFilter = (filterKey) => {
+    setSearchTerm("");
+
+    if (filterKey === "pending") {
+      setFilterCategory("all");
+      setFilterStatus("pending");
+      return;
+    }
+
+    if (filterKey === "pleadings") {
+      setFilterCategory("pleading");
+      setFilterStatus("all");
+      return;
+    }
+
+    if (filterKey === "evidence") {
+      setFilterCategory("evidence");
+      setFilterStatus("all");
+      return;
+    }
+
+    setFilterCategory("all");
+    setFilterStatus("all");
+  };
 
   const handleUpload = () => {
     if (cases.length === 0) {
@@ -627,53 +695,39 @@ export default function DocumentsPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Documents</p>
-                  <p className="text-2xl font-bold">{stats.totalDocuments}</p>
-                </div>
-                <FileText className="h-8 w-8 text-primary" />
-              </div>
-            </CardContent>
-          </Card>
+          {statCards.map((card) => {
+            const Icon = card.icon;
+            const isActive = activeStatFilter === card.key;
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Pending Review</p>
-                  <p className="text-2xl font-bold">{stats.pendingReview}</p>
-                </div>
-                <FolderOpen className="h-8 w-8 text-amber-500" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Pleadings</p>
-                  <p className="text-2xl font-bold">{stats.pleadings}</p>
-                </div>
-                <FileText className="h-8 w-8 text-[#03234b]" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Evidence</p>
-                  <p className="text-2xl font-bold">{stats.evidence}</p>
-                </div>
-                <FileText className="h-8 w-8 text-green-500" />
-              </div>
-            </CardContent>
-          </Card>
+            return (
+              <Card
+                key={card.key}
+                role="button"
+                tabIndex={0}
+                aria-pressed={isActive}
+                onClick={() => applyStatFilter(card.key)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    applyStatFilter(card.key);
+                  }
+                }}
+                className={`cursor-pointer transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                  isActive ? "border-primary bg-primary/5 shadow-sm" : ""
+                }`}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">{card.label}</p>
+                      <p className="text-2xl font-bold">{card.value}</p>
+                    </div>
+                    <Icon className={`h-8 w-8 ${card.iconClassName}`} />
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         <Card>
@@ -681,7 +735,7 @@ export default function DocumentsPage() {
             <CardTitle className="text-lg">Filter Documents</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
@@ -717,20 +771,6 @@ export default function DocumentsPage() {
                   ))}
                 </SelectContent>
               </Select>
-
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() =>
-                  toast({
-                    title: "Advanced Filters",
-                    description: "Advanced filter options can be added here.",
-                  })
-                }
-              >
-                <Filter className="h-4 w-4 mr-2" />
-                Advanced Filters
-              </Button>
             </div>
           </CardContent>
         </Card>
