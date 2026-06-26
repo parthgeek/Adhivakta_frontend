@@ -14,10 +14,12 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Select,
   SelectContent,
@@ -75,6 +77,28 @@ const normalizeType = (type) => {
       return "hearing";
   }
 };
+
+const EVENT_TYPES = [
+  { value: "hearing", label: "Court Hearing" },
+  { value: "client_meeting", label: "Client Meeting" },
+  { value: "case_filing", label: "Case Filing" },
+  { value: "evidence_submission", label: "Evidence Submission" },
+  { value: "court_visit", label: "Court Visit" },
+  { value: "mediation", label: "Mediation" },
+  { value: "arbitration", label: "Arbitration" },
+  { value: "judgment", label: "Judgment" },
+  { value: "appeal", label: "Appeal" },
+];
+
+const createScheduleEventForm = () => ({
+  title: "",
+  date: new Date(),
+  time: "",
+  type: "hearing",
+  case: "",
+  location: "",
+  description: "",
+});
 
 const getTypeColor = (type) => {
   switch (type) {
@@ -152,6 +176,127 @@ const proceedingFormFromHearing = (hearing) => ({
   nextHearingDate: toDateInputValue(hearing?.nextHearingDate),
 });
 
+const isValidEventTime = (timeStr) => {
+  const timeRegex = /^(0?[1-9]|1[0-2]):[0-5][0-9] (AM|PM)$/i;
+  return timeRegex.test(timeStr.trim());
+};
+
+const combineEventDateAndTime = (date, timeStr) => {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    throw new Error("Invalid date provided");
+  }
+
+  if (!timeStr || !isValidEventTime(timeStr)) {
+    throw new Error("Invalid time format. Use HH:MM AM/PM (e.g., 10:30 AM)");
+  }
+
+  const result = new Date(date);
+  const [timePart, ampm] = timeStr.trim().split(" ");
+  const [hours, minutes] = timePart.split(":").map(Number);
+
+  if (ampm.toUpperCase() === "PM" && hours < 12) {
+    result.setHours(hours + 12, minutes, 0, 0);
+  } else if (ampm.toUpperCase() === "AM" && hours === 12) {
+    result.setHours(0, minutes, 0, 0);
+  } else {
+    result.setHours(hours, minutes, 0, 0);
+  }
+
+  return result;
+};
+
+const getNumericOrdinal = (value) => {
+  const lastTwoDigits = value % 100;
+
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 13) {
+    return `${value}th`;
+  }
+
+  switch (value % 10) {
+    case 1:
+      return `${value}st`;
+    case 2:
+      return `${value}nd`;
+    case 3:
+      return `${value}rd`;
+    default:
+      return `${value}th`;
+  }
+};
+
+const formatHearingAutoTitle = (serialNumber) =>
+  `${getNumericOrdinal(serialNumber)} Hearing`;
+
+const formatHearingDateParts = (value) => {
+  const date = toDate(value);
+
+  if (!date) {
+    return {
+      day: "TBD",
+      month: "",
+      weekday: "Date not set",
+      year: "",
+    };
+  }
+
+  return {
+    day: date.toLocaleDateString("en-IN", { day: "2-digit" }),
+    month: date.toLocaleDateString("en-IN", { month: "short" }),
+    weekday: date.toLocaleDateString("en-IN", { weekday: "short" }),
+    year: date.toLocaleDateString("en-IN", { year: "numeric" }),
+  };
+};
+
+const getHearingCardTone = (hearing, index) => {
+  if (hearing.status === "cancelled") {
+    return {
+      card: "border-red-200/80 bg-red-50/30",
+      rail: "bg-red-700 text-white",
+      side: "bg-red-50/60",
+      chip: "bg-white/15 text-white",
+      icon: "text-red-700",
+    };
+  }
+
+  if (hearing.status === "postponed") {
+    return {
+      card: "border-amber-200/80 bg-amber-50/30",
+      rail: "bg-amber-700 text-white",
+      side: "bg-amber-50/60",
+      chip: "bg-white/15 text-white",
+      icon: "text-amber-700",
+    };
+  }
+
+  if (hearing.status === "completed") {
+    return {
+      card: "border-emerald-200/80 bg-emerald-50/25",
+      rail: "bg-emerald-700 text-white",
+      side: "bg-emerald-50/50",
+      chip: "bg-white/15 text-white",
+      icon: "text-emerald-700",
+    };
+  }
+
+  if (isPriorityAlertCase(hearing.priority)) {
+    return {
+      card: "border-red-200/80 bg-white",
+      rail: "bg-[#03234b] text-white",
+      side: "bg-red-50/50",
+      chip: "bg-red-500/20 text-white",
+      icon: "text-red-700",
+    };
+  }
+
+  return {
+    card: index % 2 === 0 ? "border-slate-200/80 bg-white" : "border-slate-200/80 bg-slate-50/45",
+    rail: index % 2 === 0 ? "bg-[#03234b] text-white" : "bg-slate-800 text-white",
+    side: index % 2 === 0 ? "bg-slate-50/70" : "bg-white/80",
+    chip: "bg-white/15 text-white",
+    icon: "text-[#03234b]",
+  };
+};
+
 export default function HearingsPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -165,9 +310,14 @@ export default function HearingsPage() {
   const [filterCase, setFilterCase] = useState("all");
   const [activeQuickFilter, setActiveQuickFilter] = useState(null);
   const [sendingReminderFor, setSendingReminderFor] = useState(null);
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   const [showProceedingsDialog, setShowProceedingsDialog] = useState(false);
   const [showViewProceedingsDialog, setShowViewProceedingsDialog] = useState(false);
   const [selectedHearing, setSelectedHearing] = useState(null);
+  const [scheduleEventForm, setScheduleEventForm] = useState(() =>
+    createScheduleEventForm()
+  );
+  const [schedulingEvent, setSchedulingEvent] = useState(false);
   const [proceedingForm, setProceedingForm] = useState(() =>
     proceedingFormFromHearing(null)
   );
@@ -498,6 +648,133 @@ export default function HearingsPage() {
     }
   };
 
+  const handleOpenScheduleDialog = () => {
+    setScheduleEventForm(createScheduleEventForm());
+    setShowScheduleDialog(true);
+  };
+
+  const handleScheduleEventChange = (field, value) => {
+    setScheduleEventForm((prev) => {
+      if (field === "case") {
+        if (value === "none") {
+          return { ...prev, case: value };
+        }
+
+        const selectedCase = cases.find(
+          (caseItem) => (caseItem._id || caseItem.id) === value
+        );
+        const nextHearingNumber =
+          normalizedHearings.filter((hearing) => hearing.caseId === value)
+            .length + 1;
+
+        return {
+          ...prev,
+          case: value,
+          title: formatHearingAutoTitle(nextHearingNumber),
+          location: prev.location || selectedCase?.court || "",
+        };
+      }
+
+      return { ...prev, [field]: value };
+    });
+  };
+
+  const handleCreateScheduleEvent = async () => {
+    if (!scheduleEventForm.title.trim()) {
+      toast({
+        title: "Missing title",
+        description: "Please provide a title for the hearing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (
+      !(scheduleEventForm.date instanceof Date) ||
+      Number.isNaN(scheduleEventForm.date.getTime())
+    ) {
+      toast({
+        title: "Invalid date",
+        description: "Please select a valid hearing date.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (
+      !scheduleEventForm.time ||
+      !isValidEventTime(scheduleEventForm.time)
+    ) {
+      toast({
+        title: "Invalid time",
+        description: "Please provide a valid time (e.g., 10:30 AM).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (
+      scheduleEventForm.type !== "client_meeting" &&
+      (!scheduleEventForm.case || scheduleEventForm.case === "none")
+    ) {
+      toast({
+        title: "Missing case",
+        description: "Please select a case for this hearing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const startTime = combineEventDateAndTime(
+      scheduleEventForm.date,
+      scheduleEventForm.time
+    );
+
+    if (startTime <= new Date()) {
+      toast({
+        title: "Invalid start time",
+        description: "Hearing start time must be in the future.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSchedulingEvent(true);
+
+    try {
+      await api.events.create({
+        title: scheduleEventForm.title.trim(),
+        case:
+          scheduleEventForm.case === "none"
+            ? undefined
+            : scheduleEventForm.case,
+        start: startTime.toISOString(),
+        end: new Date(startTime.getTime() + 2 * 60 * 60 * 1000).toISOString(),
+        type: scheduleEventForm.type,
+        location: scheduleEventForm.location.trim(),
+        description: scheduleEventForm.description.trim(),
+      });
+
+      setScheduleEventForm(createScheduleEventForm());
+      setShowScheduleDialog(false);
+      await fetchHearingsAndCases();
+      toast({
+        title: "Hearing scheduled",
+        description: "The hearing has been added to your calendar.",
+      });
+    } catch (error) {
+      console.error("Error scheduling hearing:", error);
+      toast({
+        title: "Error scheduling hearing",
+        description:
+          error.message || "There was an error creating the hearing.",
+        variant: "destructive",
+      });
+    } finally {
+      setSchedulingEvent(false);
+    }
+  };
+
   const handleViewProceedings = (hearing) => {
     setSelectedHearing(hearing);
     setShowViewProceedingsDialog(true);
@@ -615,7 +892,7 @@ export default function HearingsPage() {
           </Button>
           <Button
             className="w-full sm:w-auto"
-            onClick={() => router.push("/dashboard/calendar")}
+            onClick={handleOpenScheduleDialog}
           >
             <Plus className="h-4 w-4 mr-2" />
             Schedule Hearing
@@ -766,222 +1043,388 @@ export default function HearingsPage() {
         </div>
       )}
 
-      <div className="grid gap-4">
-        {displayedHearings.map((hearing) => (
-          <Card key={hearing.id} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Case Name</p>
-                    <h3 className="text-lg font-semibold text-foreground leading-snug">
-                      {hearing.caseName}
-                    </h3>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <span className="text-xs text-muted-foreground">Priority:</span>
-                      <Badge className={getCasePriorityColor(hearing.priority)}>
-                        {getCasePriorityLabel(hearing.priority)}
-                      </Badge>
-                      {isPriorityAlertCase(hearing.priority) && (
-                        <AlertCircle className="h-4 w-4 text-red-600" />
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-xs text-muted-foreground">Filing Number</p>
-                    <p className="text-sm font-semibold text-foreground">
-                      {formatDisplayCaseNumber({ caseNumber: hearing.caseNumber }) || hearing.caseNumber}
-                    </p>
-                    <div className="flex items-center justify-end gap-1.5 mt-1 flex-wrap">
-                      <Badge className={getTypeColor(hearing.type)}>
-                        {hearing.type.replace("_", " ").toUpperCase()}
-                      </Badge>
-                      <Badge className={getStatusColor(hearing.status)}>
-                        {hearing.status.toUpperCase()}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
+      <div className="grid gap-3">
+        {displayedHearings.map((hearing, index) => {
+          const dateParts = formatHearingDateParts(hearing.date);
+          const tone = getHearingCardTone(hearing, index);
+          const displayCaseNumber =
+            formatDisplayCaseNumber({ caseNumber: hearing.caseNumber }) ||
+            hearing.caseNumber;
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">Date & Time</span>
-                    </div>
-                    <div className="text-sm">
-                      <p className="font-semibold">
-                        {toDate(hearing.date)
-                          ? toDate(hearing.date).toLocaleDateString()
-                          : "TBD"}
+          return (
+            <Card
+              key={hearing.id}
+              className={`group overflow-hidden shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${tone.card}`}
+            >
+              <CardContent className="p-0">
+                <div className="grid gap-0 md:grid-cols-[7rem_minmax(0,1fr)] lg:grid-cols-[7rem_minmax(0,1fr)_12rem]">
+                  <div className={`flex items-center gap-3 p-3 md:flex-col md:items-start md:justify-between ${tone.rail}`}>
+                    <div className="min-w-0">
+                      <div className="flex items-end gap-1 md:block">
+                        <p className="text-2xl font-semibold leading-none tracking-normal">{dateParts.day}</p>
+                        <p className="text-xs font-semibold uppercase tracking-normal md:mt-0.5">{dateParts.month}</p>
+                      </div>
+                      <p className="mt-0.5 text-[11px] text-white/75">
+                        {dateParts.weekday}{dateParts.year ? `, ${dateParts.year}` : ""}
                       </p>
-                      <p className="text-muted-foreground">{hearing.time}</p>
+                    </div>
+                    <div className="ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md bg-white/10 px-2 py-0.5 text-[11px] font-semibold md:ml-0">
+                      <Clock className="h-3 w-3" />
+                      <span>{hearing.time}</span>
+                    </div>
+                    <div className={`hidden rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-normal md:block ${tone.chip}`}>
+                      {hearing.status}
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">Venue</span>
-                    </div>
-                    <div className="text-sm">
-                      <p className="font-semibold">{hearing.court}</p>
-                      <p className="text-muted-foreground">{hearing.courtroom}</p>
-                    </div>
-                  </div>
-                </div>
+                  <div className="min-w-0 space-y-3 p-3 sm:p-4">
+                    <div className="flex flex-col gap-2 xl:flex-row xl:items-start xl:justify-between">
+                      <div className="min-w-0">
+                        <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                          <span className="rounded-md border bg-white/70 px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                            {displayCaseNumber}
+                          </span>
+                          <Badge className={getTypeColor(hearing.type)}>
+                            {hearing.type.replace("_", " ").toUpperCase()}
+                          </Badge>
+                          <Badge className={getStatusColor(hearing.status)}>
+                            {hearing.status.toUpperCase()}
+                          </Badge>
+                        </div>
+                        <h3 className="line-clamp-1 text-base font-semibold leading-snug text-foreground">
+                          {hearing.caseName}
+                        </h3>
+                      </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Advocate:</span>
-                    <span className="font-medium">{hearing.advocate}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Client:</span>
-                    <span className="font-medium">{hearing.client}</span>
-                  </div>
-                </div>
-
-                {hearing.notes && (
-                  <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
-                    <p className="text-sm font-medium text-foreground mb-1">Notes:</p>
-                    <p className="text-sm text-muted-foreground">{hearing.notes}</p>
-                  </div>
-                )}
-
-                <div className="p-3 border rounded-lg bg-muted/30">
-                  <p className="text-sm font-medium text-foreground mb-1">Proceedings</p>
-                  <p className="text-sm text-muted-foreground">
-                    {hearing.outcome
-                      ? `${hearing.outcome.slice(0, 120)}${hearing.outcome.length > 120 ? "..." : ""}`
-                      : "No proceedings recorded yet."}
-                  </p>
-                </div>
-
-                {hearing.documentsRequired.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-foreground">
-                      Documents Required:
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {hearing.documentsRequired.map((doc, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          {doc}
+                      <div className="flex shrink-0 items-center gap-1.5 rounded-md border bg-white/75 px-2 py-1">
+                        <span className="text-[11px] text-muted-foreground">Priority</span>
+                        <Badge className={getCasePriorityColor(hearing.priority)}>
+                          {getCasePriorityLabel(hearing.priority)}
                         </Badge>
-                      ))}
+                        {isPriorityAlertCase(hearing.priority) && (
+                          <AlertCircle className="h-4 w-4 text-red-600" />
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
 
-                <div className="flex justify-between items-center pt-4 border-t">
-                  <div className="text-xs text-muted-foreground">
-                    Last updated:{" "}
-                    {toDate(hearing.updatedAt)
-                      ? toDate(hearing.updatedAt).toLocaleDateString()
-                      : new Date().toLocaleDateString()}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={isFutureHearing(hearing.date)}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleViewProceedings(hearing);
-                      }}
-                    >
-                      View Proceeding
-                    </Button>
+                    <div className="grid gap-2 text-xs sm:grid-cols-2 xl:grid-cols-4">
+                      <div className="min-w-0 rounded-md border bg-white/70 p-2">
+                        <div className="mb-0.5 flex items-center gap-1.5 font-medium text-muted-foreground">
+                          <MapPin className={`h-3 w-3 ${tone.icon}`} />
+                          Venue
+                        </div>
+                        <p className="truncate text-sm font-medium text-foreground">{hearing.court}</p>
+                        <p className="truncate text-[11px] text-muted-foreground">{hearing.courtroom}</p>
+                      </div>
+                      <div className="min-w-0 rounded-md border bg-white/70 p-2">
+                        <div className="mb-0.5 flex items-center gap-1.5 font-medium text-muted-foreground">
+                          <User className={`h-3 w-3 ${tone.icon}`} />
+                          Advocate
+                        </div>
+                        <p className="truncate text-sm font-medium text-foreground">{hearing.advocate}</p>
+                      </div>
+                      <div className="min-w-0 rounded-md border bg-white/70 p-2">
+                        <div className="mb-0.5 flex items-center gap-1.5 font-medium text-muted-foreground">
+                          <User className={`h-3 w-3 ${tone.icon}`} />
+                          Client
+                        </div>
+                        <p className="truncate text-sm font-medium text-foreground">{hearing.client}</p>
+                      </div>
+                      <div className="min-w-0 rounded-md border bg-white/70 p-2">
+                        <div className="mb-0.5 flex items-center gap-1.5 font-medium text-muted-foreground">
+                          <Calendar className={`h-3 w-3 ${tone.icon}`} />
+                          Updated
+                        </div>
+                        <p className="truncate text-sm font-medium text-foreground">
+                          {toDate(hearing.updatedAt)
+                            ? toDate(hearing.updatedAt).toLocaleDateString()
+                            : new Date().toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
 
-                    {isLawyer && (
+                    <div className={`grid gap-2 text-xs ${hearing.notes ? "lg:grid-cols-2" : ""}`}>
+                      {hearing.notes && (
+                        <div className="min-w-0 rounded-md border border-[#03234b]/15 bg-[#03234b]/5 px-2 py-1.5">
+                          <span className="mr-1 font-semibold uppercase tracking-normal text-[#03234b]">Notes</span>
+                          <span className="line-clamp-1 text-muted-foreground">{hearing.notes}</span>
+                        </div>
+                      )}
+                      <div className="min-w-0 rounded-md border bg-white/75 px-2 py-1.5">
+                        <span className="mr-1 font-semibold uppercase tracking-normal text-foreground">Proceedings</span>
+                        <span className="line-clamp-1 text-muted-foreground">
+                          {hearing.outcome
+                            ? `${hearing.outcome.slice(0, 120)}${hearing.outcome.length > 120 ? "..." : ""}`
+                            : "No proceedings recorded yet."}
+                        </span>
+                      </div>
+                    </div>
+
+                    {hearing.documentsRequired.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-medium text-muted-foreground">Documents</span>
+                        {hearing.documentsRequired.map((doc, docIndex) => (
+                          <Badge key={docIndex} variant="outline" className="text-xs">
+                            {doc}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className={`flex flex-col justify-between gap-2 border-t p-3 lg:border-l lg:border-t-0 ${tone.side}`}>
+                    <div className="space-y-0.5">
+                      <p className="text-[11px] font-medium uppercase tracking-normal text-muted-foreground">Actions</p>
+                      <p className="line-clamp-1 text-[11px] text-muted-foreground">
+                        {isFutureHearing(hearing.date)
+                          ? "Proceedings unlock after hearing date."
+                          : hearing.outcome
+                            ? "Proceedings available."
+                            : "Proceedings not recorded."}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
                       <Button
                         variant="outline"
                         size="sm"
+                        className="h-7 justify-center bg-white/80 px-2 text-[11px]"
                         disabled={isFutureHearing(hearing.date)}
                         onClick={(event) => {
                           event.stopPropagation();
-                          handleEditProceedings(hearing);
+                          handleViewProceedings(hearing);
                         }}
                       >
-                        {hearing.outcome ? "Edit Proceeding" : "Add Proceeding"}
+                        View Proceeding
                       </Button>
-                    )}
 
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        if (hearing.caseId) {
-                          router.push(`/dashboard/cases/${hearing.caseId}`);
-                          return;
-                        }
-                        toast({
-                          title: "Edit Hearing",
-                          description: `Editing ${hearing.caseNumber} hearing.`,
-                        });
-                      }}
-                    >
-                      Edit
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={sendingReminderFor === hearing.id}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleSendReminder(hearing);
-                      }}
-                    >
-                      {sendingReminderFor === hearing.id ? (
-                        <>
-                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                          Sending...
-                        </>
-                      ) : (
-                        "Send Reminder"
+                      {isLawyer && (
+                        <Button
+                          variant={hearing.outcome ? "outline" : "secondary"}
+                          size="sm"
+                          className="h-7 justify-center px-2 text-[11px]"
+                          disabled={isFutureHearing(hearing.date)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleEditProceedings(hearing);
+                          }}
+                        >
+                          {hearing.outcome ? "Edit Proceeding" : "Add Proceeding"}
+                        </Button>
                       )}
-                    </Button>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 justify-center bg-white/80 px-2 text-[11px]"
+                        disabled={!hearing.caseId}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          if (hearing.caseId) {
+                            router.push(`/dashboard/cases/${hearing.caseId}`);
+                            return;
+                          }
+                          toast({
+                            title: "Case Unavailable",
+                            description: "This hearing is not linked to a case.",
+                          });
+                        }}
+                      >
+                        View Case
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 justify-center bg-white/80 px-2 text-[11px]"
+                        disabled={sendingReminderFor === hearing.id}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleSendReminder(hearing);
+                        }}
+                      >
+                        {sendingReminderFor === hearing.id ? (
+                          <>
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            Sending...
+                          </>
+                        ) : (
+                          "Send Reminder"
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {displayedHearings.length === 0 && (
         <Card>
           <CardContent className="p-12 text-center">
-            <div className="space-y-4">
-              <div className="mx-auto h-12 w-12 rounded-full bg-muted flex items-center justify-center">
-                <Calendar className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <div>
-                <h3 className="text-lg font-medium">No hearings found</h3>
-                <p className="text-muted-foreground">
-                  Try adjusting your search or filter criteria
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSearchTerm("");
-                  setFilterStatus("all");
-                  setFilterType("all");
-                  setFilterCase("all");
-                  setActiveQuickFilter(null);
-                }}
-              >
-                Clear Filters
-              </Button>
-            </div>
+            <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium">No hearings found</h3>
+            <p className="text-muted-foreground mb-4">
+              Try adjusting your filters or schedule a new hearing.
+            </p>
+            <Button onClick={handleOpenScheduleDialog}>
+              <Plus className="h-4 w-4 mr-2" />
+              Schedule Hearing
+            </Button>
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Add New Event</DialogTitle>
+            <DialogDescription>
+              Create a new event on your calendar
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="schedule-event-title">Event Title</Label>
+              <Input
+                id="schedule-event-title"
+                value={scheduleEventForm.title}
+                onChange={(event) =>
+                  handleScheduleEventChange("title", event.target.value)
+                }
+                placeholder="Enter event title"
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="schedule-event-date">Date</Label>
+                <DatePicker
+                  id="schedule-event-date"
+                  selected={scheduleEventForm.date}
+                  onSelect={(date) =>
+                    handleScheduleEventChange("date", date || new Date())
+                  }
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="schedule-event-time">Time</Label>
+                <Input
+                  id="schedule-event-time"
+                  value={scheduleEventForm.time}
+                  onChange={(event) =>
+                    handleScheduleEventChange("time", event.target.value)
+                  }
+                  placeholder="e.g. 10:30 AM"
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="schedule-event-type">Event Type</Label>
+                <Select
+                  value={scheduleEventForm.type}
+                  onValueChange={(value) =>
+                    handleScheduleEventChange("type", value)
+                  }
+                >
+                  <SelectTrigger id="schedule-event-type">
+                    <SelectValue placeholder="Select event type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EVENT_TYPES.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="schedule-event-case">Related Case</Label>
+                <Select
+                  value={scheduleEventForm.case}
+                  onValueChange={(value) =>
+                    handleScheduleEventChange("case", value)
+                  }
+                >
+                  <SelectTrigger id="schedule-event-case">
+                    <SelectValue placeholder="Select case" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem
+                      value="none"
+                      disabled={scheduleEventForm.type !== "client_meeting"}
+                    >
+                      None
+                    </SelectItem>
+                    {cases.map((caseItem) => {
+                      const caseId = caseItem._id || caseItem.id;
+                      return (
+                        <SelectItem key={caseId} value={caseId}>
+                          {caseItem.title ||
+                            formatDisplayCaseNumber({
+                              caseNumber: caseItem.caseNumber || caseItem.number,
+                            }) ||
+                            "Untitled Case"}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="schedule-event-location">Location</Label>
+              <Input
+                id="schedule-event-location"
+                value={scheduleEventForm.location}
+                onChange={(event) =>
+                  handleScheduleEventChange("location", event.target.value)
+                }
+                placeholder="Enter location"
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="schedule-event-description">Description</Label>
+              <Textarea
+                id="schedule-event-description"
+                value={scheduleEventForm.description}
+                onChange={(event) =>
+                  handleScheduleEventChange("description", event.target.value)
+                }
+                placeholder="Enter event description"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowScheduleDialog(false);
+                setScheduleEventForm(createScheduleEventForm());
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateScheduleEvent}
+              disabled={
+                schedulingEvent ||
+                !scheduleEventForm.title ||
+                !scheduleEventForm.date
+              }
+            >
+              {schedulingEvent ? "Adding..." : "Add Event"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showProceedingsDialog} onOpenChange={setShowProceedingsDialog}>
         <DialogContent>

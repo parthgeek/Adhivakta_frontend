@@ -56,7 +56,7 @@ export function LoginForm() {
       console.error("Login error:", error)
 
       if (error.code === "ACTIVE_SESSION_EXISTS") {
-        setSessionConflict({ provider: "email" })
+        setSessionConflict({ provider: "email", message: error.message })
         setShowSessionConflictDialog(true)
         setError(error.message || "This account is already active on another device.")
         return
@@ -102,7 +102,7 @@ export function LoginForm() {
       console.error("Google login error:", error)
 
       if (error.code === "ACTIVE_SESSION_EXISTS") {
-        setSessionConflict({ provider: "google", idToken: error.idToken || null })
+        setSessionConflict({ provider: "google", idToken: error.idToken || null, message: error.message })
         setShowSessionConflictDialog(true)
         setError(error.message || "This account is already active on another device.")
         return
@@ -301,7 +301,8 @@ export function LoginForm() {
           <DialogHeader>
             <DialogTitle>Account already active</DialogTitle>
             <DialogDescription>
-              This account is logged in on another device. Click Logout to end that session and continue here.
+              {sessionConflict?.message ||
+                "This account is logged in on another device. Click Logout to end that session and continue here."}
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-2">
@@ -323,7 +324,7 @@ export function LoginForm() {
                   Logging out...
                 </>
               ) : (
-                "Logout previous device"
+                "Logout other sessions"
               )}
             </Button>
           </div>

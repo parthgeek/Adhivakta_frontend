@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Loader2, Bell, Clock, LogOut, Mail, Pencil, Crown } from "lucide-react"
+import { Loader2, Bell, Clock, LogOut, Mail, Pencil, Crown, MonitorSmartphone } from "lucide-react"
 import api from "@/services/api"
 import SubscriptionSettings from "@/components/subscription/subscription-settings"
 import { useLanguage } from "@/context/language-context"
@@ -26,9 +26,11 @@ const DEFAULT_NOTIFICATION_SETTINGS = {
 const DEFAULT_SECURITY_SETTINGS = {
   loginAlerts: true,
   sessionTimeout: "30",
+  sessionLoginLimit: "1",
 }
 
 const SESSION_TIMEOUT_OPTIONS = ["15", "30", "60", "120", "240"]
+const SESSION_LOGIN_LIMIT_OPTIONS = ["1", "2", "3"]
 
 const mergeBooleanSettings = (settings, defaults) =>
   Object.keys(defaults).reduce((acc, key) => {
@@ -38,11 +40,15 @@ const mergeBooleanSettings = (settings, defaults) =>
 
 const normalizeSecuritySettings = (settings) => {
   const sessionTimeout = String(settings?.sessionTimeout ?? DEFAULT_SECURITY_SETTINGS.sessionTimeout)
+  const sessionLoginLimit = String(settings?.sessionLoginLimit ?? DEFAULT_SECURITY_SETTINGS.sessionLoginLimit)
   return {
     loginAlerts: typeof settings?.loginAlerts === "boolean" ? settings.loginAlerts : DEFAULT_SECURITY_SETTINGS.loginAlerts,
     sessionTimeout: SESSION_TIMEOUT_OPTIONS.includes(sessionTimeout)
       ? sessionTimeout
       : DEFAULT_SECURITY_SETTINGS.sessionTimeout,
+    sessionLoginLimit: SESSION_LOGIN_LIMIT_OPTIONS.includes(sessionLoginLimit)
+      ? sessionLoginLimit
+      : DEFAULT_SECURITY_SETTINGS.sessionLoginLimit,
   }
 }
 
@@ -305,6 +311,7 @@ export default function SettingsPage() {
       const payload = {
         loginAlerts: securitySettings.loginAlerts,
         sessionTimeout: Number(securitySettings.sessionTimeout),
+        sessionLoginLimit: Number(securitySettings.sessionLoginLimit),
       }
       const response = await api.users.updateSecurity(payload)
       const nextSecurity = normalizeSecuritySettings(response.data)
@@ -699,6 +706,31 @@ export default function SettingsPage() {
                           <SelectItem value="60">1 hour</SelectItem>
                           <SelectItem value="120">2 hours</SelectItem>
                           <SelectItem value="240">4 hours</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t pt-4">
+                  <div className="flex items-start space-x-2">
+                    <MonitorSmartphone className="mt-0.5 h-5 w-5 text-muted-foreground" />
+                    <div className="flex-1 space-y-2">
+                      <Label htmlFor="sessionLoginLimit">Session Login Limit</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Allow this account to stay signed in on up to this many active sessions.
+                      </p>
+                      <Select
+                        value={securitySettings.sessionLoginLimit}
+                        onValueChange={(value) => handleSecurityChange("sessionLoginLimit", value)}
+                      >
+                        <SelectTrigger id="sessionLoginLimit" className="max-w-xs">
+                          <SelectValue placeholder="Select active sessions" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">1 session</SelectItem>
+                          <SelectItem value="2">2 sessions</SelectItem>
+                          <SelectItem value="3">3 sessions</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
