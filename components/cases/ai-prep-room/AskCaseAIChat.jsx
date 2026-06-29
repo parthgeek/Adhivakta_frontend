@@ -93,7 +93,15 @@ function MessageBubble({ message }) {
  * Section 3 — Ask Case AI chat. Self-contained demo: sends a message,
  * shows a typing indicator, then a canned cited reply.
  */
-const AskCaseAIChat = forwardRef(function AskCaseAIChat({ initialMessages = [] }, ref) {
+const AskCaseAIChat = forwardRef(function AskCaseAIChat(
+  {
+    initialMessages = [],
+    onSend,
+    suggestedPrompts = SUGGESTED_PROMPTS,
+    placeholder = "Ask anything about this case…",
+  },
+  ref
+) {
   const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
@@ -106,7 +114,7 @@ const AskCaseAIChat = forwardRef(function AskCaseAIChat({ initialMessages = [] }
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-  const send = (text) => {
+  const send = async (text) => {
     const value = (text ?? input).trim();
     if (!value || thinking) return;
 
@@ -116,15 +124,44 @@ const AskCaseAIChat = forwardRef(function AskCaseAIChat({ initialMessages = [] }
       content: value,
       createdAt: new Date().toISOString(),
     };
+    // Snapshot prior turns for the model (exclude the just-added user msg).
+    const history = messages
+      .filter((m) => !m.pending && m.content)
+      .map((m) => ({ role: m.role, content: m.content }));
+
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setThinking(true);
 
+    if (onSend) {
+      try {
+        const reply = await onSend(value, history);
+        setMessages((prev) => [...prev, reply]);
+      } catch (err) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `e-${Date.now()}`,
+            role: "assistant",
+            content:
+              err?.message ||
+              "Something went wrong answering that. Make sure the case is indexed and try again.",
+            createdAt: new Date().toISOString(),
+            isError: true,
+          },
+        ]);
+      } finally {
+        setThinking(false);
+      }
+      return;
+    }
+
+    // Fallback (no backend wired): canned reply.
     timers.current.push(
       setTimeout(() => {
         setMessages((prev) => [...prev, mockAssistantReply(value)]);
         setThinking(false);
-      }, 1400),
+      }, 1400)
     );
   };
 
@@ -153,9 +190,9 @@ const AskCaseAIChat = forwardRef(function AskCaseAIChat({ initialMessages = [] }
         </AnimatePresence>
       </div>
 
-      {!hasConversation && (
+      {!hasConversation && suggestedPrompts.length > 0 && (
         <div className="flex flex-wrap gap-2 px-4 pb-2">
-          {SUGGESTED_PROMPTS.map((p) => (
+          {suggestedPrompts.map((p) => (
             <button
               key={p}
               type="button"
@@ -178,7 +215,7 @@ const AskCaseAIChat = forwardRef(function AskCaseAIChat({ initialMessages = [] }
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask anything about this case…"
+          placeholder={placeholder}
           className="h-10 flex-1 rounded-xl border border-input bg-background px-3.5 text-sm outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/15"
         />
         <Button

@@ -63,6 +63,7 @@ export const ASSISTANT_STATUS_META = {
   ready: { label: "AI Ready", dot: "bg-emerald-500", pulse: false },
   thinking: { label: "AI Thinking", dot: "bg-amber-500", pulse: true },
   indexing: { label: "Indexing", dot: "bg-sky-500", pulse: true },
+  idle: { label: "Not indexed", dot: "bg-muted-foreground", pulse: false },
   offline: { label: "AI Offline", dot: "bg-muted-foreground", pulse: false },
 };
 

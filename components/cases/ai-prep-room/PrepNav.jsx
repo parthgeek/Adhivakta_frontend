@@ -4,12 +4,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { PREP_NAV } from "./routes";
+import { usePrepCase } from "./PrepCaseContext";
 
 /**
  * Sticky, route-aware navigation shared across all AI Prep Room pages.
+ * Preserves the selected case (`?case=`) across navigation.
  */
 export default function PrepNav() {
   const pathname = usePathname();
+  const { caseId } = usePrepCase();
+  const qs = caseId ? `?case=${caseId}` : "";
 
   return (
     <div className="sticky top-0 z-30 -mx-1 mb-6 border-b border-border/60 bg-background/80 px-1 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -20,7 +24,7 @@ export default function PrepNav() {
           return (
             <Link
               key={id}
-              href={href}
+              href={`${href}${qs}`}
               className={cn(
                 "inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
                 active

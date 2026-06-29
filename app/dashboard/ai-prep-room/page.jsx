@@ -13,11 +13,13 @@ import { ACTION_ROUTES, BASE } from "@/components/cases/ai-prep-room/routes";
 /** AI Prep Room — overview hub. Action cards route to dedicated feature pages. */
 export default function AIPrepRoomHubPage() {
   const router = useRouter();
-  const { status, data, error, generating, generateBrief, reload } = useAIPrepRoom({});
+  const { status, data, error, generating, generateBrief, reload, caseId } =
+    useAIPrepRoom({});
+  const qs = caseId ? `?case=${caseId}` : "";
 
   const handleAction = (id) => {
     const href = ACTION_ROUTES[id];
-    if (href) router.push(href);
+    if (href) router.push(`${href}${qs}`);
   };
 
   if (status === "error") {
@@ -42,8 +44,7 @@ export default function AIPrepRoomHubPage() {
       <PrepHeader
         caseSummary={data.caseSummary}
         onGenerateBrief={() => {
-          generateBrief();
-          router.push(`${BASE}/brief`);
+          router.push(`${BASE}/brief${qs}${qs ? "&" : "?"}generate=1`);
         }}
         generating={generating}
       />
@@ -65,7 +66,7 @@ export default function AIPrepRoomHubPage() {
             variant="ghost"
             size="sm"
             className="gap-1.5 text-muted-foreground"
-            onClick={() => router.push(`${BASE}/activity`)}
+            onClick={() => router.push(`${BASE}/activity${qs}`)}
           >
             View all
             <ArrowRight className="h-3.5 w-3.5" />

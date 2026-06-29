@@ -1,50 +1,170 @@
 /**
- * AI Prep Room — API integration placeholders.
+ * AI Prep Room — backend integration.
  *
- * These wrap the eventual backend (`/api/cases/:id/ai/*`). For now they
- * resolve mock data after a short delay so the UI exercises loading,
- * error and success states. Replace the bodies with real `fetch` calls;
- * the component layer already consumes these promises.
+ * These call the case-scoped RAG endpoints (`/ai-prep/cases/:id/*`) and map the
+ * backend payloads onto the view-model shapes the components already consume,
+ * so the presentational layer didn't need to change.
  */
 
-import { buildPrepRoomData } from "./mock-data";
+import api from "@/lib/api";
 
-const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+/* --------------------------------- mappers -------------------------------- */
 
-/** GET the full prep-room view-model for a case. */
-export async function fetchPrepRoom(caseId, caseData) {
-  await delay(900);
-  // throw new Error("Failed to load AI Prep Room"); // ← uncomment to test error state
-  return buildPrepRoomData({ ...caseData, _id: caseId });
-}
+function toCaseSummary(caseData = {}, status = null) {
+  const court = caseData.court;
+  const courtName =
+    typeof court === "string"
+      ? court
+      : court?.name || court?.establishment || court?.district || "";
 
-/** POST — (re)generate the hearing brief. */
-export async function generateHearingBrief(caseId) {
-  await delay(1500);
-  const { brief } = buildPrepRoomData({ _id: caseId });
-  return { ...brief, generatedAt: new Date().toISOString() };
-}
+  let assistantStatus = "indexing";
+  if (status) assistantStatus = status.indexed ? "ready" : "idle";
 
-/** POST a chat turn. Returns the assistant message (with citations). */
-export async function askCaseAI(caseId, prompt) {
-  await delay(1200);
+  const indexedPercent =
+    status && status.totalDocuments
+      ? Math.round((status.indexedDocuments / status.totalDocuments) * 100)
+      : 0;
+
   return {
-    id: `m-${Date.now()}`,
-    role: "assistant",
-    content: "…",
-    createdAt: new Date().toISOString(),
-    citations: [],
+    id: caseData._id || caseData.id,
+    name: caseData.title || caseData.caseTitle || "Untitled case",
+    caseNumber: caseData.caseNumber || caseData.cnrNumber || "—",
+    court: courtName,
+    upcomingHearingDate: caseData.nextHearingDate || null,
+    assistantStatus,
+    indexedPercent,
   };
 }
 
-/** POST — run weakness analysis. */
-export async function runWeaknessAnalysis(caseId) {
-  await delay(1400);
-  return buildPrepRoomData({ _id: caseId }).findings;
+/** Map a Claude brief object into the section-based shape the UI renders. */
+export function mapBrief(brief) {
+  if (!brief) return null;
+  const sections = [];
+  if (brief.summary)
+    sections.push({ id: "summary", title: "Case Overview", body: brief.summary });
+  if (brief.keyFacts?.length)
+    sections.push({ id: "key-facts", title: "Key Facts", bullets: brief.keyFacts });
+  if (brief.issues?.length)
+    sections.push({ id: "issues", title: "Issues", bullets: brief.issues });
+  if (brief.arguments?.length)
+    sections.push({
+      id: "arguments",
+      title: "Suggested Arguments",
+      bullets: brief.arguments.map((a) =>
+        a.support ? `${a.point} — ${a.support}` : a.point
+      ),
+    });
+  if (brief.evidence?.length)
+    sections.push({ id: "evidence", title: "Evidence", bullets: brief.evidence });
+  if (brief.nextSteps?.length)
+    sections.push({ id: "next-steps", title: "Next Steps", bullets: brief.nextSteps });
+
+  return { generatedAt: brief.generatedAt || new Date().toISOString(), sections };
 }
 
-/** POST — export the brief to PDF; returns a blob URL in the real impl. */
-export async function exportBriefPdf(caseId) {
-  await delay(800);
-  return { url: `#/cases/${caseId}/brief.pdf` };
+/** Map Claude findings into the WeaknessAnalysis card shape. */
+export function mapFindings(findings = []) {
+  return findings.map((f, i) => ({
+    id: `f-${i}`,
+    category: f.severity === "high" ? "procedural-risk" : "missing-evidence",
+    title: f.title,
+    severity: f.severity || "medium",
+    description: f.detail,
+    recommendedAction: f.mitigation,
+  }));
+}
+
+/** Map Claude citations to the chat citation chip shape. */
+export function mapCitations(citations = []) {
+  return citations.map((c) => ({
+    id: `cite-${c.id}`,
+    document: c.documentName,
+    page: null,
+    snippet: c.snippet,
+    score: c.score,
+  }));
+}
+
+function activityFromStatus(status) {
+  if (!status) return [];
+  const items = [];
+  if (status.indexed) {
+    items.push({
+      id: "idx",
+      type: "indexed",
+      title: "Documents Indexed",
+      detail: `${status.indexedDocuments}/${status.totalDocuments} documents · ${status.chunks} chunks`,
+      at: status.lastIndexedAt || new Date().toISOString(),
+    });
+  }
+  return items;
+}
+
+/* --------------------------------- calls ---------------------------------- */
+
+/** Assemble the hub/overview view-model from real case + index status. */
+export async function fetchPrepRoom(caseId, caseData) {
+  let status = null;
+  if (caseId) {
+    try {
+      status = await api.aiPrep.getStatus(caseId);
+    } catch {
+      status = null;
+    }
+  }
+
+  return {
+    caseSummary: toCaseSummary(caseData || {}, status),
+    status,
+    brief: null,
+    chat: [],
+    findings: [],
+    practice: { questions: [], score: null },
+    activity: activityFromStatus(status),
+    suggestedPrompts: [
+      "What evidence supports our claim?",
+      "Summarize the strongest arguments",
+      "What documents or proof are missing?",
+      "What are the procedural risks?",
+    ],
+  };
+}
+
+export async function generateHearingBrief(caseId) {
+  const res = await api.aiPrep.brief(caseId);
+  return mapBrief(res.brief);
+}
+
+export async function runWeaknessAnalysis(caseId) {
+  const res = await api.aiPrep.weaknesses(caseId);
+  return mapFindings(res.findings);
+}
+
+/** Post a chat turn; returns an assistant message with citation chips. */
+export async function askCaseAI(caseId, prompt, history = []) {
+  const res = await api.aiPrep.ask(caseId, prompt, history);
+  return {
+    id: `m-${Date.now()}`,
+    role: "assistant",
+    content: res.answer,
+    createdAt: new Date().toISOString(),
+    citations: mapCitations(res.citations),
+  };
+}
+
+/** Opposing-counsel drill turn. */
+export async function practiceTurn(caseId, history = []) {
+  const res = await api.aiPrep.practice(caseId, history);
+  return {
+    id: `m-${Date.now()}`,
+    role: "assistant",
+    content: res.answer,
+    createdAt: new Date().toISOString(),
+    citations: mapCitations(res.citations),
+  };
+}
+
+export async function exportBriefPdf() {
+  // Export is handled client-side (copy/print) for now.
+  return { url: null };
 }
