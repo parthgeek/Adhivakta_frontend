@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, Search, User, LogOut, Settings, Menu } from "lucide-react";
+import { Bell, Search, User, LogOut, Settings, Menu, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -128,6 +128,7 @@ export default function Header({ onMenuClick }) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const displayName = user?.name || "User";
+  const firstName = displayName.split(" ").filter(Boolean)[0] || "User";
   const displayRole = getDisplayRole(user?.role);
   const initials = useMemo(() => {
     const value = displayName
@@ -295,6 +296,15 @@ export default function Header({ onMenuClick }) {
           </button>
         </div>
 
+        <div className="hidden md:flex md:col-start-1 md:items-center">
+          <div className="flex items-center gap-2 rounded-lg border border-[#03234b]/10 bg-[#03234b]/5 px-3 py-1.5">
+            <Sparkles className="h-4 w-4 text-[#03234b]" />
+            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#03234b]">
+              Advocate Workspace
+            </span>
+          </div>
+        </div>
+
         <div className="hidden md:block md:col-start-2 md:w-full">
           <div ref={searchRef} className="relative w-full">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground h-5 w-5" />
@@ -393,7 +403,10 @@ export default function Header({ onMenuClick }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 ml-auto md:ml-0 md:justify-self-end md:gap-4">
+        <div className="flex items-center gap-2 ml-auto md:ml-0 md:col-start-3 md:justify-self-end md:gap-4">
+          <span className="hidden md:block text-sm font-medium text-foreground mr-1">
+            Hi, {firstName}
+          </span>
           <Button
             variant="ghost"
             size="icon"
@@ -434,10 +447,7 @@ export default function Header({ onMenuClick }) {
                   <span className="text-xs font-semibold">{initials}</span>
                 </div>
                 <div className="text-left hidden md:block">
-                  <p className="text-sm font-medium">{displayName}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {displayRole}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{displayRole}</p>
                 </div>
               </Button>
             </DropdownMenuTrigger>

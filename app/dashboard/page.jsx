@@ -8,7 +8,6 @@ import {
   AlertCircle,
   Briefcase,
   CheckCircle,
-  Sparkles,
   TrendingUp,
   Search,
   Scale,
@@ -310,63 +309,6 @@ const DashboardSkeleton = () => (
   </div>
 );
 
-// ─── WelcomeBanner ───────────────────────────────────────────────────────────
-
-const WelcomeBanner = ({ user, todayHearings, overdueTasks, statsCards = [] }) => {
-  const today = new Date();
-  const hour = today.getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-  const firstName = user?.name?.split(" ")[0] || "User";
-  const dateStr = today.toLocaleDateString("en-US", {
-    weekday: "long", day: "numeric", month: "short", year: "numeric",
-  });
-
-  return (
-    <div
-      className="relative overflow-hidden rounded-2xl p-5 text-white sm:p-6"
-      style={{ background: `linear-gradient(135deg, ${BRAND} 0%, #1a4a8a 60%, #0d3a6e 100%)` }}
-    >
-      {/* decorative circles */}
-      <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-white/5" />
-      <div className="pointer-events-none absolute -bottom-8 right-32 h-40 w-40 rounded-full bg-white/5" />
-
-      <div className="relative flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="h-4 w-4 text-blue-300" />
-            <span className="text-xs font-semibold uppercase tracking-widest text-blue-200">
-              Advocate Workspace
-            </span>
-          </div>
-          <h1 className="text-2xl font-bold mb-2 sm:text-3xl">
-            {greeting}, {firstName}
-          </h1>
-          <p className="text-blue-100 text-sm leading-relaxed">
-            You have{" "}
-            <span className="font-bold text-white">{todayHearings} hearing{todayHearings !== 1 ? "s" : ""}</span>{" "}
-            today and{" "}
-            <span className="font-bold text-white">{overdueTasks} overdue</span>{" "}
-            tasks needing attention.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-medium backdrop-blur-sm shrink-0">
-          <Calendar className="h-4 w-4 text-blue-200" />
-          <span>{dateStr}</span>
-        </div>
-      </div>
-
-      {statsCards.length > 0 ? (
-        <div className="relative mt-5 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-          {statsCards.map((card) => (
-            <StatsCard key={card.title} {...card} compact />
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-};
-
 // ─── StatsCard ───────────────────────────────────────────────────────────────
 
 const StatsCard = ({ title, value, sub, icon: Icon, iconBg, iconColor, href, compact = false }) => {
@@ -392,16 +334,18 @@ const StatsCard = ({ title, value, sub, icon: Icon, iconBg, iconColor, href, com
   }
 
   const content = (
-    <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between mb-3">
-        <div className={cn("p-2.5 rounded-lg", iconBg)}>
-          <Icon className={cn("h-5 w-5", iconColor)} />
+    <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between mb-2">
+        <div className={cn("p-2 rounded-lg", iconBg)}>
+          <Icon className={cn("h-4 w-4", iconColor)} />
         </div>
-        <TrendingUp className="h-4 w-4 text-emerald-500" />
+        <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
       </div>
-      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">{title}</p>
-      <p className="text-3xl font-bold text-gray-900">{value ?? 0}</p>
-      <p className="text-xs text-gray-400 mt-1">{sub}</p>
+      <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">{title}</p>
+      <div className="mt-0.5 flex items-end gap-2">
+        <p className="text-2xl font-bold leading-none text-gray-900">{value ?? 0}</p>
+        <p className="truncate pb-0.5 text-[11px] text-gray-400">{sub}</p>
+      </div>
     </div>
   );
   return href ? <Link href={href}>{content}</Link> : content;
@@ -1345,6 +1289,32 @@ const PersonalizedCauseListPreview = () => {
   const totalEntries = result?.personalized_total_entries ?? entries.length;
   const displayedDate = result?.displayedSavedDate || result?.date;
 
+  if (!loading && !error && entries.length === 0) {
+    return (
+      <Card className="border-[#d6deeb] bg-white shadow-sm">
+        <CardContent className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#03234b]/5">
+              <Scale className="h-4 w-4 text-[#03234b]" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900">No cause list saved</p>
+              <p className="text-xs text-slate-500">
+                Save a personalised cause list to see it here.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/dashboard/cause-list/search"
+            className="inline-flex h-9 items-center rounded-lg border border-[#03234b]/15 px-3 text-sm font-semibold text-[#03234b] transition hover:bg-[#03234b]/5 active:translate-y-[1px]"
+          >
+            Create list
+          </Link>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="overflow-hidden border-[#d6deeb] bg-white shadow-sm">
       <CardHeader className="border-b border-slate-100 bg-white px-4 py-4 sm:px-5">
@@ -1810,6 +1780,13 @@ const NewDashboard = () => {
 
   const { cases, events, notifications, documents, stats } = dashboardData;
 
+  const todayDateStr = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
   const statsCards = [
     {
       title: "Total Cases",
@@ -1817,7 +1794,7 @@ const NewDashboard = () => {
       sub: `+${Math.max(1, Math.floor(stats.totalCases * 0.09))} from last month`,
       icon: Briefcase,
       iconBg: "bg-[#03234b]/10",
-      iconColor: "text-blue-100",
+      iconColor: "text-[#03234b]",
       href: "/dashboard/cases",
     },
     {
@@ -1826,7 +1803,7 @@ const NewDashboard = () => {
       sub: `Today: ${todayHearings} hearing${todayHearings !== 1 ? "s" : ""}`,
       icon: Calendar,
       iconBg: "bg-emerald-50",
-      iconColor: "text-emerald-100",
+      iconColor: "text-emerald-600",
       href: "/dashboard/calendar",
     },
     {
@@ -1835,7 +1812,7 @@ const NewDashboard = () => {
       sub: "Requires attention",
       icon: AlertCircle,
       iconBg: "bg-orange-50",
-      iconColor: "text-orange-100",
+      iconColor: "text-orange-600",
       href: "/dashboard/cases?filter=urgent",
     },
     {
@@ -1844,7 +1821,7 @@ const NewDashboard = () => {
       sub: `+${Math.max(1, Math.floor(stats.closedCases * 0.18))} from last month`,
       icon: CheckCircle,
       iconBg: "bg-gray-100",
-      iconColor: "text-slate-100",
+      iconColor: "text-slate-600",
       href: "/dashboard/cases?filter=closed",
     },
   ];
@@ -1861,14 +1838,41 @@ const NewDashboard = () => {
         dismissedNotificationIds={dismissedApprovalIds}
       />
 
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Welcome Banner */}
-        <WelcomeBanner
-          user={user}
-          todayHearings={todayHearings}
-          overdueTasks={overdueTasks}
-          statsCards={statsCards}
-        />
+      <div className="max-w-7xl mx-auto space-y-5">
+        {/* Stats cards */}
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          {statsCards.map((card) => (
+            <StatsCard key={card.title} {...card} />
+          ))}
+        </div>
+
+        {/* Hearings today + overdue tasks */}
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            <div className="flex items-center gap-2 text-sm text-gray-700">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50">
+                <Calendar className="h-4 w-4 text-blue-600" />
+              </span>
+              <span>
+                <span className="font-bold text-gray-900">{todayHearings}</span>{" "}
+                hearing{todayHearings !== 1 ? "s" : ""} today
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-gray-700">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-50">
+                <AlertCircle className="h-4 w-4 text-orange-600" />
+              </span>
+              <span>
+                <span className="font-bold text-gray-900">{overdueTasks}</span>{" "}
+                overdue task{overdueTasks !== 1 ? "s" : ""} needing attention
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-1.5 text-sm font-medium text-gray-600">
+            <Calendar className="h-4 w-4 text-gray-400" />
+            <span>{todayDateStr}</span>
+          </div>
+        </div>
 
         <PersonalizedCauseListPreview />
 
