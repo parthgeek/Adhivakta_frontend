@@ -156,6 +156,25 @@ const formatDashboardDate = (value) => {
   });
 };
 
+const getValidDate = (...values) => {
+  for (const value of values) {
+    if (!value) continue;
+    const date = value instanceof Date ? value : new Date(value);
+    if (!Number.isNaN(date.getTime())) return date;
+  }
+  return null;
+};
+
+const getMonthStart = (date = new Date()) =>
+  new Date(date.getFullYear(), date.getMonth(), 1);
+
+const getMonthlyCountLabel = (count, singularLabel, pluralLabel = `${singularLabel}s`) => {
+  if (count > 0) {
+    return `+${count} ${count === 1 ? singularLabel : pluralLabel} from last month`;
+  }
+  return "No change from last month";
+};
+
 const formatNumericDate = (value, separator = "/") => {
   if (!value) {
     return "";
@@ -311,7 +330,22 @@ const DashboardSkeleton = () => (
 
 // ─── StatsCard ───────────────────────────────────────────────────────────────
 
-const StatsCard = ({ title, value, sub, icon: Icon, iconBg, iconColor, href, compact = false }) => {
+const StatsCard = ({
+  title,
+  value,
+  sub,
+  icon: Icon,
+  iconBg,
+  iconColor,
+  href,
+  compact = false,
+  surfaceClass,
+  titleClass,
+  valueClass,
+  subClass,
+  trendClass,
+  glowClass,
+}) => {
   if (compact) {
     const content = (
       <div className="group rounded-xl border border-white/15 bg-white/10 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-sm transition duration-300 hover:bg-white/15 active:translate-y-[1px]">
@@ -334,17 +368,33 @@ const StatsCard = ({ title, value, sub, icon: Icon, iconBg, iconColor, href, com
   }
 
   const content = (
-    <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between mb-2">
+    <div
+      className={cn(
+        "group relative overflow-hidden rounded-xl border p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md active:translate-y-[1px]",
+        surfaceClass || "border-gray-100 bg-white"
+      )}
+    >
+      {glowClass ? (
+        <span
+          aria-hidden="true"
+          className={cn(
+            "pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full blur-2xl transition-transform duration-500 group-hover:scale-125",
+            glowClass
+          )}
+        />
+      ) : null}
+      <div className="relative flex items-center justify-between mb-2">
         <div className={cn("p-2 rounded-lg", iconBg)}>
           <Icon className={cn("h-4 w-4", iconColor)} />
         </div>
-        <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
+        <TrendingUp className={cn("h-3.5 w-3.5", trendClass || "text-emerald-500")} />
       </div>
-      <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">{title}</p>
-      <div className="mt-0.5 flex items-end gap-2">
-        <p className="text-2xl font-bold leading-none text-gray-900">{value ?? 0}</p>
-        <p className="truncate pb-0.5 text-[11px] text-gray-400">{sub}</p>
+      <p className={cn("relative text-[11px] font-medium uppercase tracking-wide", titleClass || "text-gray-500")}>
+        {title}
+      </p>
+      <div className="relative mt-0.5 flex items-end gap-2">
+        <p className={cn("text-2xl font-bold leading-none", valueClass || "text-gray-900")}>{value ?? 0}</p>
+        <p className={cn("truncate pb-0.5 text-[11px]", subClass || "text-gray-400")}>{sub}</p>
       </div>
     </div>
   );
@@ -1787,14 +1837,32 @@ const NewDashboard = () => {
     year: "numeric",
   });
 
+  const currentMonthStart = getMonthStart();
+  const casesAddedThisMonth = cases.filter((caseItem) => {
+    const createdDate = getValidDate(caseItem.createdAt, caseItem.filingDate);
+    return createdDate && createdDate >= currentMonthStart;
+  }).length;
+  const casesClosedThisMonth = cases.filter((caseItem) => {
+    const status = String(caseItem.status || "").toLowerCase();
+    if (status !== "closed") return false;
+    const closedDate = getValidDate(caseItem.closedAt, caseItem.updatedAt);
+    return closedDate && closedDate >= currentMonthStart;
+  }).length;
+
   const statsCards = [
     {
       title: "Total Cases",
       value: stats.totalCases,
-      sub: `+${Math.max(1, Math.floor(stats.totalCases * 0.09))} from last month`,
+      sub: getMonthlyCountLabel(casesAddedThisMonth, "new case"),
       icon: Briefcase,
-      iconBg: "bg-[#03234b]/10",
-      iconColor: "text-[#03234b]",
+      iconBg: "bg-white/15 ring-1 ring-white/20",
+      iconColor: "text-white",
+      surfaceClass: "border-[#051a36]/40 bg-[linear-gradient(135deg,#02172f_0%,#06315f_100%)] text-white shadow-[0_18px_36px_-24px_rgba(3,35,75,0.9)]",
+      titleClass: "text-blue-100/85",
+      valueClass: "text-white",
+      subClass: "text-blue-100/75",
+      trendClass: "text-emerald-200",
+      glowClass: "bg-sky-300/20",
       href: "/dashboard/cases",
     },
     {
@@ -1802,8 +1870,14 @@ const NewDashboard = () => {
       value: totalUpcomingHearings,
       sub: `Today: ${todayHearings} hearing${todayHearings !== 1 ? "s" : ""}`,
       icon: Calendar,
-      iconBg: "bg-emerald-50",
-      iconColor: "text-emerald-600",
+      iconBg: "bg-white/15 ring-1 ring-white/20",
+      iconColor: "text-emerald-100",
+      surfaceClass: "border-emerald-950/30 bg-[linear-gradient(135deg,#064e3b_0%,#0f766e_100%)] text-white shadow-[0_18px_36px_-24px_rgba(5,95,70,0.9)]",
+      titleClass: "text-emerald-50/80",
+      valueClass: "text-white",
+      subClass: "text-emerald-50/70",
+      trendClass: "text-emerald-100",
+      glowClass: "bg-emerald-200/20",
       href: "/dashboard/calendar",
     },
     {
@@ -1811,17 +1885,29 @@ const NewDashboard = () => {
       value: stats.urgentCases,
       sub: "Requires attention",
       icon: AlertCircle,
-      iconBg: "bg-orange-50",
-      iconColor: "text-orange-600",
+      iconBg: "bg-white/15 ring-1 ring-white/20",
+      iconColor: "text-amber-100",
+      surfaceClass: "border-amber-950/30 bg-[linear-gradient(135deg,#78350f_0%,#b45309_100%)] text-white shadow-[0_18px_36px_-24px_rgba(146,64,14,0.9)]",
+      titleClass: "text-amber-50/80",
+      valueClass: "text-white",
+      subClass: "text-amber-50/70",
+      trendClass: "text-amber-100",
+      glowClass: "bg-amber-200/20",
       href: "/dashboard/cases?filter=urgent",
     },
     {
       title: "Closed Cases",
       value: stats.closedCases,
-      sub: `+${Math.max(1, Math.floor(stats.closedCases * 0.18))} from last month`,
+      sub: getMonthlyCountLabel(casesClosedThisMonth, "closed case"),
       icon: CheckCircle,
-      iconBg: "bg-gray-100",
-      iconColor: "text-slate-600",
+      iconBg: "bg-white/15 ring-1 ring-white/20",
+      iconColor: "text-slate-100",
+      surfaceClass: "border-slate-950/30 bg-[linear-gradient(135deg,#1e293b_0%,#334155_100%)] text-white shadow-[0_18px_36px_-24px_rgba(15,23,42,0.85)]",
+      titleClass: "text-slate-100/75",
+      valueClass: "text-white",
+      subClass: "text-slate-100/65",
+      trendClass: "text-slate-200",
+      glowClass: "bg-slate-200/20",
       href: "/dashboard/cases?filter=closed",
     },
   ];
