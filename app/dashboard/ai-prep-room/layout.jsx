@@ -34,7 +34,7 @@ function PrepShell({ children }) {
 
 export default function AIPrepRoomLayout({ children }) {
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-5 sm:px-6">
+    <div className="mx-auto w-full max-w-6xl px-4 pb-6 sm:px-6">
       <Suspense fallback={<div className="h-40 animate-pulse rounded-3xl bg-muted" />}>
         <PrepCaseProvider>
           <PrepShell>{children}</PrepShell>

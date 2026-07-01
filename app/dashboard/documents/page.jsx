@@ -507,7 +507,7 @@ export default function DocumentsPage() {
   };
 
   const openDocument = (doc, mode = "view") => {
-    const url = getDocumentOpenUrl(doc);
+    const url = getDocumentOpenUrl(doc, { inline: mode === "view" });
 
     if (!url) {
       toast({

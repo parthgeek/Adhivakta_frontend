@@ -74,15 +74,22 @@ export function mapFindings(findings = []) {
   }));
 }
 
-/** Map Claude citations to the chat citation chip shape. */
+/** Map citations to chip shape, deduped by document (one chip per source file). */
 export function mapCitations(citations = []) {
-  return citations.map((c) => ({
-    id: `cite-${c.id}`,
-    document: c.documentName,
-    page: null,
-    snippet: c.snippet,
-    score: c.score,
-  }));
+  const seen = new Set();
+  const out = [];
+  for (const c of citations) {
+    if (seen.has(c.documentName)) continue;
+    seen.add(c.documentName);
+    out.push({
+      id: `cite-${c.id}`,
+      document: c.documentName,
+      page: null,
+      snippet: c.snippet,
+      score: c.score,
+    });
+  }
+  return out;
 }
 
 function activityFromStatus(status) {
@@ -93,7 +100,9 @@ function activityFromStatus(status) {
       id: "idx",
       type: "indexed",
       title: "Documents Indexed",
-      detail: `${status.indexedDocuments}/${status.totalDocuments} documents · ${status.chunks} chunks`,
+      detail: `${status.indexedDocuments} of ${status.totalDocuments} document${
+        status.totalDocuments === 1 ? "" : "s"
+      } indexed`,
       at: status.lastIndexedAt || new Date().toISOString(),
     });
   }

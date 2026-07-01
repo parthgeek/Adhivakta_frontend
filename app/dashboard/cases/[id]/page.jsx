@@ -1263,7 +1263,7 @@ export default function CaseDetailsPage() {
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      const documentUrl = getDocumentOpenUrl(order.document)
+                                      const documentUrl = getDocumentOpenUrl(order.document, { inline: true })
                                       if (documentUrl) {
                                         window.open(documentUrl, "_blank", "noopener,noreferrer")
                                       }
@@ -1312,7 +1312,7 @@ export default function CaseDetailsPage() {
                                       <button
                                         type="button"
                                         onClick={() => {
-                                          const documentUrl = getDocumentOpenUrl(order.document)
+                                          const documentUrl = getDocumentOpenUrl(order.document, { inline: true })
                                           if (documentUrl) {
                                             window.open(documentUrl, "_blank", "noopener,noreferrer")
                                           }
@@ -1417,7 +1417,7 @@ export default function CaseDetailsPage() {
                   {documents && documents.length > 0 ? (
                     <div className="space-y-4">
                       {documents.map((doc, index) => {
-                        const documentUrl = getDocumentOpenUrl(doc);
+                        const documentUrl = getDocumentOpenUrl(doc, { inline: true });
                         const approvalStatus = getDocumentApprovalStatus(doc);
                         const documentId = doc._id || doc.id;
                         const isPending = approvalStatus === "pending";
