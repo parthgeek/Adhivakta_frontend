@@ -164,7 +164,7 @@ export default function CaseDetailsTab({
             )}
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2" data-tour="case-status">
             <Label htmlFor="status" className={getLabelClassName("status")}>
               Status <span className="text-red-500">*</span>
             </Label>

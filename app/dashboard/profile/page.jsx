@@ -8,7 +8,7 @@ export default function ProfilePage() {
   const { user } = useAuth();
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-6" data-tour="profile-page">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="space-y-2">

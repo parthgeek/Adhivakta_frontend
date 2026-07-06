@@ -549,7 +549,7 @@ export default function CauseListSearchPage() {
     .join(" • ");
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-tour="cause-list-page">
       <div className="flex items-center space-x-2">
         <Button variant="outline" size="icon" onClick={() => router.push("/dashboard")}>
           <ArrowLeft className="h-4 w-4" />
@@ -557,7 +557,7 @@ export default function CauseListSearchPage() {
         <h1 className="text-3xl font-bold text-[#03234b]">Cause Lists</h1>
       </div>
 
-      <Card className="overflow-hidden border-[#d6deeb] shadow-sm">
+      <Card className="overflow-hidden border-[#d6deeb] shadow-sm" data-tour="cause-list-search">
         <CardContent className="p-0">
           <div className="grid grid-cols-1 gap-4 bg-[#1e2b3d] px-4 py-4 text-white sm:grid-cols-4 sm:gap-6">
             <div>
@@ -810,7 +810,7 @@ export default function CauseListSearchPage() {
         </CardContent>
       </Card>
 
-      <Card className="overflow-hidden border-[#d6deeb] shadow-sm">
+      <Card className="overflow-hidden border-[#d6deeb] shadow-sm" data-tour="personalized-cause-list">
         <CardContent className="p-0">
           <div className="border-b border-[#d6deeb] bg-[#eef4fb] px-4 py-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -850,6 +850,7 @@ export default function CauseListSearchPage() {
                 onClick={startPersonalizedFlow}
                 disabled={!selectedDate || personalizedLoading || isHighCourtSource}
                 className="h-10 bg-[#03234b] text-white hover:bg-[#042d5e]"
+                data-tour="personalized-cause-list-start"
               >
                 {personalizedLoading && !personalizedCaptchaSessionId
                   ? "Starting..."
@@ -858,7 +859,7 @@ export default function CauseListSearchPage() {
             </div>
 
             {personalizedResult?.currentCourt ? (
-              <div className="mt-4 rounded-lg border border-[#d6deeb] bg-[#f8fbff] p-4">
+              <div className="mt-4 rounded-lg border border-[#d6deeb] bg-[#f8fbff] p-4" data-tour="personalized-cause-list-current-court">
                 <div className="flex flex-col gap-1">
                   <p className="text-sm font-semibold text-[#03234b]">
                     Court {personalizedResult.workflow?.current_step || 1} of{" "}
@@ -944,7 +945,7 @@ export default function CauseListSearchPage() {
                 </div>
 
                 {personalizedCaptchaSessionId ? (
-                  <div className="mt-4 grid grid-cols-1 items-end gap-4 md:grid-cols-2">
+                  <div className="mt-4 grid grid-cols-1 items-end gap-4 md:grid-cols-2" data-tour="personalized-cause-list-captcha">
                     <div>
                       <label className="mb-1 block text-sm font-semibold text-[#355487]">
                         Captcha
@@ -992,7 +993,7 @@ export default function CauseListSearchPage() {
                   </div>
                 ) : null}
 
-                <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-3" data-tour="personalized-cause-list-submit">
                   <Button
                     type="button"
                     onClick={() => submitPersonalizedForListing("civ")}
@@ -1024,7 +1025,7 @@ export default function CauseListSearchPage() {
             ) : null}
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3" data-tour="personalized-cause-list-results">
             <div className="text-sm text-[#4f5f77]">
               Sources:{" "}
               {(personalizedResult?.personalized_sources || []).length
@@ -1194,7 +1195,7 @@ export default function CauseListSearchPage() {
       ) : null}
 
       {result ? (
-        <Card className="overflow-hidden border-[#d6deeb] shadow-sm">
+        <Card className="overflow-hidden border-[#d6deeb] shadow-sm" data-tour="cause-list-results">
           <CardContent className="p-0">
             <div className="border-b border-[#d6deeb] bg-[#eef4fb] px-4 py-3 text-center">
               <p className="text-xl font-semibold text-[#03234b] sm:text-2xl">

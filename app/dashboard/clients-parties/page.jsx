@@ -652,7 +652,7 @@ export default function ClientsPartiesPage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-6" data-tour="clients-page">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -674,7 +674,7 @@ export default function ClientsPartiesPage() {
       {/* Search and Stats Bar */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="md:col-span-2">
-          <div className="relative">
+          <div className="relative" data-tour="client-search">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search clients, advocates by name, email, contact, filing number, or court..."
@@ -697,7 +697,7 @@ export default function ClientsPartiesPage() {
       </div>
 
       {/* Main Card */}
-      <Card>
+      <Card data-tour="client-list">
         <CardContent className="p-0">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <div className="border-b px-6 pt-6">

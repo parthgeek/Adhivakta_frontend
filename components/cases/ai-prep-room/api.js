@@ -7,6 +7,11 @@
  */
 
 import api from "@/lib/api";
+import { buildPrepRoomData, mockAssistantReply } from "./mock-data";
+
+const GUIDED_AI_MOCK_CASE_ID = "guided-ai-mock-case-001";
+
+const isGuidedMockCase = (caseId) => caseId === GUIDED_AI_MOCK_CASE_ID;
 
 /* --------------------------------- mappers -------------------------------- */
 
@@ -113,6 +118,10 @@ function activityFromStatus(status) {
 
 /** Assemble the hub/overview view-model from real case + index status. */
 export async function fetchPrepRoom(caseId, caseData) {
+  if (isGuidedMockCase(caseId)) {
+    return buildPrepRoomData(caseData);
+  }
+
   let status = null;
   if (caseId) {
     try {
@@ -140,17 +149,29 @@ export async function fetchPrepRoom(caseId, caseData) {
 }
 
 export async function generateHearingBrief(caseId) {
+  if (isGuidedMockCase(caseId)) {
+    return buildPrepRoomData().brief;
+  }
+
   const res = await api.aiPrep.brief(caseId);
   return mapBrief(res.brief);
 }
 
 export async function runWeaknessAnalysis(caseId) {
+  if (isGuidedMockCase(caseId)) {
+    return buildPrepRoomData().findings;
+  }
+
   const res = await api.aiPrep.weaknesses(caseId);
   return mapFindings(res.findings);
 }
 
 /** Post a chat turn; returns an assistant message with citation chips. */
 export async function askCaseAI(caseId, prompt, history = []) {
+  if (isGuidedMockCase(caseId)) {
+    return mockAssistantReply(prompt);
+  }
+
   const res = await api.aiPrep.ask(caseId, prompt, history);
   return {
     id: `m-${Date.now()}`,

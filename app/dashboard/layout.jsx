@@ -7,6 +7,7 @@ import { SidebarProvider } from "@/context/sidebar-context";
 import Sidebar from "@/components/dashboard/sidebar";
 import Header from "@/components/dashboard/header";
 import NyaAIWidget from "@/components/nyai/NyaAIWidget";
+import TourProvider from "@/components/guide/TourProvider";
 
 export default function DashboardLayout({ children }) {
   const router = useRouter();
@@ -88,16 +89,18 @@ export default function DashboardLayout({ children }) {
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen flex-col overflow-hidden">
-        <Header />
-        <div className="flex flex-1 overflow-hidden">
-          <Sidebar />
-          <main className="flex-1 overflow-y-auto p-4 md:p-6">
-            {children}
-          </main>
+      <TourProvider>
+        <div className="flex h-screen flex-col overflow-hidden">
+          <Header />
+          <div className="flex flex-1 overflow-hidden">
+            <Sidebar />
+            <main className="flex-1 overflow-y-auto p-4 md:p-6" data-tour="main-content">
+              {children}
+            </main>
+          </div>
         </div>
         <NyaAIWidget />
-      </div>
+      </TourProvider>
     </SidebarProvider>
   );
 }

@@ -93,7 +93,7 @@ export default function SettingsPage() {
 
   // Skeleton Component for Settings
   const SettingsSkeleton = () => (
-    <div className="space-y-6">
+    <div className="space-y-6" data-tour="settings-page">
       <div className="flex items-center justify-between">
         <div className="h-9 w-32 bg-gray-200 rounded animate-pulse"></div>
       </div>
@@ -356,10 +356,10 @@ export default function SettingsPage() {
 
       <Tabs defaultValue="profile" value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="profile">{t.profile}</TabsTrigger>
+          <TabsTrigger value="profile" data-tour="profile-settings">{t.profile}</TabsTrigger>
           <TabsTrigger value="password">{t.password}</TabsTrigger>
-          <TabsTrigger value="notifications">{t.notifications}</TabsTrigger>
-          <TabsTrigger value="security">{t.security}</TabsTrigger>
+          <TabsTrigger value="notifications" data-tour="notification-settings-tab">{t.notifications}</TabsTrigger>
+          <TabsTrigger value="security" data-tour="security-settings-tab">{t.security}</TabsTrigger>
           <TabsTrigger value="subscription" className="flex items-center gap-1">
             <Crown className="h-3 w-3" />
             Subscription
@@ -579,7 +579,7 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="notifications">
+        <TabsContent value="notifications" data-tour="notification-settings">
           <Card>
             <CardHeader>
               <CardTitle>Notification Preferences</CardTitle>
@@ -663,7 +663,7 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="security">
+        <TabsContent value="security" data-tour="security-settings">
           <Card>
             <CardHeader>
               <CardTitle>Security Settings</CardTitle>

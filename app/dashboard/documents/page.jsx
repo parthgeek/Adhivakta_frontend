@@ -663,7 +663,7 @@ export default function DocumentsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50 pt-3 px-6 pb-6">
+    <div className="min-h-screen bg-gray-50/50 pt-3 px-6 pb-6" data-tour="documents-page">
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -672,7 +672,7 @@ export default function DocumentsPage() {
               Manage case documents and files - organized by case
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2" data-tour="document-view-toggle">
             <Button
               variant={groupByCase ? "default" : "outline"}
               onClick={() => setGroupByCase(true)}
@@ -687,7 +687,7 @@ export default function DocumentsPage() {
             >
               List View
             </Button>
-            <Button className="w-full sm:w-auto" onClick={handleUpload}>
+            <Button className="w-full sm:w-auto" onClick={handleUpload} data-tour="upload-document-btn">
               <Upload className="h-4 w-4 mr-2" />
               Upload Document
             </Button>
@@ -730,7 +730,7 @@ export default function DocumentsPage() {
           })}
         </div>
 
-        <Card>
+        <Card data-tour="document-filters">
           <CardHeader>
             <CardTitle className="text-lg">Filter Documents</CardTitle>
           </CardHeader>
@@ -775,6 +775,7 @@ export default function DocumentsPage() {
           </CardContent>
         </Card>
 
+        <div data-tour="document-list">
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[1, 2, 3, 4].map((item) => (
@@ -1051,6 +1052,7 @@ export default function DocumentsPage() {
             })}
           </div>
         )}
+        </div>
 
         {!loading && filteredDocuments.length === 0 && (
           <Card>

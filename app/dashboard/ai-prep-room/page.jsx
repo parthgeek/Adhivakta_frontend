@@ -35,34 +35,40 @@ export default function AIPrepRoomHubPage() {
   }
 
   return (
-    <div className="space-y-8 pb-12">
-      <SectionShell
-        icon={LayoutGrid}
-        title="What do you want to do?"
-        description="Pick a workflow — every answer is grounded in this case's file."
-      >
-        <AIActionGrid onAction={handleAction} />
-      </SectionShell>
+    <div className="space-y-8 pb-12" data-tour="ai-assistant">
+      <div data-tour="ai-suggestions">
+        <SectionShell
+          icon={LayoutGrid}
+          title="What do you want to do?"
+          description="Pick a workflow — every answer is grounded in this case's file."
+        >
+          <div data-tour="ai-drafting">
+            <AIActionGrid onAction={handleAction} />
+          </div>
+        </SectionShell>
+      </div>
 
       {data.activity.length > 0 && (
-        <SectionShell
-          icon={History}
-          title="Recent Activity"
-          description="The latest things the AI has done on this case."
-          action={
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1.5 text-muted-foreground"
-              onClick={() => router.push(`${BASE}/activity${qs}`)}
-            >
-              View all
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Button>
-          }
-        >
-          <ActivityTimeline activity={data.activity.slice(0, 3)} />
-        </SectionShell>
+        <div data-tour="ai-search">
+          <SectionShell
+            icon={History}
+            title="Recent Activity"
+            description="The latest things the AI has done on this case."
+            action={
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 text-muted-foreground"
+                onClick={() => router.push(`${BASE}/activity${qs}`)}
+              >
+                View all
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            }
+          >
+            <ActivityTimeline activity={data.activity.slice(0, 3)} />
+          </SectionShell>
+        </div>
       )}
     </div>
   );

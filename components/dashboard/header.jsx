@@ -22,6 +22,7 @@ import {
   getCaseIdentifier,
 } from "@/lib/caseTypeUtils";
 import { cn } from "@/lib/utils";
+import GuideButton from "@/components/guide/GuideButton";
 
 const APPROVAL_LOGOUT_EVENT = "app:approval-review:logout-attempt";
 
@@ -299,7 +300,7 @@ export default function Header({ onMenuClick }) {
         <div className="hidden md:block md:col-start-1" />
 
         <div className="hidden md:block md:col-start-2 md:w-full">
-          <div ref={searchRef} className="relative w-full">
+          <div ref={searchRef} className="relative w-full" data-tour="global-search">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground h-5 w-5" />
             <Input
               placeholder="Search cases and clients..."
@@ -418,6 +419,8 @@ export default function Header({ onMenuClick }) {
             size="icon"
             className="relative"
             onClick={() => router.push("/dashboard/notifications")}
+            data-tour="notifications"
+            aria-label="Notifications"
           >
             <Bell className="h-5 w-5" />
             {unreadNotifications > 0 && (
@@ -430,9 +433,11 @@ export default function Header({ onMenuClick }) {
             )}
           </Button>
 
+          <GuideButton />
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center gap-2">
+              <Button variant="ghost" className="flex items-center gap-2" data-tour="user-menu">
                 <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
                   <span className="text-xs font-semibold">{initials}</span>
                 </div>

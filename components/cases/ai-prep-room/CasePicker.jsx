@@ -44,6 +44,7 @@ function CaseCard({ caseItem, onSelect, index }) {
       whileHover={{ y: -3 }}
       onClick={() => onSelect(caseItem._id || caseItem.id)}
       className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-border/60 bg-card p-5 text-left shadow-sm ring-1 ring-transparent transition-all hover:border-primary/30 hover:shadow-lg hover:ring-primary/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      data-tour={index === 0 ? "ai-case-card" : undefined}
     >
       <span
         aria-hidden
@@ -119,7 +120,7 @@ export default function CasePicker() {
   }, [cases, query]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" data-tour="ai-case-picker">
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -145,7 +146,7 @@ export default function CasePicker() {
             citations to your own records.
           </p>
 
-          <div className="relative mt-5 max-w-md">
+          <div className="relative mt-5 max-w-md" data-tour="ai-case-search">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               value={query}
@@ -160,7 +161,7 @@ export default function CasePicker() {
       </motion.div>
 
       {casesLoading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3" data-tour="ai-case-list">
           {[0, 1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="h-44 animate-pulse rounded-2xl bg-muted" />
           ))}

@@ -19,16 +19,34 @@ import {
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import api from "@/lib/api";
+import { TourContext } from "@/components/guide/tour-context";
 
 const PrepCaseContext = createContext(null);
 
 const LAST_CASE_KEY = "adhivakta:lastPrepCase";
+const GUIDED_AI_MOCK_CASE_ID = "guided-ai-mock-case-001";
+const GUIDED_AI_MOCK_CASES = [
+  {
+    _id: GUIDED_AI_MOCK_CASE_ID,
+    id: GUIDED_AI_MOCK_CASE_ID,
+    title: "Mehra Textiles v. Northline Logistics",
+    caseNumber: "CS(COMM) 482/2024",
+    status: "active",
+    court: {
+      name: "Commercial Court, Bengaluru",
+      district: "Bengaluru Urban",
+    },
+    nextHearingDate: "2026-07-22T10:30:00.000Z",
+  },
+];
 
 export function PrepCaseProvider({ children }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const tour = useContext(TourContext);
   const caseId = searchParams.get("case") || "";
+  const isGuidedAiTour = tour?.activeTour?.id === "ai-prep-room-flow";
 
   const [cases, setCases] = useState([]);
   const [casesLoading, setCasesLoading] = useState(true);
@@ -37,6 +55,14 @@ export function PrepCaseProvider({ children }) {
   const [status, setStatus] = useState(null);
   const [indexing, setIndexing] = useState(false);
   const [config, setConfig] = useState(null);
+
+  const displayCases = useMemo(
+    () =>
+      isGuidedAiTour && !casesLoading && cases.length === 0
+        ? GUIDED_AI_MOCK_CASES
+        : cases,
+    [cases, casesLoading, isGuidedAiTour]
+  );
 
   // Load case list + server AI config once.
   useEffect(() => {
@@ -76,6 +102,24 @@ export function PrepCaseProvider({ children }) {
       setStatus(null);
       return;
     }
+
+    const guidedMockCase = isGuidedAiTour
+      ? GUIDED_AI_MOCK_CASES.find((caseItem) => caseItem._id === caseId || caseItem.id === caseId)
+      : null;
+
+    if (guidedMockCase) {
+      setCaseLoading(false);
+      setCaseData(guidedMockCase);
+      setStatus({
+        indexed: true,
+        indexedDocuments: 4,
+        totalDocuments: 4,
+        mode: "semantic",
+        lastIndexedAt: new Date().toISOString(),
+      });
+      return;
+    }
+
     let alive = true;
     setCaseLoading(true);
     (async () => {
@@ -96,7 +140,7 @@ export function PrepCaseProvider({ children }) {
     return () => {
       alive = false;
     };
-  }, [caseId, refreshStatus]);
+  }, [caseId, isGuidedAiTour, refreshStatus]);
 
   const setCase = useCallback(
     (id) => {
@@ -125,7 +169,7 @@ export function PrepCaseProvider({ children }) {
   const value = useMemo(
     () => ({
       caseId,
-      cases,
+      cases: displayCases,
       casesLoading,
       caseData,
       caseLoading,
@@ -139,7 +183,7 @@ export function PrepCaseProvider({ children }) {
     }),
     [
       caseId,
-      cases,
+      displayCases,
       casesLoading,
       caseData,
       caseLoading,

@@ -695,7 +695,7 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6" data-tour="calendar-page">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Calendar</h1>
         <div className="flex items-center space-x-2">
@@ -710,7 +710,7 @@ export default function CalendarPage() {
           </Select>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button data-tour="calendar-events">
                 <Plus className="mr-2 h-4 w-4" />
                 Add Event
               </Button>
@@ -834,7 +834,7 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      <Card>
+      <Card data-tour="calendar-events">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">

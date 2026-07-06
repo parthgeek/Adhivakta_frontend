@@ -2857,7 +2857,7 @@ export default function NewCasePage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6" ref={pageTopRef}>
+    <div className="mx-auto w-full max-w-7xl space-y-6" ref={pageTopRef} data-tour="case-form">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Add Case</h1>
