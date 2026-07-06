@@ -382,7 +382,8 @@ export const GUIDE_CATEGORIES = [
           {
             selector: "[data-tour='ai-case-picker']",
             title: "Select a case",
-            content: "Choose the case you want the AI to work on. By selecting a case, you allow Adhivakta AI to analyse that case's details and documents for this prep room session.",
+            content: "Choose the case you want the AI to work on. By selecting a case, you allow Adhivakta AI to analyse that case's details and documents for this prep room session. If your profile has no cases yet, this guide shows demo cases so you can still learn the flow.",
+            advanceWhenSelectorPresent: "[data-tour='ai-selected-case']",
           },
           {
             selector: "[data-tour='ai-selected-case']",
