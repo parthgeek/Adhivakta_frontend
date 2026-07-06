@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { SidebarProvider } from "@/context/sidebar-context";
 import Sidebar from "@/components/dashboard/sidebar";
 import Header from "@/components/dashboard/header";
+import NyaAIWidget from "@/components/nyai/NyaAIWidget";
 
 export default function DashboardLayout({ children }) {
   const router = useRouter();
@@ -95,6 +96,7 @@ export default function DashboardLayout({ children }) {
             {children}
           </main>
         </div>
+        <NyaAIWidget />
       </div>
     </SidebarProvider>
   );
