@@ -24,21 +24,22 @@ import { useSidebar } from "@/context/sidebar-context";
 import { useRealTimeCounts } from "@/context/realtime-counts-context";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-  { icon: FileText, label: "Cases", path: "/dashboard/cases" },
-  { icon: Sparkles, label: "AI Prep Room", path: "/dashboard/ai-prep-room" },
-  { icon: Scale, label: "Cause List Search", path: "/dashboard/cause-list/search" },
-  { icon: Monitor, label: "Display Board", path: "/dashboard/display-board" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", tour: "dashboard-nav" },
+  { icon: FileText, label: "Cases", path: "/dashboard/cases", tour: "cases-nav" },
+  { icon: Sparkles, label: "AI Prep Room", path: "/dashboard/ai-prep-room", tour: "ai-prep-nav" },
+  { icon: Scale, label: "Cause List Search", path: "/dashboard/cause-list/search", tour: "cause-list-nav" },
+  { icon: Monitor, label: "Display Board", path: "/dashboard/display-board", tour: "display-board-nav" },
   {
     icon: Users,
     label: "Clients & Parties",
     path: "/dashboard/clients-parties",
+    tour: "clients-nav",
   },
-  { icon: Calendar, label: "Hearings", path: "/dashboard/hearings" },
-  { icon: Calendar, label: "Calendar", path: "/dashboard/calendar" },
-  { icon: FolderOpen, label: "Documents", path: "/dashboard/documents" },
-  { icon: MessageSquare, label: "Messages", path: "/dashboard/messages" },
-  { icon: Settings, label: "Settings", path: "/dashboard/settings" },
+  { icon: Calendar, label: "Hearings", path: "/dashboard/hearings", tour: "hearings-nav" },
+  { icon: Calendar, label: "Calendar", path: "/dashboard/calendar", tour: "calendar-nav" },
+  { icon: FolderOpen, label: "Documents", path: "/dashboard/documents", tour: "documents-nav" },
+  { icon: MessageSquare, label: "Messages", path: "/dashboard/messages", tour: "messages-nav" },
+  { icon: Settings, label: "Settings", path: "/dashboard/settings", tour: "settings-nav" },
 ];
 
 const isPathActive = (pathname, href) => {
@@ -90,6 +91,7 @@ export default function Sidebar() {
         "h-full bg-card border-r transition-all duration-300 flex flex-col",
         collapsed ? "w-16" : "w-60"
       )}
+      data-tour="sidebar-nav"
     >
       <div className="p-4 border-b flex justify-end">
         <Button
@@ -97,6 +99,8 @@ export default function Sidebar() {
           size="icon"
           onClick={toggleSidebar}
           className="h-8 w-8"
+          data-tour="sidebar-toggle"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed ? (
             <ChevronRight className="h-4 w-4" />
@@ -128,6 +132,7 @@ export default function Sidebar() {
                 collapsed && "px-2"
               )}
               onClick={() => router.push(item.path)}
+              data-tour={item.tour}
             >
               <item.icon className="h-5 w-5 flex-shrink-0" />
               {!collapsed && <span>{item.label}</span>}

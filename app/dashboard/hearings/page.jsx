@@ -875,7 +875,7 @@ export default function HearingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-tour="hearings-page">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Hearings</h1>
@@ -893,6 +893,7 @@ export default function HearingsPage() {
           <Button
             className="w-full sm:w-auto"
             onClick={handleOpenScheduleDialog}
+            data-tour="hearing-calendar"
           >
             <Plus className="h-4 w-4 mr-2" />
             Schedule Hearing

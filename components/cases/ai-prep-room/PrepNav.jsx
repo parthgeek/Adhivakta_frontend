@@ -16,7 +16,7 @@ export default function PrepNav() {
   const qs = caseId ? `?case=${caseId}` : "";
 
   return (
-    <div className="sticky top-0 z-30 -mx-1 mb-6 border-b border-border/60 bg-background/80 px-1 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div className="sticky top-0 z-30 -mx-1 mb-6 border-b border-border/60 bg-background/80 px-1 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/60" data-tour="ai-feature-tabs">
       <div className="flex flex-1 items-center gap-1 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {PREP_NAV.map(({ id, label, icon: Icon, href }) => {
           const active =
@@ -31,6 +31,7 @@ export default function PrepNav() {
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
+              data-tour={`ai-tab-${id}`}
             >
               <Icon className="h-3.5 w-3.5" />
               {label}

@@ -1913,7 +1913,7 @@ const NewDashboard = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50/60 p-6">
+    <div className="min-h-screen bg-gray-50/60 p-6" data-tour="dashboard">
       <ApprovalNotificationsPopup
         notifications={approvalNotifications}
         open={isApprovalPopupOpen}
@@ -1926,7 +1926,7 @@ const NewDashboard = () => {
 
       <div className="max-w-7xl mx-auto space-y-5">
         {/* Stats cards */}
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4" data-tour="dashboard-stats">
           {statsCards.map((card) => (
             <StatsCard key={card.title} {...card} />
           ))}
@@ -1960,11 +1960,13 @@ const NewDashboard = () => {
           </div>
         </div>
 
-        <PersonalizedCauseListPreview />
+        <div data-tour="dashboard-activity">
+          <PersonalizedCauseListPreview />
+        </div>
 
         {/* Hearings Table + Cases by Status */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 h-full">
+          <div className="lg:col-span-2 h-full" data-tour="dashboard-hearings">
             <UpcomingHearingsTable events={events} cases={cases} />
           </div>
           <div className="h-full">

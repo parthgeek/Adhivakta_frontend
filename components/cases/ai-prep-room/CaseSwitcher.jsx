@@ -50,7 +50,7 @@ export default function CaseSwitcher() {
   };
 
   return (
-    <div className="mb-5 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
+    <div className="mb-5 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm" data-tour="ai-selected-case">
       {/* main row */}
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">

@@ -950,7 +950,7 @@ export default function CasesPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" data-tour="cases-page">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
@@ -968,7 +968,7 @@ export default function CasesPage() {
             <Download className="h-4 w-4 mr-1.5" />
             {selectedCount > 0 ? `Export Selected (${selectedCount})` : "Export"}
           </Button>
-          <Link href="/dashboard/cases/new">
+          <Link href="/dashboard/cases/new" data-tour="create-case-btn">
             <Button size="sm" className="bg-[#1a2332] hover:bg-[#253345]">
               <Plus className="h-4 w-4 mr-1.5" />
               New Case
@@ -1014,7 +1014,7 @@ export default function CasesPage() {
 
       {/* Tabs + Search */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="flex items-center gap-1 flex-wrap">
+        <div className="flex items-center gap-1 flex-wrap" data-tour="case-tabs">
           {STATUS_TABS.map((tab) => (
             <button
               key={tab}
@@ -1033,7 +1033,7 @@ export default function CasesPage() {
           ))}
         </div>
         <div className="flex items-center gap-2">
-          <div className="relative">
+          <div className="relative" data-tour="case-search">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               placeholder="Search cases..."
@@ -1052,6 +1052,7 @@ export default function CasesPage() {
                     ? "border-[#1a2332] bg-slate-50 text-[#1a2332]"
                     : ""
                 }`}
+                data-tour="case-filter"
               >
                 <SlidersHorizontal className="h-3.5 w-3.5" />
                 Filters
@@ -1142,7 +1143,7 @@ export default function CasesPage() {
       )}
 
       {/* Table */}
-      <div className="border rounded-lg overflow-hidden bg-white">
+      <div className="border rounded-lg overflow-hidden bg-white" data-tour="case-list">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b">
