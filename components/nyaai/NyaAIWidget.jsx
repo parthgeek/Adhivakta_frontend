@@ -26,7 +26,7 @@ export default function NyaAIWidget() {
   const [everOpened, setEverOpened] = useState(false);
 
   // The full-page assistant already lives here; no widget on top of it.
-  if (pathname?.startsWith("/dashboard/nyai")) return null;
+  if (pathname?.startsWith("/dashboard/nyaai")) return null;
 
   const toggle = () => {
     setOpen((v) => !v);
@@ -64,7 +64,7 @@ export default function NyaAIWidget() {
             <div className="flex items-center gap-2 border-b border-border/60 bg-muted/30 px-4 py-3">
               <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full ring-1 ring-border/60">
                 <img
-                  src="/nyai-avatar.png"
+                  src="/nyaai-avatar.png"
                   alt="NyaAI"
                   className="h-full w-full object-cover"
                   draggable={false}
@@ -80,7 +80,7 @@ export default function NyaAIWidget() {
                 type="button"
                 onClick={() => {
                   setOpen(false);
-                  router.push("/dashboard/nyai");
+                  router.push("/dashboard/nyaai");
                 }}
                 className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 title="Open full view"
@@ -126,7 +126,7 @@ export default function NyaAIWidget() {
               <X className="h-6 w-6" />
             ) : (
               <img
-                src="/nyai-avatar.png"
+                src="/nyaai-avatar.png"
                 alt="NyaAI"
                 className="h-full w-full object-cover"
                 draggable={false}

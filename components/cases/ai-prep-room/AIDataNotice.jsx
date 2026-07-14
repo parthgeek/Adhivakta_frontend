@@ -19,16 +19,16 @@ export default function AIDataNotice({ className, compact = false }) {
       <p className="leading-relaxed">
         {compact ? (
           <>
-            Case facts, document snippets, and your questions are sent to a
-            third-party AI service (OpenAI) to generate answers.
+            AI Prep Room shares only the case context needed for your request
+            with OpenAI to generate tailored answers.
           </>
         ) : (
           <>
             <span className="font-medium text-foreground/80">AI &amp; your data:</span>{" "}
-            To answer questions and draft briefs, this feature sends the selected
-            case's facts, relevant document snippets, and your questions to a
-            third-party AI provider (OpenAI). Avoid entering anything you are not
-            permitted to share with an external service.
+            AI Prep Room securely processes your selected case facts, relevant
+            document excerpts, and questions to create case-specific answers and
+            draft briefs. Only the context needed for your request is shared with
+            OpenAI. Please include information you are authorised to share.
           </>
         )}
       </p>

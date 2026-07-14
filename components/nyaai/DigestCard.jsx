@@ -21,7 +21,7 @@ export default function DigestCard({ className }) {
     let cancelled = false;
     (async () => {
       try {
-        const d = await api.nyai.getDigest();
+        const d = await api.nyaai.getDigest();
         if (!cancelled) setDigest(d);
       } catch {
       } finally {
@@ -42,7 +42,7 @@ export default function DigestCard({ className }) {
   const suggestions = digest?.suggestions || [];
 
   const ask = (prompt) =>
-    router.push(`/dashboard/nyai?q=${encodeURIComponent(prompt)}`);
+    router.push(`/dashboard/nyaai?q=${encodeURIComponent(prompt)}`);
 
   return (
     <Card className={`overflow-hidden ${className || ""}`}>
@@ -50,7 +50,7 @@ export default function DigestCard({ className }) {
         <div className="flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full ring-1 ring-border/60">
             <img
-              src="/nyai-avatar.png"
+              src="/nyaai-avatar.png"
               alt="NyaAI"
               className="h-full w-full object-cover"
               draggable={false}
@@ -67,7 +67,7 @@ export default function DigestCard({ className }) {
           variant="ghost"
           size="sm"
           className="gap-1 text-xs"
-          onClick={() => router.push("/dashboard/nyai")}
+          onClick={() => router.push("/dashboard/nyaai")}
         >
           Open NyaAI <ArrowRight className="h-3.5 w-3.5" />
         </Button>
@@ -105,7 +105,7 @@ export default function DigestCard({ className }) {
                 ? ask(`Prepare me for the hearing of case ${s.caseId}`)
                 : s.caseId
                 ? router.push(`/dashboard/cases/${s.caseId}`)
-                : router.push("/dashboard/nyai")
+                : router.push("/dashboard/nyaai")
             }
             className="flex w-full items-center gap-2 rounded-lg border border-border/60 bg-background/60 px-2.5 py-2 text-left text-xs font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
           >

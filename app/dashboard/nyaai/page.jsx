@@ -19,8 +19,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import NyaAIChat from "@/components/nyai/NyaAIChat";
-import ContextPanel from "@/components/nyai/ContextPanel";
+import NyaAIChat from "@/components/nyaai/NyaAIChat";
+import ContextPanel from "@/components/nyaai/ContextPanel";
 
 const SUGGESTED_PROMPTS = [
   "What hearings do I have tomorrow?",
@@ -69,7 +69,7 @@ function NyaAIPageInner() {
 
   const loadConversations = async () => {
     try {
-      const rows = await api.nyai.listConversations();
+      const rows = await api.nyaai.listConversations();
       setConversations(rows || []);
     } catch {}
   };
@@ -78,12 +78,12 @@ function NyaAIPageInner() {
     loadConversations();
   }, []);
 
-  // Deep link: /dashboard/nyai?q=… fires a prompt immediately.
+  // Deep link: /dashboard/nyaai?q=… fires a prompt immediately.
   useEffect(() => {
     const q = searchParams.get("q");
     if (q) {
       startChat({ prompt: q });
-      router.replace("/dashboard/nyai");
+      router.replace("/dashboard/nyaai");
     }
   }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -105,7 +105,7 @@ function NyaAIPageInner() {
   const removeConversation = async (e, id) => {
     e.stopPropagation();
     try {
-      await api.nyai.deleteConversation(id);
+      await api.nyaai.deleteConversation(id);
       setConversations((prev) => prev.filter((c) => c.id !== id));
     } catch {}
   };
@@ -117,7 +117,7 @@ function NyaAIPageInner() {
         <div className="flex items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full shadow-sm ring-2 ring-border/60">
             <img
-              src="/nyai-avatar.png"
+              src="/nyaai-avatar.png"
               alt="NyaAI"
               className="h-full w-full object-cover"
               draggable={false}

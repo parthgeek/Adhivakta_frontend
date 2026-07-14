@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import api from '@/services/api';
 import { getCaseIdentifier } from '@/lib/caseTypeUtils';
-import DigestCard from '@/components/nyai/DigestCard';
+import DigestCard from '@/components/nyaai/DigestCard';
 
 // Stats Card Component
 const StatsCard = ({ title, value, change, changeType, icon: Icon, iconColor }) => {

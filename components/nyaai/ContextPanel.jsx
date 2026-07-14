@@ -61,8 +61,8 @@ export default function ContextPanel({ context, className }) {
     (async () => {
       try {
         const [d, r] = await Promise.all([
-          api.nyai.getDigest(),
-          api.nyai.getReminders(),
+          api.nyaai.getDigest(),
+          api.nyaai.getReminders(),
         ]);
         if (!cancelled) {
           setDigest(d);

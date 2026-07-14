@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { SidebarProvider } from "@/context/sidebar-context";
 import Sidebar from "@/components/dashboard/sidebar";
 import Header from "@/components/dashboard/header";
-import NyaAIWidget from "@/components/nyai/NyaAIWidget";
+import NyaAIWidget from "@/components/nyaai/NyaAIWidget";
 import TourProvider from "@/components/guide/TourProvider";
 
 export default function DashboardLayout({ children }) {

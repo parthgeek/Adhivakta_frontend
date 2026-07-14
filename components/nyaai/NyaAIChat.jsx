@@ -92,7 +92,7 @@ function AIAvatar() {
   return (
     <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full shadow-sm ring-1 ring-border/60">
       <img
-        src="/nyai-avatar.png"
+        src="/nyaai-avatar.png"
         alt="NyaAI"
         className="h-full w-full object-cover"
         draggable={false}
@@ -224,7 +224,7 @@ export default function NyaAIChat({
     let cancelled = false;
     (async () => {
       try {
-        const c = await api.nyai.getConversation(initialConversationId);
+        const c = await api.nyaai.getConversation(initialConversationId);
         if (cancelled) return;
         setMessages(
           (c.messages || []).map((m, i) => ({
@@ -276,7 +276,7 @@ export default function NyaAIChat({
       );
 
     try {
-      const done = await api.nyai.chatStream(
+      const done = await api.nyaai.chatStream(
         { message: value, conversationId: conversationRef.current, caseId },
         {
           onMeta: ({ conversationId }) => {
@@ -343,7 +343,7 @@ export default function NyaAIChat({
           <div className="flex h-full flex-col items-center justify-center gap-3 px-4 text-center">
             <span className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full shadow-sm ring-2 ring-border/60">
               <img
-                src="/nyai-avatar.png"
+                src="/nyaai-avatar.png"
                 alt="NyaAI"
                 className="h-full w-full object-cover"
                 draggable={false}
