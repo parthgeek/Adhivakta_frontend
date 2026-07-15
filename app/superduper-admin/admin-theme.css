@@ -1,0 +1,73 @@
+/* Adhivakta Admin theme — scoped to .admin-scope so it never disturbs the
+   customer-facing app's own CSS variables. Off-white surface, deep navy
+   primary, restrained gold accent, dark navy sidebar. */
+
+.admin-scope {
+  --background: 40 20% 98%;
+  --foreground: 215 30% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 215 30% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 215 30% 12%;
+  --primary: 213 92% 15%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 215 25% 95%;
+  --secondary-foreground: 215 30% 15%;
+  --muted: 215 20% 95%;
+  --muted-foreground: 215 15% 42%;
+  --accent: 40 85% 92%;
+  --accent-foreground: 30 70% 25%;
+  --destructive: 0 72% 45%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 215 18% 88%;
+  --input: 215 18% 86%;
+  --ring: 213 92% 15%;
+  --chart-1: 213 70% 35%;
+  --chart-2: 173 58% 39%;
+  --chart-3: 40 80% 50%;
+  --chart-4: 0 60% 50%;
+  --chart-5: 260 45% 50%;
+  --radius: 0.5rem;
+  --sidebar-background: 213 60% 10%;
+  --sidebar-foreground: 213 20% 82%;
+  --sidebar-primary: 40 85% 60%;
+  --sidebar-primary-foreground: 213 92% 12%;
+  --sidebar-accent: 213 45% 18%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-border: 213 40% 18%;
+  --sidebar-ring: 40 85% 60%;
+
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+/* Preserved for completeness; the customer app currently forces light theme. */
+.dark .admin-scope {
+  --background: 215 30% 7%;
+  --foreground: 215 15% 92%;
+  --card: 215 28% 10%;
+  --card-foreground: 215 15% 92%;
+  --popover: 215 28% 10%;
+  --popover-foreground: 215 15% 92%;
+  --primary: 213 60% 60%;
+  --primary-foreground: 215 30% 8%;
+  --secondary: 215 25% 16%;
+  --secondary-foreground: 215 15% 88%;
+  --muted: 215 25% 15%;
+  --muted-foreground: 215 12% 60%;
+  --accent: 40 50% 22%;
+  --accent-foreground: 40 85% 80%;
+  --destructive: 0 62% 45%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 215 22% 20%;
+  --input: 215 22% 22%;
+  --ring: 213 60% 60%;
+  --sidebar-background: 213 60% 8%;
+  --sidebar-foreground: 213 20% 80%;
+  --sidebar-primary: 40 85% 60%;
+  --sidebar-primary-foreground: 213 92% 12%;
+  --sidebar-accent: 213 45% 15%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-border: 213 40% 15%;
+  --sidebar-ring: 40 85% 60%;
+}
