@@ -10,6 +10,7 @@ import { DataTable } from "@/components/admin/shared/data-table"
 import { StatusBadge } from "@/components/admin/shared/status-badge"
 import { ExportButton } from "@/components/admin/shared/export-button"
 import { PermissionGuard } from "@/components/admin/shared/permission-guard"
+import { useAdminUserFilter } from "@/components/admin/shared/user-filter"
 import { MetricCard } from "@/components/admin/shared/metric-card"
 import { ConfirmActionDialog } from "@/components/admin/shared/confirm-action-dialog"
 import { Button } from "@/components/ui/button"
@@ -104,6 +105,7 @@ function CalendarView() {
 function HearingsContent() {
   const { hasPermission } = useAuth()
   const table = useServerTable({ endpoint: "/admin/hearings", defaultSort: "-start" })
+  const userFilter = useAdminUserFilter({ key: "createdBy", label: "User" })
   const [stats, setStats] = useState(null)
   const [remindTarget, setRemindTarget] = useState(null)
 
@@ -165,10 +167,20 @@ function HearingsContent() {
             dateRange
             selects={[
               { key: "status", label: "Status", options: ["scheduled", "confirmed", "completed", "adjourned", "cancelled"] },
+              userFilter.select,
               { key: "overdue", label: "Health", options: [{ value: "true", label: "Overdue only" }] },
             ]}
           />
-          <DataTable columns={columns} table={table} emptyTitle="No hearings match these filters" />
+          <DataTable
+            columns={columns}
+            table={table}
+            emptyTitle="No hearings match these filters"
+            groupBy={{
+              active: Boolean(table.filters.createdBy),
+              getKey: () => table.filters.createdBy,
+              getLabel: () => userFilter.labelForUser(table.filters.createdBy),
+            }}
+          />
           <p className="text-xs text-muted-foreground">
             Reminder counts reflect the platform's email/push reminder flags. Per-channel delivery receipts (delivered /
             failed / retried) require provider webhook storage that is not implemented yet.

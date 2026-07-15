@@ -1,8 +1,9 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { PanelLeftClose, PanelLeftOpen, Scale } from "lucide-react"
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react"
 import { NAV_ITEMS } from "@/lib/admin/navigation"
 import { useAuth } from "@/lib/admin/auth-context"
 import { cn } from "@/lib/utils"
@@ -16,21 +17,31 @@ export function Sidebar({ collapsed, onToggle }) {
   return (
     <aside
       className={cn(
-        "hidden md:flex flex-col shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200",
+        "sticky top-0 hidden h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200 md:flex",
         collapsed ? "w-14" : "w-60"
       )}
     >
-      <div className="flex h-14 items-center gap-2 border-b border-sidebar-border px-3">
-        <Scale className="h-5 w-5 text-sidebar-primary shrink-0" aria-hidden />
+      <div className="flex h-16 items-center gap-2 border-b border-sidebar-border px-3">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center">
+          <Image
+            src="/images/adhi_logo_main.png"
+            alt="Adhivakta"
+            width={44}
+            height={44}
+            priority
+            className="h-11 w-11 object-contain"
+          />
+        </div>
         {!collapsed ? (
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-white">Adhivakta Admin</p>
+            <p className="truncate text-sm font-semibold text-[#03234b]">Adhivakta Admin</p>
+            <p className="truncate text-[11px] text-muted-foreground">Super admin portal</p>
           </div>
         ) : null}
       </div>
 
       <TooltipProvider delayDuration={0}>
-        <nav className="flex-1 overflow-y-auto py-2" aria-label="Main navigation">
+        <nav className="min-h-0 flex-1 overflow-y-auto py-2" aria-label="Main navigation">
           {items.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
             const link = (
@@ -41,7 +52,7 @@ export function Sidebar({ collapsed, onToggle }) {
                 className={cn(
                   "mx-2 mb-0.5 flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
                   active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    ? "bg-primary text-primary-foreground font-medium shadow-sm"
                     : "hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
                 )}
               >

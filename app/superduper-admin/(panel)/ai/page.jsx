@@ -9,11 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { PageHeader } from "@/components/admin/shared/page-header"
 import { MetricCard } from "@/components/admin/shared/metric-card"
-import { StatusBadge } from "@/components/admin/shared/status-badge"
 import { ExportButton } from "@/components/admin/shared/export-button"
 import { PermissionGuard } from "@/components/admin/shared/permission-guard"
 import { DataTable } from "@/components/admin/shared/data-table"
 import { FilterBar } from "@/components/admin/shared/filter-bar"
+import { useAdminUserFilter } from "@/components/admin/shared/user-filter"
 import { useServerTable } from "@/hooks/use-admin-table"
 import { api } from "@/lib/admin/api"
 import { formatDateTime, formatNumber, titleCase } from "@/lib/admin/format"
@@ -30,17 +30,16 @@ const CONVERSATION_COLUMNS = [
 
 function AiContent() {
   const [overview, setOverview] = useState(null)
-  const [health, setHealth] = useState(null)
   const table = useServerTable({ endpoint: "/admin/ai/conversations" })
+  const userFilter = useAdminUserFilter({ key: "user", label: "User" })
 
   useEffect(() => {
     api.get("/admin/ai/overview?days=30").then(({ data }) => setOverview(data)).catch(() => {})
-    api.get("/admin/ai/health").then(({ data }) => setHealth(data)).catch(() => setHealth({ status: "degraded", components: [] }))
   }, [])
 
   return (
     <div className="space-y-4">
-      <PageHeader title="AI Administration" description="NyaAI service health, usage analytics and quota monitoring">
+      <PageHeader title="AI Administration" description="NyaAI usage analytics and quota monitoring">
         <ExportButton endpoint="/admin/ai/export" filename="ai-usage-export.csv" filters={{ days: 30 }} permission="ai.view" />
       </PageHeader>
 
@@ -79,36 +78,7 @@ function AiContent() {
 
         <div className="space-y-4">
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-base">Service health</CardTitle></CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              {!health ? (
-                <Skeleton className="h-20 w-full" />
-              ) : (
-                <>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Overall</span>
-                    <StatusBadge status={health.status} />
-                  </div>
-                  {health.dbLatencyMs != null ? (
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">DB latency</span>
-                      <span className="tabular-nums">{health.dbLatencyMs} ms</span>
-                    </div>
-                  ) : null}
-                  {(health.components || []).map((component) => (
-                    <div key={component.name} className="flex items-center justify-between">
-                      <span className="text-muted-foreground">{component.name}</span>
-                      <StatusBadge status={component.configured ? "operational" : "failed"} />
-                    </div>
-                  ))}
-                  {health.note ? <p className="pt-1 text-xs text-muted-foreground">{health.note}</p> : null}
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-base">Token usage (estimated)</CardTitle></CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-base">Token usage</CardTitle></CardHeader>
             <CardContent className="space-y-1.5 text-sm">
               {!overview ? (
                 <Skeleton className="h-20 w-full" />
@@ -126,7 +96,6 @@ function AiContent() {
                     <span>Total</span>
                     <span className="tabular-nums">{formatNumber(overview.tokenEstimates.totalTokens)}</span>
                   </div>
-                  <p className="pt-1 text-xs text-muted-foreground">{overview.tokenEstimates.note}</p>
                 </>
               )}
             </CardContent>
@@ -136,15 +105,20 @@ function AiContent() {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Conversations (metadata only)</CardTitle>
+          <CardTitle className="text-base">Conversations</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <FilterBar table={table} searchPlaceholder="Filtering by content is intentionally unsupported" dateRange />
-          <DataTable columns={CONVERSATION_COLUMNS} table={table} emptyTitle="No conversations in this range" />
-          <p className="text-xs text-muted-foreground">
-            Prompts, replies and document content are never shown here. Failed-request inspection and per-model
-            breakdowns require provider-side telemetry that is not persisted yet.
-          </p>
+          <FilterBar table={table} searchPlaceholder="Search conversations…" dateRange selects={[userFilter.select]} />
+          <DataTable
+            columns={CONVERSATION_COLUMNS}
+            table={table}
+            emptyTitle="No conversations in this range"
+            groupBy={{
+              active: Boolean(table.filters.user),
+              getKey: () => table.filters.user,
+              getLabel: () => userFilter.labelForUser(table.filters.user),
+            }}
+          />
         </CardContent>
       </Card>
     </div>

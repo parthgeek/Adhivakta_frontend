@@ -349,10 +349,6 @@ export default function SettingsPage() {
             <Card>
               <CardContent className="pt-4">
                 <ActivityTimeline events={history} emptyLabel="No settings changes yet" />
-                <p className="mt-3 text-xs text-muted-foreground">
-                  Rollback: open an event to see its before-value, then set the setting back manually — automated
-                  one-click rollback is intentionally avoided for safety.
-                </p>
               </CardContent>
             </Card>
           </TabsContent>

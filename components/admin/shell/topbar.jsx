@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation"
 import Link from "next/link"
-import { Bell, Search, LogOut, CircleDot } from "lucide-react"
+import { Bell, Search, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
@@ -17,9 +17,7 @@ import { NAV_ITEMS } from "@/lib/admin/navigation"
 import { useAuth } from "@/lib/admin/auth-context"
 import { titleCase } from "@/lib/admin/format"
 
-const ENVIRONMENT = process.env.NODE_ENV === "production" ? "Production" : "Development"
-
-export function Topbar({ onOpenPalette, health, alerts = [] }) {
+export function Topbar({ onOpenPalette, alerts = [] }) {
   const pathname = usePathname()
   const { admin, logout } = useAuth()
 
@@ -63,26 +61,6 @@ export function Topbar({ onOpenPalette, health, alerts = [] }) {
       </Breadcrumb>
 
       <div className="ml-auto flex items-center gap-1.5">
-        <span
-          className={`hidden lg:inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${
-            ENVIRONMENT === "Production"
-              ? "border-red-200 bg-red-50 text-red-700"
-              : "border-amber-200 bg-amber-50 text-amber-700"
-          }`}
-        >
-          {ENVIRONMENT}
-        </span>
-
-        {health ? (
-          <span className="hidden lg:inline-flex items-center gap-1 text-xs text-muted-foreground" title="System health">
-            <CircleDot
-              className={`h-3 w-3 ${health === "operational" ? "text-emerald-500" : "text-amber-500"}`}
-              aria-hidden
-            />
-            {titleCase(health)}
-          </span>
-        ) : null}
-
         <Button variant="outline" size="sm" className="gap-2 text-muted-foreground" onClick={onOpenPalette}>
           <Search className="h-3.5 w-3.5" />
           <span className="hidden md:inline">Search…</span>

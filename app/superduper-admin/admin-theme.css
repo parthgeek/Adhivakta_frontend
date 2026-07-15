@@ -1,41 +1,40 @@
 /* Adhivakta Admin theme — scoped to .admin-scope so it never disturbs the
-   customer-facing app's own CSS variables. Off-white surface, deep navy
-   primary, restrained gold accent, dark navy sidebar. */
+   customer-facing app's own CSS variables. */
 
 .admin-scope {
-  --background: 40 20% 98%;
-  --foreground: 215 30% 12%;
+  --background: 0 0% 100%;
+  --foreground: 0 0% 3.9%;
   --card: 0 0% 100%;
-  --card-foreground: 215 30% 12%;
+  --card-foreground: 0 0% 3.9%;
   --popover: 0 0% 100%;
-  --popover-foreground: 215 30% 12%;
+  --popover-foreground: 0 0% 3.9%;
   --primary: 213 92% 15%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 215 25% 95%;
-  --secondary-foreground: 215 30% 15%;
-  --muted: 215 20% 95%;
-  --muted-foreground: 215 15% 42%;
-  --accent: 40 85% 92%;
-  --accent-foreground: 30 70% 25%;
-  --destructive: 0 72% 45%;
+  --secondary: 0 0% 96.1%;
+  --secondary-foreground: 0 0% 9%;
+  --muted: 0 0% 96.1%;
+  --muted-foreground: 0 0% 45.1%;
+  --accent: 213 50% 95%;
+  --accent-foreground: 213 92% 15%;
+  --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 98%;
-  --border: 215 18% 88%;
-  --input: 215 18% 86%;
+  --border: 0 0% 89.8%;
+  --input: 0 0% 89.8%;
   --ring: 213 92% 15%;
-  --chart-1: 213 70% 35%;
+  --chart-1: 213 92% 25%;
   --chart-2: 173 58% 39%;
-  --chart-3: 40 80% 50%;
-  --chart-4: 0 60% 50%;
-  --chart-5: 260 45% 50%;
+  --chart-3: 197 37% 24%;
+  --chart-4: 43 74% 66%;
+  --chart-5: 27 87% 67%;
   --radius: 0.5rem;
-  --sidebar-background: 213 60% 10%;
-  --sidebar-foreground: 213 20% 82%;
-  --sidebar-primary: 40 85% 60%;
-  --sidebar-primary-foreground: 213 92% 12%;
-  --sidebar-accent: 213 45% 18%;
-  --sidebar-accent-foreground: 0 0% 100%;
-  --sidebar-border: 213 40% 18%;
-  --sidebar-ring: 40 85% 60%;
+  --sidebar-background: 0 0% 100%;
+  --sidebar-foreground: 240 5.3% 26.1%;
+  --sidebar-primary: 213 92% 15%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 213 50% 95%;
+  --sidebar-accent-foreground: 213 92% 15%;
+  --sidebar-border: 220 13% 91%;
+  --sidebar-ring: 213 92% 15%;
 
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));

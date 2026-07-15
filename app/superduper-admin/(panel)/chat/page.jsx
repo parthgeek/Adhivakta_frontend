@@ -12,6 +12,7 @@ import { PermissionGuard } from "@/components/admin/shared/permission-guard"
 import { MetricCard } from "@/components/admin/shared/metric-card"
 import { ConfirmActionDialog } from "@/components/admin/shared/confirm-action-dialog"
 import { DetailDrawer, DetailRow } from "@/components/admin/shared/detail-drawer"
+import { useAdminUserFilter } from "@/components/admin/shared/user-filter"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useServerTable } from "@/hooks/use-admin-table"
@@ -23,6 +24,7 @@ function ChatContent() {
   const { hasPermission } = useAuth()
   const canManage = hasPermission("chat.manage")
   const table = useServerTable({ endpoint: "/admin/chat/groups" })
+  const userFilter = useAdminUserFilter({ key: "user", label: "User" })
   const [stats, setStats] = useState(null)
   const [detail, setDetail] = useState(null)
   const [archiveTarget, setArchiveTarget] = useState(null)
@@ -75,7 +77,7 @@ function ChatContent() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Chat Oversight" description="Group health and membership — message content is never shown" />
+      <PageHeader title="Chat Oversight" description="Group activity, membership and moderation status" />
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Chat metrics">
         <MetricCard title="Total groups" value={formatNumber(stats?.total)} icon={MessagesSquare} loading={!stats} />
@@ -90,21 +92,27 @@ function ChatContent() {
         selects={[
           { key: "orphaned", label: "Case link", options: [{ value: "true", label: "Orphaned only" }] },
           { key: "archived", label: "Archive", options: [{ value: "true", label: "Archived" }, { value: "false", label: "Not archived" }] },
+          userFilter.select,
         ]}
       />
 
-      <DataTable columns={columns} table={table} onRowClick={openDetail} emptyTitle="No chat groups match these filters" />
-
-      <p className="text-xs text-muted-foreground">
-        Message bodies are private by default. An exceptional content-access workflow (legal hold) would require a
-        dedicated permission, stated reason and security audit record — it is intentionally not exposed in this portal.
-      </p>
+      <DataTable
+        columns={columns}
+        table={table}
+        onRowClick={openDetail}
+        emptyTitle="No chat groups match these filters"
+        groupBy={{
+          active: Boolean(table.filters.user),
+          getKey: () => table.filters.user,
+          getLabel: () => userFilter.labelForUser(table.filters.user),
+        }}
+      />
 
       <DetailDrawer
         open={!!detail}
         onOpenChange={(open) => !open && setDetail(null)}
         title={detail?.name}
-        description="Members and metadata only"
+        description="Group membership and activity"
       >
         {detail ? (
           <>
