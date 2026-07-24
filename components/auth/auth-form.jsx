@@ -26,4 +26,7 @@ export function AuthForm() {
       </Tabs>
     </div>
   )
+
+  
 }
+
