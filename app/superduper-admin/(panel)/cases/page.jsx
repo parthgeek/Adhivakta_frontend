@@ -8,6 +8,7 @@ import { DataTable } from "@/components/admin/shared/data-table"
 import { StatusBadge } from "@/components/admin/shared/status-badge"
 import { ExportButton } from "@/components/admin/shared/export-button"
 import { PermissionGuard } from "@/components/admin/shared/permission-guard"
+import { useAdminUserFilter } from "@/components/admin/shared/user-filter"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useServerTable } from "@/hooks/use-admin-table"
 import { formatDateTime, titleCase } from "@/lib/admin/format"
@@ -32,6 +33,7 @@ const COLUMNS = [
 function CasesContent() {
   const router = useRouter()
   const table = useServerTable({ endpoint: "/admin/cases", defaultSort: "-updatedAt" })
+  const userFilter = useAdminUserFilter({ key: "owner", label: "User" })
 
   return (
     <div className="space-y-4">
@@ -48,6 +50,7 @@ function CasesContent() {
           { key: "caseType", label: "Type", options: CASE_TYPES },
           { key: "priority", label: "Priority", options: ["low", "normal", "high", "urgent"] },
           { key: "courtType", label: "Court", options: ["supreme_court", "high_court", "district_court", "tribunal"] },
+          userFilter.select,
           { key: "unassigned", label: "Assignment", options: [{ value: "true", label: "Unassigned only" }] },
         ]}
       />
@@ -57,6 +60,11 @@ function CasesContent() {
         table={table}
         onRowClick={(c) => router.push(`/superduper-admin/cases/${c._id}`)}
         emptyTitle="No cases match these filters"
+        groupBy={{
+          active: Boolean(table.filters.owner),
+          getKey: () => table.filters.owner,
+          getLabel: () => userFilter.labelForUser(table.filters.owner),
+        }}
       />
     </div>
   )

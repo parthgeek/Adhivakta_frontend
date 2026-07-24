@@ -3,6 +3,7 @@
 // Server-side data table: renders columns over rows from useServerTable,
 // with sort headers, pagination, loading skeletons, empty and error states.
 
+import { Fragment, useMemo } from "react"
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -19,6 +20,7 @@ export function DataTable({
   onRowClick,
   emptyTitle = "Nothing here",
   emptyDescription,
+  groupBy,
 }) {
   const { data, pagination, loading, error, filters, setParams, setPage, refresh } = table
 
@@ -28,6 +30,40 @@ export function DataTable({
     else if (currentSort === `-${field}`) setParams({ sort: undefined })
     else setParams({ sort: field })
   }
+
+  const groupedRows = useMemo(() => {
+    if (!groupBy?.active || data.length === 0) return null
+    const groups = []
+    const byKey = new Map()
+    data.forEach((row) => {
+      const key = groupBy.getKey(row) || "__unknown"
+      if (!byKey.has(key)) {
+        const group = {
+          key,
+          label: groupBy.getLabel?.(row) || "Unknown user",
+          rows: [],
+        }
+        byKey.set(key, group)
+        groups.push(group)
+      }
+      byKey.get(key).rows.push(row)
+    })
+    return groups
+  }, [data, groupBy])
+
+  const renderRow = (row) => (
+    <TableRow
+      key={row._id || row.key || row.id}
+      className={cn(onRowClick && "cursor-pointer")}
+      onClick={onRowClick ? () => onRowClick(row) : undefined}
+    >
+      {columns.map((col) => (
+        <TableCell key={col.key} className={cn("whitespace-nowrap", col.cellClassName)}>
+          {col.render ? col.render(row) : row[col.key] ?? "—"}
+        </TableCell>
+      ))}
+    </TableRow>
+  )
 
   return (
     <div className="space-y-3">
@@ -88,20 +124,19 @@ export function DataTable({
                   <EmptyState title={emptyTitle} description={emptyDescription} />
                 </TableCell>
               </TableRow>
-            ) : (
-              data.map((row) => (
-                <TableRow
-                  key={row._id || row.key || row.id}
-                  className={cn(onRowClick && "cursor-pointer")}
-                  onClick={onRowClick ? () => onRowClick(row) : undefined}
-                >
-                  {columns.map((col) => (
-                    <TableCell key={col.key} className={cn("whitespace-nowrap", col.cellClassName)}>
-                      {col.render ? col.render(row) : row[col.key] ?? "—"}
+            ) : groupedRows ? (
+              groupedRows.map((group) => (
+                <Fragment key={group.key}>
+                  <TableRow key={`${group.key}-group`} className="bg-muted/50 hover:bg-muted/50">
+                    <TableCell colSpan={columns.length} className="py-2 text-xs font-medium text-muted-foreground">
+                      {group.label} · {formatNumber(group.rows.length)} on this page
                     </TableCell>
-                  ))}
-                </TableRow>
+                  </TableRow>
+                  {group.rows.map(renderRow)}
+                </Fragment>
               ))
+            ) : (
+              data.map(renderRow)
             )}
           </TableBody>
         </Table>

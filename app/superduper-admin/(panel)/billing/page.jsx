@@ -23,6 +23,7 @@ import { ExportButton } from "@/components/admin/shared/export-button"
 import { PermissionGuard } from "@/components/admin/shared/permission-guard"
 import { ConfirmActionDialog } from "@/components/admin/shared/confirm-action-dialog"
 import { DataTable } from "@/components/admin/shared/data-table"
+import { useAdminUserFilter } from "@/components/admin/shared/user-filter"
 import { FilterBar } from "@/components/admin/shared/filter-bar"
 import { useServerTable } from "@/hooks/use-admin-table"
 import { api } from "@/lib/admin/api"
@@ -138,6 +139,7 @@ function BillingContent() {
   const { hasPermission } = useAuth()
   const canManage = hasPermission("billing.manage")
   const table = useServerTable({ endpoint: "/admin/billing/subscriptions" })
+  const userFilter = useAdminUserFilter({ key: "user", label: "User" })
   const [insights, setInsights] = useState(null)
   const [plans, setPlans] = useState(null)
   const [planEditor, setPlanEditor] = useState(null) // { plan } | { plan: null } for new
@@ -224,9 +226,21 @@ function BillingContent() {
             table={table}
             searchPlaceholder="Search by user name or email…"
             dateRange
-            selects={[{ key: "status", label: "Status", options: ["trialing", "active", "past_due", "cancelled", "expired"] }]}
+            selects={[
+              { key: "status", label: "Status", options: ["trialing", "active", "past_due", "cancelled", "expired"] },
+              userFilter.select,
+            ]}
           />
-          <DataTable columns={columns} table={table} emptyTitle="No subscriptions match these filters" />
+          <DataTable
+            columns={columns}
+            table={table}
+            emptyTitle="No subscriptions match these filters"
+            groupBy={{
+              active: Boolean(table.filters.user),
+              getKey: () => table.filters.user,
+              getLabel: () => userFilter.labelForUser(table.filters.user),
+            }}
+          />
           <p className="text-xs text-muted-foreground">
             No payment provider (Razorpay/Stripe) is integrated yet — subscriptions here are managed manually and card
             details are never stored or shown.

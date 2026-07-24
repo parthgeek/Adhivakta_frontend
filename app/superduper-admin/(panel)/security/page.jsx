@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/admin/shared/status-badge"
 import { ExportButton } from "@/components/admin/shared/export-button"
 import { PermissionGuard } from "@/components/admin/shared/permission-guard"
 import { DetailDrawer, DetailRow } from "@/components/admin/shared/detail-drawer"
+import { useAdminUserFilter } from "@/components/admin/shared/user-filter"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useServerTable } from "@/hooks/use-admin-table"
 import { formatDateTime, titleCase } from "@/lib/admin/format"
@@ -25,6 +26,7 @@ function JsonBlock({ value }) {
 
 function SecurityContent() {
   const table = useServerTable({ endpoint: "/admin/audit", pageSize: 50 })
+  const userFilter = useAdminUserFilter({ key: "actor", label: "User" })
   const [detail, setDetail] = useState(null)
 
   const columns = [
@@ -57,10 +59,21 @@ function SecurityContent() {
         selects={[
           { key: "module", label: "Module", options: MODULES },
           { key: "status", label: "Result", options: ["success", "failure", "denied"] },
+          userFilter.select,
         ]}
       />
 
-      <DataTable columns={columns} table={table} onRowClick={setDetail} emptyTitle="No audit events match these filters" />
+      <DataTable
+        columns={columns}
+        table={table}
+        onRowClick={setDetail}
+        emptyTitle="No audit events match these filters"
+        groupBy={{
+          active: Boolean(table.filters.actor),
+          getKey: () => table.filters.actor,
+          getLabel: () => userFilter.labelForUser(table.filters.actor),
+        }}
+      />
 
       <DetailDrawer
         open={!!detail}

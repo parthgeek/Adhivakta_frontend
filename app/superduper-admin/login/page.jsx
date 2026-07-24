@@ -1,8 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { Scale } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -36,13 +36,21 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
-      <Card className="w-full max-w-sm">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#f8fafc] p-4">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_32%),linear-gradient(180deg,#ffffff_0%,#f4f7fb_100%)]" aria-hidden />
+      <Card className="relative w-full max-w-sm border-[#d9e2ef] shadow-[0_24px_70px_rgba(3,35,75,0.14)]">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-            <Scale className="h-5 w-5 text-primary-foreground" aria-hidden />
+          <div className="mx-auto mb-2 flex h-28 w-28 items-center justify-center">
+            <Image
+              src="/images/adhi_logo_main.png"
+              alt="Adhivakta"
+              width={112}
+              height={112}
+              priority
+              className="h-28 w-28 object-contain"
+            />
           </div>
-          <CardTitle>Adhivakta Admin</CardTitle>
+          <CardTitle className="text-xl text-[#03234b]">Adhivakta Admin</CardTitle>
           <CardDescription>Sign in with an administrator account</CardDescription>
         </CardHeader>
         <CardContent>

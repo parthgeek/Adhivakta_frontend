@@ -1,9 +1,5 @@
 "use client"
 
-// Authenticated admin shell: sidebar + topbar + command palette.
-// Redirects to /login when unauthenticated; all data access is additionally
-// enforced server-side by admin RBAC middleware.
-
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Sidebar } from "@/components/admin/shell/sidebar"
@@ -18,7 +14,6 @@ export default function AdminLayout({ children }) {
   const { admin, loading, hasPermission } = useAuth()
   const [collapsed, setCollapsed] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
-  const [health, setHealth] = useState(null)
   const [alerts, setAlerts] = useState([])
 
   useEffect(() => {
@@ -31,9 +26,8 @@ export default function AdminLayout({ children }) {
       .get("/admin/dashboard/overview")
       .then(({ data }) => {
         setAlerts(data.alerts || [])
-        setHealth(data.courtSync?.status === "failed" ? "degraded" : "operational")
       })
-      .catch(() => setHealth(null))
+      .catch(() => setAlerts([]))
   }, [admin, hasPermission])
 
   if (loading || !admin) {
@@ -56,7 +50,7 @@ export default function AdminLayout({ children }) {
     <div className="flex min-h-screen">
       <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar onOpenPalette={() => setPaletteOpen(true)} health={health} alerts={alerts} />
+        <Topbar onOpenPalette={() => setPaletteOpen(true)} alerts={alerts} />
         <main className="flex-1 p-4 md:p-6 space-y-4">{children}</main>
       </div>
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />

@@ -13,6 +13,7 @@ import { MetricCard } from "@/components/admin/shared/metric-card"
 import { ConfirmActionDialog } from "@/components/admin/shared/confirm-action-dialog"
 import { DetailDrawer, DetailRow } from "@/components/admin/shared/detail-drawer"
 import { ActivityTimeline } from "@/components/admin/shared/activity-timeline"
+import { useAdminUserFilter } from "@/components/admin/shared/user-filter"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -27,6 +28,7 @@ function DocumentsContent() {
   const { hasPermission } = useAuth()
   const canManage = hasPermission("documents.manage")
   const table = useServerTable({ endpoint: "/admin/documents", defaultSort: "-createdAt" })
+  const userFilter = useAdminUserFilter({ key: "uploader", label: "User" })
   const [stats, setStats] = useState(null)
   const [selected, setSelected] = useState([])
   const [detail, setDetail] = useState(null)
@@ -152,10 +154,21 @@ function DocumentsContent() {
           { key: "approvalStatus", label: "Approval", options: ["pending", "approved", "rejected"] },
           { key: "type", label: "Type", options: FILE_TYPES.map((t) => ({ value: t, label: t.toUpperCase() })) },
           { key: "status", label: "Status", options: ["active", "draft", "archived"] },
+          userFilter.select,
         ]}
       />
 
-      <DataTable columns={columns} table={table} onRowClick={openDetail} emptyTitle="No documents match these filters" />
+      <DataTable
+        columns={columns}
+        table={table}
+        onRowClick={openDetail}
+        emptyTitle="No documents match these filters"
+        groupBy={{
+          active: Boolean(table.filters.uploader),
+          getKey: () => table.filters.uploader,
+          getLabel: () => userFilter.labelForUser(table.filters.uploader),
+        }}
+      />
 
       <p className="text-xs text-muted-foreground">
         Uploads are scanned with ClamAV at upload time and rejected if infected; persistent quarantine and checksum
