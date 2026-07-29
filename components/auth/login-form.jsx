@@ -35,6 +35,7 @@ export function LoginForm() {
   const [error, setError] = useState("")
   const [showRoleDialog, setShowRoleDialog] = useState(false)
   const [selectedRole, setSelectedRole] = useState("")
+  const [organizationName, setOrganizationName] = useState("")
   const [showSessionConflictDialog, setShowSessionConflictDialog] = useState(false)
   const [sessionConflict, setSessionConflict] = useState(null)
   const { login, loginWithGoogle } = useAuth()
@@ -188,9 +189,22 @@ export function LoginForm() {
       return
     }
 
+    if (selectedRole === "organization_admin" && !organizationName.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Organization Required",
+        description: "Please enter your organization name to continue.",
+      })
+      return
+    }
+
     setIsLoading(true)
     try {
-      await loginWithGoogle({ role: selectedRole, isRegisterFlow: true })
+      await loginWithGoogle({
+        role: selectedRole,
+        organizationName: organizationName.trim(),
+        isRegisterFlow: true,
+      })
       setShowRoleDialog(false)
       toast({
         title: "Welcome!",
@@ -347,16 +361,29 @@ export function LoginForm() {
                 <SelectTrigger>
                   <SelectValue placeholder="Select your role" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="lawyer">Advocate</SelectItem>
-                  <SelectItem value="client">Client</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                  <SelectContent>
+                    <SelectItem value="lawyer">Advocate</SelectItem>
+                    <SelectItem value="client">Client</SelectItem>
+                    <SelectItem value="organization_admin">Organization Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedRole === "organization_admin" && (
+                <div className="space-y-2">
+                  <Label htmlFor="organization-name">Organization Name</Label>
+                  <Input
+                    id="organization-name"
+                    value={organizationName}
+                    onChange={(e) => setOrganizationName(e.target.value)}
+                    placeholder="Your law firm or legal team"
+                    disabled={isLoading}
+                  />
+                </div>
+              )}
             <Button
               onClick={handleRoleSelection}
               className="w-full"
-              disabled={isLoading || !selectedRole}
+              disabled={isLoading || !selectedRole || (selectedRole === "organization_admin" && !organizationName.trim())}
             >
               {isLoading ? (
                 <>

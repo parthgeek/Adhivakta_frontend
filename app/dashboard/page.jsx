@@ -1654,8 +1654,10 @@ const NewDashboard = () => {
       urgentCases: 0,
       upcomingHearings: 0,
       documents: 0,
-      activeClients: 0,
-    },
+        activeClients: 0,
+        organizationName: null,
+        organizationAdvocates: 0,
+      },
   });
   const [loading, setLoading] = useState(true);
   const [isApprovalPopupOpen, setIsApprovalPopupOpen] = useState(false);
@@ -1742,6 +1744,8 @@ const NewDashboard = () => {
             upcomingHearings: events.length,
             documents: documents.length,
             activeClients: 0,
+            organizationName: null,
+            organizationAdvocates: 0,
           },
         });
       } catch (err) {
@@ -1925,6 +1929,23 @@ const NewDashboard = () => {
       />
 
       <div className="max-w-7xl mx-auto space-y-5">
+        {user?.role === "organization_admin" && (
+          <div className="flex flex-col gap-2 rounded-xl border border-blue-100 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-sm font-semibold text-gray-950">
+                {stats.organizationName || user?.organization?.name || "Organization dashboard"}
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Aggregate view across {stats.organizationAdvocates || 0} assigned advocate
+                {(stats.organizationAdvocates || 0) !== 1 ? "s" : ""}
+              </div>
+            </div>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/dashboard/organization">Manage Advocates</Link>
+            </Button>
+          </div>
+        )}
+
         {/* Stats cards */}
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4" data-tour="dashboard-stats">
           {statsCards.map((card) => (

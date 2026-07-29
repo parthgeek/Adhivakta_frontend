@@ -4,6 +4,8 @@ import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/auth-context'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FcGoogle } from 'react-icons/fc'
 import { Loader2 } from 'lucide-react'
@@ -14,11 +16,19 @@ import { RegisterFormEmail } from './register-form-email'
 
 export function RegisterForm() {
   const [accountType, setAccountType] = useState('')
+  const [organizationName, setOrganizationName] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [showEmailForm, setShowEmailForm] = useState(false)
   const router = useRouter()
   const { loginWithGoogle } = useAuth()
+
+  const accountTypeLabel =
+    accountType === 'lawyer'
+      ? 'advocate'
+      : accountType === 'organization_admin'
+      ? 'organization admin'
+      : 'client'
 
 const handleGoogleLogin = async () => {
   setError("")
@@ -33,11 +43,22 @@ const handleGoogleLogin = async () => {
     return
   }
 
+  if (accountType === 'organization_admin' && !organizationName.trim()) {
+    setError("Please enter your organization name before continuing.")
+    toast({
+      variant: 'destructive',
+      title: 'Organization Required',
+      description: 'Please enter your organization name first.',
+    })
+    return
+  }
+
   setIsLoading(true)
   try {
     // Pass isRegisterFlow flag for registration
     const result = await loginWithGoogle({ 
       role: accountType, 
+      organizationName: organizationName.trim(),
       isRegisterFlow: true 
     })
     
@@ -94,6 +115,15 @@ const handleGoogleLogin = async () => {
       })
       return
     }
+    if (accountType === 'organization_admin' && !organizationName.trim()) {
+      setError('Please enter your organization name before continuing.')
+      toast({
+        variant: 'destructive',
+        title: 'Organization Required',
+        description: 'Please enter your organization name first.',
+      })
+      return
+    }
     setShowEmailForm(true)
   }
 
@@ -103,10 +133,13 @@ const handleGoogleLogin = async () => {
         <div className="space-y-2">
           <h3 className="text-lg font-semibold">Email Registration</h3>
           <p className="text-sm text-muted-foreground">
-            Creating {accountType === 'lawyer' ? 'advocate' : 'client'} account
+            Creating {accountTypeLabel} account
           </p>
         </div>
-        <RegisterFormEmail defaultRole={accountType} />
+        <RegisterFormEmail
+          defaultRole={accountType}
+          defaultOrganizationName={organizationName.trim()}
+        />
         <Button 
           variant="ghost" 
           className="w-full" 
@@ -137,9 +170,23 @@ const handleGoogleLogin = async () => {
           <SelectContent>
             <SelectItem value="lawyer">Advocate</SelectItem>
             <SelectItem value="client">Client</SelectItem>
+            <SelectItem value="organization_admin">Organization Admin</SelectItem>
           </SelectContent>
         </Select>
       </div>
+
+      {accountType === 'organization_admin' && (
+        <div className="space-y-2">
+          <Label htmlFor="organizationName">Organization Name</Label>
+          <Input
+            id="organizationName"
+            value={organizationName}
+            onChange={(e) => setOrganizationName(e.target.value)}
+            placeholder="Your law firm or legal team"
+            disabled={isLoading}
+          />
+        </div>
+      )}
 
       <div className="space-y-4">
         <Button 
@@ -147,7 +194,7 @@ const handleGoogleLogin = async () => {
           variant="outline" 
           className="w-full flex items-center justify-center" 
           onClick={handleGoogleLogin} 
-          disabled={isLoading || !accountType}
+          disabled={isLoading || !accountType || (accountType === 'organization_admin' && !organizationName.trim())}
         >
           {isLoading ? (
             <>
@@ -175,7 +222,7 @@ const handleGoogleLogin = async () => {
           type="button" 
           className="w-full" 
           onClick={handleEmailSignup}
-          disabled={!accountType}
+          disabled={!accountType || (accountType === 'organization_admin' && !organizationName.trim())}
         >
           Sign up with Email
         </Button>
