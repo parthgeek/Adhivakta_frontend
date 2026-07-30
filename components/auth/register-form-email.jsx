@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/context/auth-context"
 import { Button } from "@/components/ui/button"
@@ -11,18 +11,27 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, Mail } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 
-export function RegisterFormEmail() {
+export function RegisterFormEmail({ defaultRole = "client", defaultOrganizationName = "" }) {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
     confirmPassword: "",
-    role: "client",
+    role: defaultRole,
+    organizationName: defaultOrganizationName,
   })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const { register } = useAuth()
   const router = useRouter()
+
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      role: defaultRole || "client",
+      organizationName: defaultOrganizationName || "",
+    }))
+  }, [defaultRole, defaultOrganizationName])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -47,6 +56,11 @@ const handleSubmit = async (e) => {
     return
   }
 
+  if (formData.role === "organization_admin" && !formData.organizationName.trim()) {
+    setError("Organization name is required")
+    return
+  }
+
   setIsLoading(true)
 
   try {
@@ -55,6 +69,7 @@ const handleSubmit = async (e) => {
       email: formData.email,
       password: formData.password,
       role: formData.role,
+      organizationName: formData.organizationName.trim(),
     })
 
     // Handle verification required
@@ -96,7 +111,9 @@ const handleSubmit = async (e) => {
     } else if (err.message?.includes("Password must be at least")) {
       setError("Password must be at least 6 characters long.")
     } else if (err.message?.includes("Invalid role")) {
-      setError("Please select a valid account type (advocate or client).")
+      setError("Please select a valid account type.")
+    } else if (err.message?.includes("Organization name")) {
+      setError("Organization name is required.")
     } else if (err.message?.includes("verification email")) {
       // Handle case where verification email was resent
       setError(err.message)
@@ -161,9 +178,25 @@ const handleSubmit = async (e) => {
           <SelectContent>
             <SelectItem value="client">Client</SelectItem>
             <SelectItem value="lawyer">Advocate</SelectItem>
+            <SelectItem value="organization_admin">Organization Admin</SelectItem>
           </SelectContent>
         </Select>
       </div>
+
+      {formData.role === "organization_admin" && (
+        <div className="space-y-2">
+          <Label htmlFor="organizationName">Organization Name</Label>
+          <Input
+            id="organizationName"
+            name="organizationName"
+            placeholder="Your law firm or legal team"
+            value={formData.organizationName}
+            onChange={handleChange}
+            required
+            disabled={isLoading}
+          />
+        </div>
+      )}
       
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>

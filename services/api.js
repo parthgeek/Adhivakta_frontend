@@ -65,7 +65,43 @@ const createHeaders = (contentType = "application/json") => {
   return headers;
 };
 
+const ORGANIZATION_ADVOCATE_FILTER_KEY = "organization_advocate_filter";
+
+const getOrganizationAdvocateFilter = () => {
+  if (typeof window === "undefined") return "";
+  const value = localStorage.getItem(ORGANIZATION_ADVOCATE_FILTER_KEY) || "";
+  return value === "all" ? "" : value;
+};
+
+const setOrganizationAdvocateFilter = (advocateId) => {
+  if (typeof window === "undefined") return;
+  const value = advocateId && advocateId !== "all" ? advocateId : "";
+  if (value) {
+    localStorage.setItem(ORGANIZATION_ADVOCATE_FILTER_KEY, value);
+  } else {
+    localStorage.removeItem(ORGANIZATION_ADVOCATE_FILTER_KEY);
+  }
+  window.dispatchEvent(
+    new CustomEvent("app:organization-advocate-filter", {
+      detail: { advocateId: value },
+    })
+  );
+};
+
+const appendOrganizationAdvocateFilter = (queryParams) => {
+  const advocateId = getOrganizationAdvocateFilter();
+  if (advocateId && !queryParams.has("advocateId")) {
+    queryParams.set("advocateId", advocateId);
+  }
+  return queryParams;
+};
+
 const api = {
+  organizationAdvocateFilter: {
+    get: getOrganizationAdvocateFilter,
+    set: setOrganizationAdvocateFilter,
+  },
+
   auth: {
     register: async (userData) => {
       console.log("API Register - Sending:", userData);
@@ -289,6 +325,69 @@ const api = {
     },
   },
 
+  organizations: {
+    getMine: async () => {
+      const response = await fetch(`${API_URL}/organizations/me`, {
+        method: "GET",
+        headers: createHeaders(),
+      });
+
+      const data = await handleResponse(response);
+      return data.data || null;
+    },
+
+    inviteAdvocate: async (email) => {
+      const response = await fetch(`${API_URL}/organizations/advocates/invite`, {
+        method: "POST",
+        headers: createHeaders(),
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await handleResponse(response);
+      return data.data || null;
+    },
+
+    createAdvocateAccount: async (payload) => {
+      const response = await fetch(`${API_URL}/organizations/advocates/create`, {
+        method: "POST",
+        headers: createHeaders(),
+        body: JSON.stringify(payload),
+      });
+
+      const data = await handleResponse(response);
+      return data.data || null;
+    },
+
+    getInvite: async (token) => {
+      const response = await fetch(`${API_URL}/organizations/invites/${token}`, {
+        method: "GET",
+        headers: createHeaders(),
+      });
+
+      const data = await handleResponse(response);
+      return data.data || null;
+    },
+
+    acceptInvite: async (token) => {
+      const response = await fetch(`${API_URL}/organizations/invites/${token}/accept`, {
+        method: "POST",
+        headers: createHeaders(),
+      });
+
+      return handleResponse(response);
+    },
+
+    removeAdvocate: async (userId) => {
+      const response = await fetch(`${API_URL}/organizations/advocates/${userId}`, {
+        method: "DELETE",
+        headers: createHeaders(),
+      });
+
+      const data = await handleResponse(response);
+      return data.data || null;
+    },
+  },
+
   cases: {
     getAll: async (filters = {}) => {
       // Convert filters object to query string
@@ -301,6 +400,7 @@ const api = {
 
       // Set a very high limit to get all cases without pagination
       queryParams.append("limit", "1000");
+      appendOrganizationAdvocateFilter(queryParams);
 
       const response = await fetch(
         `${API_URL}/cases?${queryParams.toString()}`,
@@ -446,7 +546,8 @@ const api = {
     },
 
     getStats: async () => {
-      const response = await fetch(`${API_URL}/cases/stats`, {
+      const queryParams = appendOrganizationAdvocateFilter(new URLSearchParams());
+      const response = await fetch(`${API_URL}/cases/stats?${queryParams.toString()}`, {
         method: "GET",
         headers: createHeaders(),
       });
@@ -455,7 +556,8 @@ const api = {
     },
 
     getRecent: async () => {
-      const response = await fetch(`${API_URL}/cases/recent`, {
+      const queryParams = appendOrganizationAdvocateFilter(new URLSearchParams());
+      const response = await fetch(`${API_URL}/cases/recent?${queryParams.toString()}`, {
         method: "GET",
         headers: createHeaders(),
       });
@@ -858,6 +960,7 @@ const api = {
           queryParams.append(key, value);
         }
       });
+      appendOrganizationAdvocateFilter(queryParams);
 
       const response = await fetch(
         `${API_URL}/documents?${queryParams.toString()}`,
@@ -882,7 +985,8 @@ const api = {
     },
 
     getByCaseId: async (caseId) => {
-      const response = await fetch(`${API_URL}/documents?caseId=${caseId}`, {
+      const queryParams = appendOrganizationAdvocateFilter(new URLSearchParams({ caseId }));
+      const response = await fetch(`${API_URL}/documents?${queryParams.toString()}`, {
         method: "GET",
         headers: createHeaders(),
       });
@@ -1053,6 +1157,7 @@ const api = {
           queryParams.append(key, value);
         }
       });
+      appendOrganizationAdvocateFilter(queryParams);
 
       const response = await fetch(
         `${API_URL}/events?${queryParams.toString()}`,
@@ -1077,7 +1182,8 @@ const api = {
     },
 
     getByCaseId: async (caseId) => {
-      const response = await fetch(`${API_URL}/events?caseId=${caseId}`, {
+      const queryParams = appendOrganizationAdvocateFilter(new URLSearchParams({ caseId }));
+      const response = await fetch(`${API_URL}/events?${queryParams.toString()}`, {
         method: "GET",
         headers: createHeaders(),
       });
@@ -1129,7 +1235,8 @@ const api = {
 
   dashboard: {
     getSummary: async () => {
-      const response = await fetch(`${API_URL}/dashboard/summary`, {
+      const queryParams = appendOrganizationAdvocateFilter(new URLSearchParams());
+      const response = await fetch(`${API_URL}/dashboard/summary?${queryParams.toString()}`, {
         method: "GET",
         headers: createHeaders(),
       });
@@ -1145,12 +1252,15 @@ const api = {
           documents: 0,
           successRate: "0%",
           activeClients: 0,
+          organizationName: null,
+          organizationAdvocates: 0,
         }
       );
     },
 
     getRecentCases: async () => {
-      const response = await fetch(`${API_URL}/dashboard/recent-cases`, {
+      const queryParams = appendOrganizationAdvocateFilter(new URLSearchParams());
+      const response = await fetch(`${API_URL}/dashboard/recent-cases?${queryParams.toString()}`, {
         method: "GET",
         headers: createHeaders(),
       });
@@ -1160,7 +1270,8 @@ const api = {
     },
 
     getUpcomingEvents: async () => {
-      const response = await fetch(`${API_URL}/dashboard/upcoming-events`, {
+      const queryParams = appendOrganizationAdvocateFilter(new URLSearchParams());
+      const response = await fetch(`${API_URL}/dashboard/upcoming-events?${queryParams.toString()}`, {
         method: "GET",
         headers: createHeaders(),
       });

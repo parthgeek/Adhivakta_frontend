@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   LayoutDashboard,
   FileText,
@@ -16,12 +16,14 @@ import {
   Scale,
   Monitor,
   Sparkles,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { usePathname, useRouter } from "next/navigation";
 import { useSidebar } from "@/context/sidebar-context";
 import { useRealTimeCounts } from "@/context/realtime-counts-context";
+import { useAuth } from "@/context/auth-context";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", tour: "dashboard-nav" },
@@ -52,16 +54,27 @@ export default function Sidebar() {
   const router = useRouter();
   const { collapsed, toggleSidebar } = useSidebar();
   const { counts, activityCounts, resetActivityCount } = useRealTimeCounts();
+  const { user } = useAuth();
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const visibleMenuItems = useMemo(() =>
+    user?.role === "organization_admin"
+      ? [
+          ...menuItems.slice(0, 1),
+          { icon: Building2, label: "Organization", path: "/dashboard/organization", tour: "organization-nav" },
+          ...menuItems.slice(1),
+        ]
+      : menuItems,
+    [user?.role]
+  );
 
   useEffect(() => {
     if (!pathname) return;
 
-    const matchingItem = menuItems.find((item) => isPathActive(pathname, item.path));
+    const matchingItem = visibleMenuItems.find((item) => isPathActive(pathname, item.path));
     if (!matchingItem || matchingItem.path === "/dashboard/messages") return;
 
     resetActivityCount(matchingItem.path);
-  }, [pathname, resetActivityCount]);
+  }, [pathname, resetActivityCount, visibleMenuItems]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -111,7 +124,7 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 p-4 space-y-2">
-        {menuItems.map((item) => {
+        {visibleMenuItems.map((item) => {
           const isActive = isPathActive(pathname, item.path);
           const showUnreadBadge =
             item.path === "/dashboard/messages" && unreadMessagesCount > 0;

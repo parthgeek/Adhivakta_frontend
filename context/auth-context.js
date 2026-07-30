@@ -293,7 +293,7 @@ export const AuthProvider = ({ children }) => {
 
   // Register with email/password - UPDATED with proper Firebase handling
   const register = useCallback(async (userData) => {
-    if (!['lawyer', 'client'].includes(userData.role)) {
+    if (!['lawyer', 'client', 'organization_admin'].includes(userData.role)) {
       userData.role = 'client';
     }
 
@@ -322,6 +322,13 @@ export const AuthProvider = ({ children }) => {
         throw {
           code: 'auth/weak-password',
           message: 'Password must be at least 6 characters long'
+        };
+      }
+
+      if (userData.role === "organization_admin" && !userData.organizationName?.trim()) {
+        throw {
+          code: 'auth/missing-organization',
+          message: 'Organization name is required'
         };
       }
 
@@ -421,6 +428,7 @@ export const AuthProvider = ({ children }) => {
           email,
           name,
           role: userData.role,
+          organizationName: userData.organizationName,
           hasFirebaseUID: !!userData.firebaseUID
         });
 
@@ -429,6 +437,7 @@ export const AuthProvider = ({ children }) => {
           email: userData.email,
           password: userData.password, // Still needed for backend
           role: userData.role,
+          organizationName: userData.organizationName,
           firebaseUID: userData.firebaseUID,
           // Don't send the token to backend register endpoint
         });
@@ -510,6 +519,7 @@ export const AuthProvider = ({ children }) => {
       const payload = {
         idToken,
         role: options.role || null,
+        organizationName: options.organizationName || null,
         isRegisterFlow: options.isRegisterFlow || false,
         forceLogin: options.forceLogin || false,
       }

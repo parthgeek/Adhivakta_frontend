@@ -12,6 +12,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/auth-context";
 import { useRealTimeCounts } from "@/context/realtime-counts-context";
@@ -127,6 +134,8 @@ export default function Header({ onMenuClick }) {
   const [isLoadingSearch, setIsLoadingSearch] = useState(true);
   const [searchError, setSearchError] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [organizationAdvocates, setOrganizationAdvocates] = useState([]);
+  const [selectedAdvocateId, setSelectedAdvocateId] = useState("all");
 
   const displayName = user?.name || "User";
   const firstName = displayName.split(" ").filter(Boolean)[0] || "User";
@@ -192,6 +201,47 @@ export default function Header({ onMenuClick }) {
       isCancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (user?.role !== "organization_admin") return;
+
+    let isCancelled = false;
+
+    const loadOrganizationAdvocates = async () => {
+      try {
+        const organization = await api.organizations.getMine();
+        if (isCancelled) return;
+        const advocates = (organization?.members || []).filter(
+          (member) => member.role === "lawyer" && member.status === "active"
+        );
+        setOrganizationAdvocates(advocates);
+
+        const savedFilter = api.organizationAdvocateFilter.get();
+        const hasSavedAdvocate = advocates.some(
+          (advocate) => String(advocate.userId) === String(savedFilter)
+        );
+        setSelectedAdvocateId(savedFilter && hasSavedAdvocate ? savedFilter : "all");
+        if (savedFilter && !hasSavedAdvocate) {
+          api.organizationAdvocateFilter.set("all");
+        }
+      } catch (error) {
+        console.error("Failed to load organization advocates:", error);
+      }
+    };
+
+    loadOrganizationAdvocates();
+    return () => {
+      isCancelled = true;
+    };
+  }, [user?.role]);
+
+  const handleAdvocateFilterChange = (value) => {
+    setSelectedAdvocateId(value);
+    api.organizationAdvocateFilter.set(value);
+    if (typeof window !== "undefined") {
+      window.location.reload();
+    }
+  };
 
   useEffect(() => {
     const handlePointerDown = (event) => {
@@ -398,6 +448,24 @@ export default function Header({ onMenuClick }) {
         </div>
 
         <div className="flex items-center gap-2 ml-auto md:ml-0 md:col-start-3 md:justify-self-end md:gap-4">
+          {user?.role === "organization_admin" && (
+            <div className="hidden min-w-[190px] md:block">
+              <Select value={selectedAdvocateId} onValueChange={handleAdvocateFilterChange}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="All advocates" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Advocates</SelectItem>
+                  {organizationAdvocates.map((advocate) => (
+                    <SelectItem key={advocate.userId} value={String(advocate.userId)}>
+                      {advocate.name || advocate.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <Button
             variant="ghost"
             size="icon"
