@@ -45,6 +45,7 @@ const isSameLayout = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 export default function DashboardCustomizer() {
   const [layout, setLayout] = useState(() => getDefaultDashboardSettings());
   const [savedLayout, setSavedLayout] = useState(() => getDefaultDashboardSettings());
+  const [presets, setPresets] = useState(DASHBOARD_PRESETS);
   const [isFetching, setIsFetching] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -71,11 +72,23 @@ export default function DashboardCustomizer() {
 
     const loadLayout = async () => {
       try {
-        const profile = await api.users.getProfile();
+        const response = await api.users.getDashboardLayout();
         if (cancelled) return;
-        const next = normalizeDashboardSettings(profile?.data?.dashboardSettings);
+        const next = normalizeDashboardSettings(response?.data?.layout);
         setLayout(next);
         setSavedLayout(next);
+        // The server owns the preset catalogue; only offer ones this build can
+        // also render a live preview for.
+        if (Array.isArray(response?.data?.presets)) {
+          setPresets(
+            response.data.presets
+              .map((preset) => ({
+                ...preset,
+                build: DASHBOARD_PRESETS.find((local) => local.id === preset.id)?.build,
+              }))
+              .filter((preset) => typeof preset.build === "function")
+          );
+        }
       } catch {
         if (!cancelled) showMessage("error", "Could not load your saved dashboard layout.");
       } finally {
@@ -94,8 +107,8 @@ export default function DashboardCustomizer() {
 
   const hasChanges = useMemo(() => !isSameLayout(layout, savedLayout), [layout, savedLayout]);
   const activePresetId = useMemo(
-    () => DASHBOARD_PRESETS.find((preset) => isSameLayout(preset.build(), layout))?.id || null,
-    [layout]
+    () => presets.find((preset) => isSameLayout(preset.build(), layout))?.id || null,
+    [presets, layout]
   );
 
   const visibleWidgets = layout.widgets.filter((widget) => widget.visible);
@@ -161,7 +174,11 @@ export default function DashboardCustomizer() {
   const saveLayout = async () => {
     setIsSaving(true);
     try {
-      const response = await api.users.updateDashboardLayout(layout);
+      // An untouched preset is saved by id so the server builds it; anything
+      // hand-tuned goes up as the explicit layout.
+      const response = await api.users.updateDashboardLayout(
+        activePresetId ? { preset: activePresetId } : layout
+      );
       const next = normalizeDashboardSettings(response?.data || layout);
       setLayout(next);
       setSavedLayout(next);
@@ -227,7 +244,7 @@ export default function DashboardCustomizer() {
         </CardHeader>
         <CardContent>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            {DASHBOARD_PRESETS.map((preset) => {
+            {presets.map((preset) => {
               const isActive = activePresetId === preset.id;
               return (
                 <button

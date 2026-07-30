@@ -305,6 +305,16 @@ const api = {
       return handleResponse(response);
     },
 
+    getDashboardLayout: async () => {
+      const response = await fetch(`${API_URL}/profile/dashboard`, {
+        method: "GET",
+        headers: createHeaders(),
+      });
+
+      return handleResponse(response);
+    },
+
+    // Accepts either { statCards, widgets } or { preset: "<preset id>" }.
     updateDashboardLayout: async (dashboardSettings) => {
       const response = await fetch(`${API_URL}/profile/dashboard`, {
         method: "PUT",

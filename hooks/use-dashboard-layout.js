@@ -46,9 +46,9 @@ export const useDashboardLayout = () => {
 
     const loadLayout = async () => {
       try {
-        const profile = await api.users.getProfile();
+        const response = await api.users.getDashboardLayout();
         if (cancelled) return;
-        const next = normalizeDashboardSettings(profile?.data?.dashboardSettings);
+        const next = normalizeDashboardSettings(response?.data?.layout);
         setLayout(next);
         cacheDashboardLayout(next);
       } catch {
