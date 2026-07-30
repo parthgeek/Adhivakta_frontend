@@ -39,6 +39,8 @@ import {
 import { getDisplayCaseType } from "@/lib/caseTypeUtils";
 import { cn } from "@/lib/utils";
 import { formatLegalTeamSummary } from "@/lib/legal-team";
+import { WIDTH_SPAN_CLASSES } from "@/lib/dashboard-layout";
+import { useDashboardLayout } from "@/hooks/use-dashboard-layout";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -1642,6 +1644,7 @@ const ApprovalNotificationsPopup = ({
 
 const NewDashboard = () => {
   const { user } = useAuth();
+  const { layout } = useDashboardLayout();
   const [dashboardData, setDashboardData] = useState({
     cases: [],
     events: [],
@@ -1849,8 +1852,8 @@ const NewDashboard = () => {
     return closedDate && closedDate >= currentMonthStart;
   }).length;
 
-  const statsCards = [
-    {
+  const statsCardsById = {
+    totalCases: {
       title: "Total Cases",
       value: stats.totalCases,
       sub: getMonthlyCountLabel(casesAddedThisMonth, "new case"),
@@ -1865,7 +1868,7 @@ const NewDashboard = () => {
       glowClass: "bg-sky-300/20",
       href: "/dashboard/cases",
     },
-    {
+    upcomingHearings: {
       title: "Upcoming Hearings",
       value: totalUpcomingHearings,
       sub: `Today: ${todayHearings} hearing${todayHearings !== 1 ? "s" : ""}`,
@@ -1880,7 +1883,7 @@ const NewDashboard = () => {
       glowClass: "bg-emerald-200/20",
       href: "/dashboard/calendar",
     },
-    {
+    urgentActions: {
       title: "Urgent Actions",
       value: stats.urgentCases,
       sub: "Requires attention",
@@ -1895,7 +1898,7 @@ const NewDashboard = () => {
       glowClass: "bg-amber-200/20",
       href: "/dashboard/cases?filter=urgent",
     },
-    {
+    closedCases: {
       title: "Closed Cases",
       value: stats.closedCases,
       sub: getMonthlyCountLabel(casesClosedThisMonth, "closed case"),
@@ -1910,7 +1913,60 @@ const NewDashboard = () => {
       glowClass: "bg-slate-200/20",
       href: "/dashboard/cases?filter=closed",
     },
-  ];
+  };
+
+  const visibleStatCards = layout.statCards
+    .filter((card) => card.visible && statsCardsById[card.id])
+    .map((card) => ({ id: card.id, ...statsCardsById[card.id] }));
+
+  const widgetRenderers = {
+    dayBriefing: () => (
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+          <div className="flex items-center gap-2 text-sm text-gray-700">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50">
+              <Calendar className="h-4 w-4 text-blue-600" />
+            </span>
+            <span>
+              <span className="font-bold text-gray-900">{todayHearings}</span>{" "}
+              hearing{todayHearings !== 1 ? "s" : ""} today
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-gray-700">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-50">
+              <AlertCircle className="h-4 w-4 text-orange-600" />
+            </span>
+            <span>
+              <span className="font-bold text-gray-900">{overdueTasks}</span>{" "}
+              overdue task{overdueTasks !== 1 ? "s" : ""} needing attention
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-1.5 text-sm font-medium text-gray-600">
+          <Calendar className="h-4 w-4 text-gray-400" />
+          <span>{todayDateStr}</span>
+        </div>
+      </div>
+    ),
+    causeList: () => (
+      <div data-tour="dashboard-activity">
+        <PersonalizedCauseListPreview />
+      </div>
+    ),
+    hearingsTable: () => (
+      <div className="h-full" data-tour="dashboard-hearings">
+        <UpcomingHearingsTable events={events} cases={cases} />
+      </div>
+    ),
+    casesByStatus: () => <CasesByStatusChart cases={cases} />,
+    casesByCategory: () => <CasesByCategoryChart cases={cases} />,
+    casesByCourt: () => <CasesByCourtState cases={cases} />,
+    causeListSearch: () => <CauseListSearchCard cases={cases} />,
+  };
+
+  const visibleWidgets = layout.widgets.filter(
+    (widget) => widget.visible && widgetRenderers[widget.id]
+  );
 
   return (
     <div className="min-h-screen bg-gray-50/60 p-6" data-tour="dashboard">
@@ -1925,60 +1981,43 @@ const NewDashboard = () => {
       />
 
       <div className="max-w-7xl mx-auto space-y-5">
-        {/* Stats cards */}
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4" data-tour="dashboard-stats">
-          {statsCards.map((card) => (
-            <StatsCard key={card.title} {...card} />
-          ))}
-        </div>
-
-        {/* Hearings today + overdue tasks */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <div className="flex items-center gap-2 text-sm text-gray-700">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50">
-                <Calendar className="h-4 w-4 text-blue-600" />
-              </span>
-              <span>
-                <span className="font-bold text-gray-900">{todayHearings}</span>{" "}
-                hearing{todayHearings !== 1 ? "s" : ""} today
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-gray-700">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-50">
-                <AlertCircle className="h-4 w-4 text-orange-600" />
-              </span>
-              <span>
-                <span className="font-bold text-gray-900">{overdueTasks}</span>{" "}
-                overdue task{overdueTasks !== 1 ? "s" : ""} needing attention
-              </span>
-            </div>
+        {/* Stats cards — visibility and order come from Settings → Dashboard */}
+        {visibleStatCards.length > 0 && (
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4" data-tour="dashboard-stats">
+            {visibleStatCards.map((card) => (
+              <StatsCard key={card.id} {...card} />
+            ))}
           </div>
-          <div className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-1.5 text-sm font-medium text-gray-600">
-            <Calendar className="h-4 w-4 text-gray-400" />
-            <span>{todayDateStr}</span>
-          </div>
-        </div>
+        )}
 
-        <div data-tour="dashboard-activity">
-          <PersonalizedCauseListPreview />
-        </div>
-
-        {/* Hearings Table + Cases by Status */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 h-full" data-tour="dashboard-hearings">
-            <UpcomingHearingsTable events={events} cases={cases} />
+        {/* Widgets laid out on a 6-column grid using each widget's saved width */}
+        {visibleWidgets.length > 0 && (
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-6">
+            {visibleWidgets.map((widget) => (
+              <div
+                key={widget.id}
+                className={cn("min-w-0", WIDTH_SPAN_CLASSES[widget.width] || WIDTH_SPAN_CLASSES.full)}
+              >
+                {widgetRenderers[widget.id]()}
+              </div>
+            ))}
           </div>
-          <div className="h-full">
-            <CasesByStatusChart cases={cases} />
-          </div>
-        </div>
+        )}
 
-        {/* Cases by Category + Court/State distribution */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <CasesByCategoryChart cases={cases} />
-          <CasesByCourtState cases={cases} />
-        </div>
+        {visibleStatCards.length === 0 && visibleWidgets.length === 0 && (
+          <div className="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
+            <p className="font-medium text-gray-700">Your dashboard is empty</p>
+            <p className="mt-1 text-sm text-gray-500">
+              Every block is currently hidden. Turn some back on to see your case activity.
+            </p>
+            <Link
+              href="/dashboard/settings?tab=dashboard"
+              className="mt-4 inline-flex h-10 items-center rounded-lg bg-[#03234b] px-4 text-sm font-semibold text-white hover:bg-[#042d5e]"
+            >
+              Customize dashboard
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );
