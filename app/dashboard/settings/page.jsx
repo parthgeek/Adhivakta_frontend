@@ -10,9 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Loader2, Bell, Clock, LogOut, Mail, Pencil, Crown, MonitorSmartphone } from "lucide-react"
+import { Loader2, Bell, Clock, LogOut, Mail, Pencil, Crown, MonitorSmartphone, LayoutDashboard } from "lucide-react"
 import api from "@/services/api"
 import SubscriptionSettings from "@/components/subscription/subscription-settings"
+import DashboardCustomizer from "@/components/dashboard/dashboard-customizer"
 import { useLanguage } from "@/context/language-context"
 
 const DEFAULT_NOTIFICATION_SETTINGS = {
@@ -28,6 +29,8 @@ const DEFAULT_SECURITY_SETTINGS = {
   sessionTimeout: "30",
   sessionLoginLimit: "1",
 }
+
+const VALID_TABS = ["profile", "password", "notifications", "security", "dashboard", "subscription"]
 
 const SESSION_TIMEOUT_OPTIONS = ["15", "30", "60", "120", "240"]
 const SESSION_LOGIN_LIMIT_OPTIONS = ["1", "2", "3"]
@@ -98,8 +101,8 @@ export default function SettingsPage() {
         <div className="h-9 w-32 bg-gray-200 rounded animate-pulse"></div>
       </div>
       <div className="w-full">
-        <div className="grid w-full grid-cols-5 gap-2 mb-6">
-          {[...Array(5)].map((_, i) => (
+        <div className="grid w-full grid-cols-6 gap-2 mb-6">
+          {[...Array(6)].map((_, i) => (
             <div key={i} className="h-10 bg-gray-200 rounded animate-pulse"></div>
           ))}
         </div>
@@ -184,6 +187,15 @@ export default function SettingsPage() {
 
   // Handle tab change
   const [activeTab, setActiveTab] = useState("profile")
+
+  // Allow deep links such as /dashboard/settings?tab=dashboard
+  useEffect(() => {
+    const requestedTab = new URLSearchParams(window.location.search).get("tab")
+    if (VALID_TABS.includes(requestedTab)) {
+      setActiveTab(requestedTab)
+    }
+  }, [])
+
   const handleTabChange = (value) => {
     setActiveTab(value)
     setSuccessMessage("")
@@ -355,11 +367,19 @@ export default function SettingsPage() {
       {errorMessage && <div className="bg-red-50 text-red-800 p-4 rounded-md mb-4">{errorMessage}</div>}
 
       <Tabs defaultValue="profile" value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="profile" data-tour="profile-settings">{t.profile}</TabsTrigger>
           <TabsTrigger value="password">{t.password}</TabsTrigger>
           <TabsTrigger value="notifications" data-tour="notification-settings-tab">{t.notifications}</TabsTrigger>
           <TabsTrigger value="security" data-tour="security-settings-tab">{t.security}</TabsTrigger>
+          <TabsTrigger
+            value="dashboard"
+            data-tour="dashboard-settings-tab"
+            className="flex items-center gap-1"
+          >
+            <LayoutDashboard className="h-3 w-3" />
+            Dashboard
+          </TabsTrigger>
           <TabsTrigger value="subscription" className="flex items-center gap-1">
             <Crown className="h-3 w-3" />
             Subscription
@@ -780,6 +800,10 @@ export default function SettingsPage() {
               </Button>
             </CardFooter>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="dashboard" data-tour="dashboard-settings">
+          <DashboardCustomizer />
         </TabsContent>
 
         <TabsContent value="subscription">

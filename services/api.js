@@ -304,6 +304,35 @@ const api = {
 
       return handleResponse(response);
     },
+
+    getDashboardLayout: async () => {
+      const response = await fetch(`${API_URL}/profile/dashboard`, {
+        method: "GET",
+        headers: createHeaders(),
+      });
+
+      return handleResponse(response);
+    },
+
+    // Accepts either { statCards, widgets } or { preset: "<preset id>" }.
+    updateDashboardLayout: async (dashboardSettings) => {
+      const response = await fetch(`${API_URL}/profile/dashboard`, {
+        method: "PUT",
+        headers: createHeaders(),
+        body: JSON.stringify(dashboardSettings),
+      });
+
+      return handleResponse(response);
+    },
+
+    resetDashboardLayout: async () => {
+      const response = await fetch(`${API_URL}/profile/dashboard`, {
+        method: "DELETE",
+        headers: createHeaders(),
+      });
+
+      return handleResponse(response);
+    },
   },
 
   organizations: {
