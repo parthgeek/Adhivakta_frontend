@@ -387,6 +387,15 @@ const api = {
       return handleResponse(response);
     },
 
+    leave: async () => {
+      const response = await fetch(`${API_URL}/organizations/leave`, {
+        method: "POST",
+        headers: createHeaders(),
+      });
+
+      return handleResponse(response);
+    },
+
     removeAdvocate: async (userId) => {
       const response = await fetch(`${API_URL}/organizations/advocates/${userId}`, {
         method: "DELETE",

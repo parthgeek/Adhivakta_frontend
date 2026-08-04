@@ -1,8 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/context/auth-context"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,7 +12,30 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Loader2, Bell, Clock, LogOut, Mail, Pencil, Crown, MonitorSmartphone, LayoutDashboard } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
+  Building2,
+  Loader2,
+  Bell,
+  Clock,
+  LogOut,
+  Mail,
+  Pencil,
+  Crown,
+  MonitorSmartphone,
+  LayoutDashboard,
+  UserRoundMinus,
+  Users,
+} from "lucide-react"
 import api from "@/services/api"
 import SubscriptionSettings from "@/components/subscription/subscription-settings"
 import DashboardCustomizer from "@/components/dashboard/dashboard-customizer"
@@ -30,7 +55,7 @@ const DEFAULT_SECURITY_SETTINGS = {
   sessionLoginLimit: "1",
 }
 
-const VALID_TABS = ["profile", "password", "notifications", "security", "dashboard", "subscription"]
+const VALID_TABS = ["profile", "password", "notifications", "security", "dashboard", "subscription", "organization"]
 
 const SESSION_TIMEOUT_OPTIONS = ["15", "30", "60", "120", "240"]
 const SESSION_LOGIN_LIMIT_OPTIONS = ["1", "2", "3"]
@@ -58,9 +83,14 @@ const normalizeSecuritySettings = (settings) => {
 export default function SettingsPage() {
   const { user, refreshUser, logoutOtherSessions } = useAuth()
   const { t } = useLanguage()
+  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [isFetching, setIsFetching] = useState(true)
   const [isSigningOutSessions, setIsSigningOutSessions] = useState(false)
+  const [isOrganizationLoading, setIsOrganizationLoading] = useState(false)
+  const [isLeavingOrganization, setIsLeavingOrganization] = useState(false)
+  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false)
+  const [organization, setOrganization] = useState(null)
   const [profileData, setProfileData] = useState({
     name: "",
     email: "",
@@ -83,6 +113,24 @@ export default function SettingsPage() {
   const [errorMessage, setErrorMessage] = useState("")
   const [phoneError, setPhoneError] = useState("")
   const [passwordError, setPasswordError] = useState("")
+  const hasOrganization = Boolean(user?.organization?.id || user?.organization?.name)
+  const activeOrganizationAdvocates = (organization?.members || []).filter(
+    (member) => member.role === "lawyer" && member.status === "active"
+  )
+  const currentMembership = organization?.currentMembership
+  const membershipLabel =
+    currentMembership?.role === "admin"
+      ? "Organization Admin"
+      : currentMembership?.role === "lawyer"
+        ? "Advocate"
+        : "Member"
+  const memberSince = currentMembership?.assignedAt
+    ? new Date(currentMembership.assignedAt).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : "Not available"
 
   // Auto-clear feedback banners
   useEffect(() => {
@@ -101,8 +149,8 @@ export default function SettingsPage() {
         <div className="h-9 w-32 bg-gray-200 rounded animate-pulse"></div>
       </div>
       <div className="w-full">
-        <div className="grid w-full grid-cols-6 gap-2 mb-6">
-          {[...Array(6)].map((_, i) => (
+        <div className="grid w-full grid-cols-2 gap-2 mb-6 md:grid-cols-7">
+          {[...Array(7)].map((_, i) => (
             <div key={i} className="h-10 bg-gray-200 rounded animate-pulse"></div>
           ))}
         </div>
@@ -184,6 +232,38 @@ export default function SettingsPage() {
     fetchUserProfile()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
+
+  useEffect(() => {
+    if (!hasOrganization) {
+      setOrganization(null)
+      return
+    }
+
+    let cancelled = false
+    const fetchOrganization = async () => {
+      setIsOrganizationLoading(true)
+      try {
+        const data = await api.organizations.getMine()
+        if (!cancelled) {
+          setOrganization(data)
+        }
+      } catch (error) {
+        console.error("Error fetching organization:", error)
+        if (!cancelled) {
+          setOrganization(null)
+        }
+      } finally {
+        if (!cancelled) {
+          setIsOrganizationLoading(false)
+        }
+      }
+    }
+
+    fetchOrganization()
+    return () => {
+      cancelled = true
+    }
+  }, [hasOrganization, user?.organization?.id])
 
   // Handle tab change
   const [activeTab, setActiveTab] = useState("profile")
@@ -352,6 +432,26 @@ export default function SettingsPage() {
     }
   }
 
+  const handleLeaveOrganization = async () => {
+    if (!organization) return
+
+    setIsLeavingOrganization(true)
+    setSuccessMessage("")
+    setErrorMessage("")
+    try {
+      await api.organizations.leave()
+      setOrganization(null)
+      setIsLeaveDialogOpen(false)
+      setSuccessMessage(`You have left ${organization.name}.`)
+      if (refreshUser) await refreshUser()
+    } catch (error) {
+      console.error("Error leaving organization:", error)
+      setErrorMessage(error.message || "Failed to leave organization. Please try again.")
+    } finally {
+      setIsLeavingOrganization(false)
+    }
+  }
+
   if (isFetching) {
     return <SettingsSkeleton />
   }
@@ -367,9 +467,13 @@ export default function SettingsPage() {
       {errorMessage && <div className="bg-red-50 text-red-800 p-4 rounded-md mb-4">{errorMessage}</div>}
 
       <Tabs defaultValue="profile" value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-2 gap-2 md:grid-cols-7">
           <TabsTrigger value="profile" data-tour="profile-settings">{t.profile}</TabsTrigger>
           <TabsTrigger value="password">{t.password}</TabsTrigger>
+          <TabsTrigger value="organization" className="flex items-center gap-1">
+            <Building2 className="h-3 w-3" />
+            Organization
+          </TabsTrigger>
           <TabsTrigger value="notifications" data-tour="notification-settings-tab">{t.notifications}</TabsTrigger>
           <TabsTrigger value="security" data-tour="security-settings-tab">{t.security}</TabsTrigger>
           <TabsTrigger
@@ -531,6 +635,92 @@ export default function SettingsPage() {
                   </div>
                 )}
               </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="organization">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <CardTitle>Organization</CardTitle>
+                  <CardDescription>View your organization membership and access details</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {isOrganizationLoading ? (
+                <div className="flex min-h-[180px] items-center justify-center rounded-md border border-dashed">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : organization ? (
+                <>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="rounded-md border p-4">
+                      <p className="text-xs font-medium uppercase text-muted-foreground">Organization Name</p>
+                      <p className="mt-1 text-base font-semibold text-foreground">{organization.name}</p>
+                    </div>
+                    <div className="rounded-md border p-4">
+                      <p className="text-xs font-medium uppercase text-muted-foreground">Your Role</p>
+                      <div className="mt-2">
+                        <Badge variant="secondary">{membershipLabel}</Badge>
+                      </div>
+                    </div>
+                    <div className="rounded-md border p-4">
+                      <p className="text-xs font-medium uppercase text-muted-foreground">Member Since</p>
+                      <p className="mt-1 text-base font-semibold text-foreground">{memberSince}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3 rounded-md border p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-3">
+                      <Users className="mt-0.5 h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">Organization Advocates</p>
+                        <p className="text-sm text-muted-foreground">
+                          {activeOrganizationAdvocates.length} active advocate{activeOrganizationAdvocates.length !== 1 ? "s" : ""} are registered under this organization.
+                        </p>
+                      </div>
+                    </div>
+                    {organization.isAdmin && (
+                      <Button type="button" variant="outline" onClick={() => router.push("/dashboard/organization")}>
+                        Manage Organization
+                      </Button>
+                    )}
+                  </div>
+
+                  {!organization.isAdmin && user?.role === "lawyer" && (
+                    <div className="flex flex-col gap-3 rounded-md border border-red-200 bg-red-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-start gap-3">
+                        <UserRoundMinus className="mt-0.5 h-5 w-5 text-red-700" />
+                        <div>
+                          <p className="font-medium text-red-950">Leave Organization</p>
+                          <p className="text-sm text-red-800">
+                            Your account will be removed from this organization, and the organization admin will no longer see your cases in their organization dashboard.
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={() => setIsLeaveDialogOpen(true)}
+                        disabled={isLeavingOrganization}
+                      >
+                        Leave Organization
+                      </Button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="rounded-md border border-dashed p-8 text-center">
+                  <p className="font-medium text-foreground">No organization linked</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    This account is not currently registered under an organization.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -810,6 +1000,37 @@ export default function SettingsPage() {
           <SubscriptionSettings />
         </TabsContent>
       </Tabs>
+
+      <AlertDialog open={isLeaveDialogOpen} onOpenChange={setIsLeaveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Leave {organization?.name || "organization"}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes your advocate account from the organization. You will keep your account, but organization admins will no longer have organization-level access to your advocate data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLeavingOrganization}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault()
+                handleLeaveOrganization()
+              }}
+              disabled={isLeavingOrganization}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isLeavingOrganization ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Leaving...
+                </>
+              ) : (
+                "Leave Organization"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
