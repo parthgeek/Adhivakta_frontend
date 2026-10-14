@@ -140,6 +140,7 @@ export default function Header({ onMenuClick }) {
   const displayName = user?.name || "User";
   const firstName = displayName.split(" ").filter(Boolean)[0] || "User";
   const displayRole = getDisplayRole(user?.role);
+  const organizationName = safeText(user?.organization?.name);
   const initials = useMemo(() => {
     const value = displayName
       .split(" ")
@@ -513,8 +514,11 @@ export default function Header({ onMenuClick }) {
                   <p className="text-sm font-medium leading-tight text-foreground">
                     Hi, {firstName}
                   </p>
-                  <p className="text-xs leading-tight text-muted-foreground">
-                    {displayRole}
+                  <p
+                    className="max-w-[150px] truncate text-xs leading-tight text-muted-foreground"
+                    title={organizationName || displayRole}
+                  >
+                    {organizationName || displayRole}
                   </p>
                 </div>
               </Button>
