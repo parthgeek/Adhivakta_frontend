@@ -22,9 +22,9 @@ import {
 import {
   Briefcase,
   Activity,
-  Clock,
   AlertTriangle,
   Search,
+  CheckCircle2,
   Download,
   Plus,
   SlidersHorizontal,
@@ -32,7 +32,7 @@ import {
   X,
 } from "lucide-react";
 import api from "@/services/api";
-import { formatDisplayCaseNumber } from "@/lib/caseTypeUtils";
+import { formatDisplayCaseNumber, getCaseCategory } from "@/lib/caseTypeUtils";
 import { getCaseLegalTeam, getLeadLegalTeamMember } from "@/lib/legal-team";
 import { getCasePriority, isPriorityAlertCase } from "@/lib/casePriority";
 
@@ -80,11 +80,13 @@ function fmtDate(val) {
 
 function getTabStatus(raw) {
   const s = (raw.status || "active").toLowerCase();
-  if (s === "closed" || s === "disposed") return "Closed";
+  if (s === "closed") return "Closed";
+  if (s === "disposed" || s === "disposal") return "Disposed";
   if (s === "pending") return "Pending";
-  if (s === "disposal") return "Disposal";
   return "Ongoing";
 }
+
+const TERMINAL_TAB_STATUSES = new Set(["Closed", "Disposed"]);
 
 // ─── PDF generation ──────────────────────────────────────────────────────────
 
@@ -537,7 +539,7 @@ function FilterOptionGroup({ title, options, value, onChange }) {
   );
 }
 
-const STATUS_TABS = ["All Cases", "Ongoing", "Pending", "Disposal", "Closed"];
+const STATUS_TABS = ["All Cases", "Ongoing", "Pending", "Disposed", "Closed"];
 const CASES_PER_PAGE = 7;
 
 function getCaseId(raw = {}) {
@@ -570,7 +572,7 @@ function getUpcomingHearingTime(raw = {}, nowTime = Date.now()) {
     ? new Date(hearingDate.getFullYear(), hearingDate.getMonth(), hearingDate.getDate()).getTime()
     : null;
 
-  if (!hearingDayStart || hearingDayStart < todayStart || getTabStatus(raw) === "Closed") {
+  if (!hearingDayStart || hearingDayStart < todayStart || TERMINAL_TAB_STATUSES.has(getTabStatus(raw))) {
     return null;
   }
   return hearingDayStart;
@@ -631,7 +633,9 @@ export default function CasesPage() {
   const router = useRouter();
   const { user } = useAuth();
   const [isLawyer, setIsLawyer] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [activeTab, setActiveTab] = useState("All Cases");
   const [activeQuickFilter, setActiveQuickFilter] = useState(null);
   const [hearingFilter, setHearingFilter] = useState("all");
@@ -661,10 +665,16 @@ export default function CasesPage() {
         setCases(isLawyer ? lawyerCases : clientCases);
       } finally {
         setLoading(false);
+        setHasLoadedOnce(true);
       }
     };
     fetchCases();
   }, [isLawyer, searchTerm]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchTerm(searchInput.trim()), 400);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -713,7 +723,7 @@ export default function CasesPage() {
         caseTypeCode: raw.eCourt?.caseTypeCode || raw.caseCode || "",
       }),
       court: raw.court || "N/A",
-      category: raw.caseType || raw.type || "Civil",
+      category: getCaseCategory(raw),
       stage: raw.caseStage?.replace(/_/g, " ") || raw.stage || raw.currentStage || raw.hearingStage || "—",
       nextHearing: raw.nextHearingDate || raw.nextHearing || raw.hearingDate,
       advocateName: lead?.name || raw.assignedTo?.name || null,
@@ -726,14 +736,14 @@ export default function CasesPage() {
     "All Cases": uniqueCases.length,
     "Ongoing":   uniqueCases.filter((c) => getTabStatus(c) === "Ongoing").length,
     "Pending":   uniqueCases.filter((c) => getTabStatus(c) === "Pending").length,
-    "Disposal":  uniqueCases.filter((c) => getTabStatus(c) === "Disposal").length,
+    "Disposed":  uniqueCases.filter((c) => getTabStatus(c) === "Disposed").length,
     "Closed":    uniqueCases.filter((c) => getTabStatus(c) === "Closed").length,
   }), [uniqueCases]);
 
   const stats = useMemo(() => ({
     total:        uniqueCases.length,
     ongoing:      tabCounts["Ongoing"],
-    withHearings: uniqueCases.filter(hasCaseHearing).length,
+    closed:       tabCounts["Closed"],
     highPriority: priorityCaseIds.size,
   }), [uniqueCases, tabCounts, priorityCaseIds]);
 
@@ -768,10 +778,8 @@ export default function CasesPage() {
   }, [activeTab, hearingFilter, priorityFilter]);
 
   const applyStatFilter = useCallback((filterKey) => {
-    if (activeQuickFilter === filterKey) {
-      clearCaseFilters();
-      return;
-    }
+    // Re-clicking an active card is a no-op; only "Total Cases" clears filters.
+    if (activeQuickFilter === filterKey) return;
 
     setCurrentPage(1);
 
@@ -780,9 +788,11 @@ export default function CasesPage() {
       return;
     }
 
+    const statusByFilterKey = { ongoing: "Ongoing", closed: "Closed" };
+
     setActiveQuickFilter(filterKey);
-    setActiveTab(filterKey === "ongoing" ? "Ongoing" : "All Cases");
-    setHearingFilter(filterKey === "withHearings" ? "with" : "all");
+    setActiveTab(statusByFilterKey[filterKey] || "All Cases");
+    setHearingFilter("all");
     setPriorityFilter(filterKey === "highPriority" ? "high" : "all");
   }, [activeQuickFilter, clearCaseFilters]);
 
@@ -939,7 +949,7 @@ export default function CasesPage() {
     setExportSearch("");
   };
 
-  if (loading) {
+  if (loading && !hasLoadedOnce) {
     return (
       <div className="space-y-3 p-6">
         {[...Array(7)].map((_, i) => (
@@ -995,12 +1005,12 @@ export default function CasesPage() {
           onClick={() => applyStatFilter("ongoing")}
         />
         <StatCard
-          icon={<Clock className="h-5 w-5 text-blue-500" />}
-          value={stats.withHearings}
-          label="With Hearings"
-          iconBg="bg-blue-50"
-          active={activeQuickFilter === "withHearings"}
-          onClick={() => applyStatFilter("withHearings")}
+          icon={<CheckCircle2 className="h-5 w-5 text-slate-600" />}
+          value={stats.closed}
+          label="Closed"
+          iconBg="bg-slate-100"
+          active={activeQuickFilter === "closed"}
+          onClick={() => applyStatFilter("closed")}
         />
         <StatCard
           icon={<AlertTriangle className="h-5 w-5 text-orange-500" />}
@@ -1038,8 +1048,8 @@ export default function CasesPage() {
             <Input
               placeholder="Search cases..."
               className="pl-8 h-8 w-52 text-sm"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
             />
           </div>
           <Popover>

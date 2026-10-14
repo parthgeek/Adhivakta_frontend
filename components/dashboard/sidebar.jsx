@@ -19,6 +19,12 @@ import {
   Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { usePathname, useRouter } from "next/navigation";
 import { useSidebar } from "@/context/sidebar-context";
@@ -26,22 +32,85 @@ import { useRealTimeCounts } from "@/context/realtime-counts-context";
 import { useAuth } from "@/context/auth-context";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", tour: "dashboard-nav" },
-  { icon: FileText, label: "Cases", path: "/dashboard/cases", tour: "cases-nav" },
-  { icon: Sparkles, label: "AI Prep Room", path: "/dashboard/ai-prep-room", tour: "ai-prep-nav" },
-  { icon: Scale, label: "Cause List Search", path: "/dashboard/cause-list/search", tour: "cause-list-nav" },
-  { icon: Monitor, label: "Display Board", path: "/dashboard/display-board", tour: "display-board-nav" },
+  {
+    icon: LayoutDashboard,
+    label: "Dashboard",
+    path: "/dashboard",
+    tour: "dashboard-nav",
+    description: "Practice overview — case stats, today's hearings and alerts.",
+  },
+  {
+    icon: FileText,
+    label: "Cases",
+    path: "/dashboard/cases",
+    tour: "cases-nav",
+    description:
+      "Case register — every matter with status, stage and next hearing.",
+  },
+  {
+    icon: Sparkles,
+    label: "AI Prep Room",
+    path: "/dashboard/ai-prep-room",
+    tour: "ai-prep-nav",
+    description: "AI case briefs, weakness analysis and hearing practice.",
+  },
+  {
+    icon: Scale,
+    label: "Cause List Search",
+    path: "/dashboard/cause-list/search",
+    tour: "cause-list-nav",
+    description:
+      "Today's court cause list and the entries matching your cases.",
+  },
+  {
+    icon: Monitor,
+    label: "Display Board",
+    path: "/dashboard/display-board",
+    tour: "display-board-nav",
+    description: "Live court display board — which case is being heard now.",
+  },
   {
     icon: Users,
     label: "Clients & Parties",
     path: "/dashboard/clients-parties",
     tour: "clients-nav",
+    description: "Clients, opposing parties and their linked matters.",
   },
-  { icon: Calendar, label: "Hearings", path: "/dashboard/hearings", tour: "hearings-nav" },
-  { icon: Calendar, label: "Calendar", path: "/dashboard/calendar", tour: "calendar-nav" },
-  { icon: FolderOpen, label: "Documents", path: "/dashboard/documents", tour: "documents-nav" },
-  { icon: MessageSquare, label: "Messages", path: "/dashboard/messages", tour: "messages-nav" },
-  { icon: Settings, label: "Settings", path: "/dashboard/settings", tour: "settings-nav" },
+  {
+    icon: Calendar,
+    label: "Hearings",
+    path: "/dashboard/hearings",
+    tour: "hearings-nav",
+    description: "Hearing schedule and proceedings recorded after each date.",
+  },
+  {
+    icon: Calendar,
+    label: "Calendar",
+    path: "/dashboard/calendar",
+    tour: "calendar-nav",
+    description: "Month view of hearings, deadlines and personal events.",
+  },
+  {
+    icon: FolderOpen,
+    label: "Documents",
+    path: "/dashboard/documents",
+    tour: "documents-nav",
+    description: "Case files, orders and judgments stored in your workspace.",
+  },
+  {
+    icon: MessageSquare,
+    label: "Messages",
+    path: "/dashboard/messages",
+    tour: "messages-nav",
+    description: "Chats with clients and your legal team, per case.",
+  },
+  {
+    icon: Settings,
+    label: "Settings",
+    path: "/dashboard/settings",
+    tour: "settings-nav",
+    description: "Profile, workspace, notification and billing settings.",
+  },
 ];
 
 const isPathActive = (pathname, href) => {
@@ -56,21 +125,30 @@ export default function Sidebar() {
   const { counts, activityCounts, resetActivityCount } = useRealTimeCounts();
   const { user } = useAuth();
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
-  const visibleMenuItems = useMemo(() =>
-    user?.role === "organization_admin"
-      ? [
-          ...menuItems.slice(0, 1),
-          { icon: Building2, label: "Organization", path: "/dashboard/organization", tour: "organization-nav" },
-          ...menuItems.slice(1),
-        ]
-      : menuItems,
-    [user?.role]
+  const visibleMenuItems = useMemo(
+    () =>
+      user?.role === "organization_admin"
+        ? [
+            ...menuItems.slice(0, 1),
+            {
+              icon: Building2,
+              label: "Organization",
+              path: "/dashboard/organization",
+              tour: "organization-nav",
+              description: "Members, roles and organization-wide case access.",
+            },
+            ...menuItems.slice(1),
+          ]
+        : menuItems,
+    [user?.role],
   );
 
   useEffect(() => {
     if (!pathname) return;
 
-    const matchingItem = visibleMenuItems.find((item) => isPathActive(pathname, item.path));
+    const matchingItem = visibleMenuItems.find((item) =>
+      isPathActive(pathname, item.path),
+    );
     if (!matchingItem || matchingItem.path === "/dashboard/messages") return;
 
     resetActivityCount(matchingItem.path);
@@ -80,7 +158,9 @@ export default function Sidebar() {
     if (typeof window === "undefined") return undefined;
 
     const syncUnreadMessageCount = () => {
-      const nextCount = Number(localStorage.getItem("unread_messages_count") || "0");
+      const nextCount = Number(
+        localStorage.getItem("unread_messages_count") || "0",
+      );
       setUnreadMessagesCount(Number.isFinite(nextCount) ? nextCount : 0);
     };
 
@@ -102,7 +182,7 @@ export default function Sidebar() {
     <div
       className={cn(
         "h-full bg-card border-r transition-all duration-300 flex flex-col",
-        collapsed ? "w-16" : "w-60"
+        collapsed ? "w-16" : "w-60",
       )}
       data-tour="sidebar-nav"
     >
@@ -123,51 +203,66 @@ export default function Sidebar() {
         </Button>
       </div>
 
-      <nav className="flex-1 p-4 space-y-2">
-        {visibleMenuItems.map((item) => {
-          const isActive = isPathActive(pathname, item.path);
-          const showUnreadBadge =
-            item.path === "/dashboard/messages" && unreadMessagesCount > 0;
-          const activityBadgeCount =
-            item.path === "/dashboard/messages"
-              ? unreadMessagesCount
-              : Number(activityCounts?.[item.path] || 0);
-          const showActivityBadge =
-            item.path !== "/dashboard/messages" && activityBadgeCount > 0;
+      <TooltipProvider delayDuration={250}>
+        <nav className="flex-1 p-4 space-y-2">
+          {visibleMenuItems.map((item) => {
+            const isActive = isPathActive(pathname, item.path);
+            const showUnreadBadge =
+              item.path === "/dashboard/messages" && unreadMessagesCount > 0;
+            const activityBadgeCount =
+              item.path === "/dashboard/messages"
+                ? unreadMessagesCount
+                : Number(activityCounts?.[item.path] || 0);
+            const showActivityBadge =
+              item.path !== "/dashboard/messages" && activityBadgeCount > 0;
 
-          return (
-            <Button
-              key={item.path}
-              variant={isActive ? "default" : "ghost"}
-              className={cn(
-                "w-full justify-start gap-3 h-11 relative",
-                isActive && "bg-primary text-primary-foreground hover:bg-primary/90",
-                collapsed && "px-2"
-              )}
-              onClick={() => router.push(item.path)}
-              data-tour={item.tour}
-            >
-              <item.icon className="h-5 w-5 flex-shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
-              {(showUnreadBadge || showActivityBadge) && (
-                <span
-                  className={cn(
-                    "ml-auto min-w-5 h-5 rounded-full px-1.5 text-[11px] font-semibold flex items-center justify-center",
-                    isActive
-                      ? "bg-white/20 text-primary-foreground"
-                      : "bg-primary text-primary-foreground",
-                    collapsed && "absolute -top-1 -right-1 min-w-4 h-4 px-1 text-[10px]"
+            const navButton = (
+              <Button
+                variant={isActive ? "default" : "ghost"}
+                className={cn(
+                  "w-full justify-start gap-3 h-11 relative",
+                  isActive &&
+                    "bg-primary text-primary-foreground hover:bg-primary/90",
+                  collapsed && "px-2",
+                )}
+                onClick={() => router.push(item.path)}
+                data-tour={item.tour}
+              >
+                <item.icon className="h-5 w-5 flex-shrink-0" />
+                {!collapsed && <span>{item.label}</span>}
+                {(showUnreadBadge || showActivityBadge) && (
+                  <span
+                    className={cn(
+                      "ml-auto min-w-5 h-5 rounded-full px-1.5 text-[11px] font-semibold flex items-center justify-center",
+                      isActive
+                        ? "bg-white/20 text-primary-foreground"
+                        : "bg-primary text-primary-foreground",
+                      collapsed &&
+                        "absolute -top-1 -right-1 min-w-4 h-4 px-1 text-[10px]",
+                    )}
+                  >
+                    {activityBadgeCount > 99 ? "99+" : activityBadgeCount}
+                  </span>
+                )}
+              </Button>
+            );
+
+            return (
+              <Tooltip key={item.path}>
+                <TooltipTrigger asChild>{navButton}</TooltipTrigger>
+                <TooltipContent side="right" className="max-w-[15rem]">
+                  <p className="font-medium">{item.label}</p>
+                  {item.description && (
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {item.description}
+                    </p>
                   )}
-                >
-                  {activityBadgeCount > 99 ? "99+" : activityBadgeCount}
-                </span>
-              )}
-            </Button>
-          );
-        })}
-      </nav>
-
-
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </nav>
+      </TooltipProvider>
     </div>
   );
 }

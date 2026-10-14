@@ -907,7 +907,8 @@ export default function EditCasePage() {
                           <SelectContent>
                             <SelectItem value="active">Active</SelectItem>
                             <SelectItem value="pending">Pending</SelectItem>
-                            <SelectItem value="closed">Closed/Disposed</SelectItem>
+                            <SelectItem value="disposed">Disposed</SelectItem>
+                            <SelectItem value="closed">Closed</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

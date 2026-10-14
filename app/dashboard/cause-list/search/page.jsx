@@ -24,7 +24,8 @@ const toDisplayDate = (isoDate) => {
 
 export default function CauseListSearchPage() {
   const router = useRouter();
-  const [courtSource, setCourtSource] = useState("ecourts");
+  // This page serves the district eCourts cause list only.
+  const courtSource = "ecourts";
 
   const [stateOptions, setStateOptions] = useState([]);
   const [districtOptions, setDistrictOptions] = useState([]);
@@ -36,7 +37,14 @@ export default function CauseListSearchPage() {
   const [selectedComplex, setSelectedComplex] = useState("");
   const [selectedEstablishment, setSelectedEstablishment] = useState("");
 
-  const [selectedDate, setSelectedDate] = useState(getTodayIsoDate());
+  const todayIsoDate = getTodayIsoDate();
+  const [selectedDate, setSelectedDate] = useState(todayIsoDate);
+
+  // The page always works on the current day's list; if the tab stays open past
+  // midnight, move it on instead of showing yesterday's date.
+  useEffect(() => {
+    if (selectedDate !== todayIsoDate) setSelectedDate(todayIsoDate);
+  }, [selectedDate, todayIsoDate]);
 
   const [courtJudgeOptions, setCourtJudgeOptions] = useState([]);
   const [selectedCourtOptionValue, setSelectedCourtOptionValue] = useState("");
@@ -85,14 +93,12 @@ export default function CauseListSearchPage() {
     setTableFilter("");
   };
 
-  const isHighCourtSource = courtSource === "highcourts";
   const stateLabel = "State";
-  const districtLabel = isHighCourtSource ? "High Court" : "District";
-  const complexLabel = isHighCourtSource ? "Bench" : "Court Complex";
-  const establishmentLabel = isHighCourtSource ? "Court / Division" : "Establishment";
-  const sourceDescription = isHighCourtSource
-    ? "Fetch the overall cause list published for a selected High Court bench."
-    : "Fetch the district eCourts cause list by court and listing type.";
+  const districtLabel = "District";
+  const complexLabel = "Court Complex";
+  const establishmentLabel = "Establishment";
+  const sourceDescription =
+    "Fetch the district eCourts cause list by court and listing type.";
 
   const applyPersonalizedResponse = (response) => {
     setPersonalizedResult((previousResult) => {
@@ -101,6 +107,7 @@ export default function CauseListSearchPage() {
         !response?.completed &&
         responseEntries.length === 0 &&
         previousResult?.saved &&
+        previousResult?.date === todayIsoDate &&
         (previousResult?.personalized_cases || []).length > 0;
 
       if (!shouldKeepSavedEntries) {
@@ -158,6 +165,7 @@ export default function CauseListSearchPage() {
         const response = await api.causeList.getLatestSavedPersonalized();
         if (
           !cancelled &&
+          response?.date === todayIsoDate &&
           Array.isArray(response?.personalized_cases) &&
           response.personalized_cases.length > 0
         ) {
@@ -179,7 +187,7 @@ export default function CauseListSearchPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [todayIsoDate]);
 
   useEffect(() => {
     setPersonalizedError("");
@@ -321,27 +329,6 @@ export default function CauseListSearchPage() {
     setResult(null);
 
     try {
-      if (isHighCourtSource) {
-        const response = await api.causeList.searchForCourt({
-          source: "highcourts",
-          stateCode: selectedState,
-          districtCode: selectedDistrict,
-          complexCode: selectedComplex,
-          courtCode: selectedEstablishment,
-          date: selectedDate,
-        });
-
-        setCourtJudgeOptions([]);
-        setSelectedCourtOptionValue("");
-        setCaptchaSessionId("");
-        setCaptchaImageUrl("");
-        setCaptchaCode("");
-        setCaptchaNonce(0);
-        setResult(response || null);
-        setTableFilter("");
-        return;
-      }
-
       const response = await api.causeList.getJudgesForCourt({
         stateCode: selectedState,
         districtCode: selectedDistrict,
@@ -360,7 +347,7 @@ export default function CauseListSearchPage() {
       setError(
         err?.message ||
           err?.errors?.[0]?.msg ||
-          `Unable to load ${isHighCourtSource ? "High Court" : "eCourts"} entries.`
+          "Unable to load eCourts entries."
       );
     } finally {
       setLoadingJudges(false);
@@ -540,13 +527,6 @@ export default function CauseListSearchPage() {
 
   const headingComplexName =
     complexOptions.find((option) => option.code === selectedComplex)?.name || "";
-  const selectedDistrictLabel =
-    districtOptions.find((option) => option.code === selectedDistrict)?.name || "";
-  const selectedEstablishmentLabel =
-    establishmentOptions.find((option) => option.code === selectedEstablishment)?.name || "";
-  const highCourtResultTitle = [selectedDistrictLabel, headingComplexName, selectedEstablishmentLabel]
-    .filter(Boolean)
-    .join(" • ");
 
   return (
     <div className="space-y-6" data-tour="cause-list-page">
@@ -559,18 +539,7 @@ export default function CauseListSearchPage() {
 
       <Card className="overflow-hidden border-[#d6deeb] shadow-sm" data-tour="cause-list-search">
         <CardContent className="p-0">
-          <div className="grid grid-cols-1 gap-4 bg-[#1e2b3d] px-4 py-4 text-white sm:grid-cols-4 sm:gap-6">
-            <div>
-              <label className="mb-1 block text-sm font-medium">Court Type</label>
-              <select
-                value={courtSource}
-                onChange={(e) => setCourtSource(e.target.value)}
-                className="h-11 w-full rounded-md border border-white/30 bg-white px-3 py-2 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-              >
-                <option value="ecourts">District Court</option>
-                <option value="highcourts">High Court</option>
-              </select>
-            </div>
+          <div className="grid grid-cols-1 gap-4 bg-[#1e2b3d] px-4 py-4 text-white sm:grid-cols-3 sm:gap-6">
             <div>
               <label className="mb-1 block text-sm font-medium">Select {stateLabel}</label>
               <select
@@ -668,16 +637,10 @@ export default function CauseListSearchPage() {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-end">
               <div>
                 <label className="mb-1 block text-sm font-semibold text-[#355487]">
-                  <span className="text-rose-600">*</span>{" "}
-                  {isHighCourtSource ? "Overall Cause List" : "Court Name"}
+                  <span className="text-rose-600">*</span> Court Name
                 </label>
                 <div className="flex gap-2">
-                  {isHighCourtSource ? (
-                    <div className="flex h-11 w-full items-center rounded-md border border-[#d6deeb] bg-slate-50 px-3 text-sm text-slate-700">
-                      {highCourtResultTitle || "Select High Court bench first"}
-                    </div>
-                  ) : (
-                    <select
+                  <select
                       value={selectedCourtOptionValue}
                       onChange={(e) => setSelectedCourtOptionValue(e.target.value)}
                       disabled={courtJudgeOptions.length === 0}
@@ -695,8 +658,7 @@ export default function CauseListSearchPage() {
                           {option.label}
                         </option>
                       ))}
-                    </select>
-                  )}
+                  </select>
                   <Button
                     type="button"
                     variant="outline"
@@ -706,11 +668,9 @@ export default function CauseListSearchPage() {
                   >
                     {loadingJudges
                       ? "Loading..."
-                      : isHighCourtSource
-                        ? "Fetch"
-                        : courtJudgeOptions.length
-                          ? "Reload"
-                          : "Load"}
+                      : courtJudgeOptions.length
+                        ? "Reload"
+                        : "Load"}
                   </Button>
                 </div>
               </div>
@@ -722,14 +682,18 @@ export default function CauseListSearchPage() {
                 <Input
                   type="date"
                   value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  max="2099-12-31"
-                  className="h-11 border-[#d6deeb]"
+                  readOnly
+                  min={todayIsoDate}
+                  max={todayIsoDate}
+                  className="h-11 border-[#d6deeb] bg-[#f4f7fc]"
                 />
+                <p className="mt-1 text-xs text-[#6a7f9f]">
+                  Courts publish the cause list for the current day only.
+                </p>
               </div>
             </div>
 
-            {!isHighCourtSource && captchaSessionId ? (
+            {captchaSessionId ? (
               <div className="mt-5 grid grid-cols-1 items-end gap-4 md:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm font-semibold text-[#355487]">
@@ -776,8 +740,7 @@ export default function CauseListSearchPage() {
               </div>
             ) : null}
 
-            {!isHighCourtSource ? (
-              <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
                 <Button
                   type="button"
                   onClick={() => submitForListing("civ")}
@@ -804,8 +767,7 @@ export default function CauseListSearchPage() {
                 >
                   {loadingFetch ? "Loading..." : "Criminal"}
                 </Button>
-              </div>
-            ) : null}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -817,9 +779,7 @@ export default function CauseListSearchPage() {
               <div>
                 <h2 className="text-xl font-semibold text-[#03234b]">Your Personalized Cause List</h2>
                 <p className="mt-1 text-sm text-[#355487]">
-                  {isHighCourtSource
-                    ? "Personalized High Court cause-list matching is the next step. Use the search section above to fetch the overall High Court cause list first."
-                    : `Run the live eCourts flow court by court, solve each captcha, and build a personalized list that keeps only your tracked case numbers for ${toDisplayDate(selectedDate)}.`}
+                  {`Run the live eCourts flow court by court, solve each captcha, and build a personalized list that keeps only your tracked case numbers for ${toDisplayDate(selectedDate)}.`}
                 </p>
               </div>
               <div className="text-sm text-[#355487]">
@@ -827,8 +787,6 @@ export default function CauseListSearchPage() {
                   ? "Loading..."
                   : personalizedResult
                     ? `${personalizedResult?.personalized_total_entries || 0} matched entries across ${personalizedResult?.personalized_total_cases || 0} cases`
-                  : isHighCourtSource
-                    ? "Switch to District Court to start personalized flow"
                     : "Start the live personalized fetch"}
               </div>
             </div>
@@ -837,9 +795,7 @@ export default function CauseListSearchPage() {
           <div className="border-b border-[#d6deeb] bg-white px-4 py-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="text-sm text-[#355487]">
-                {isHighCourtSource
-                  ? "Personalized High Court flow is not wired on this page yet."
-                  : personalizedResult?.workflow?.total_steps
+                {personalizedResult?.workflow?.total_steps
                   ? `Progress: ${personalizedResult.workflow.completed_steps || 0}/${personalizedResult.workflow.total_steps} courts completed`
                   : personalizedResult?.saved
                     ? `Showing saved personalized cause list for ${toDisplayDate(personalizedResult.date)}`
@@ -848,7 +804,7 @@ export default function CauseListSearchPage() {
               <Button
                 type="button"
                 onClick={startPersonalizedFlow}
-                disabled={!selectedDate || personalizedLoading || isHighCourtSource}
+                disabled={!selectedDate || personalizedLoading}
                 className="h-10 bg-[#03234b] text-white hover:bg-[#042d5e]"
                 data-tour="personalized-cause-list-start"
               >
@@ -1199,17 +1155,13 @@ export default function CauseListSearchPage() {
           <CardContent className="p-0">
             <div className="border-b border-[#d6deeb] bg-[#eef4fb] px-4 py-3 text-center">
               <p className="text-xl font-semibold text-[#03234b] sm:text-2xl">
-                {isHighCourtSource
-                  ? highCourtResultTitle || "High Court Cause List"
-                  : headingComplexName || courtTitle || "Cause List"}
+                {headingComplexName || courtTitle || "Cause List"}
               </p>
-              {!isHighCourtSource && courtTitle ? (
+              {courtTitle ? (
                 <p className="mt-1 text-sm text-[#355487]">In the court of : {courtTitle}</p>
               ) : null}
               <p className="mt-1 text-sm font-semibold text-[#355487]">
-                {isHighCourtSource
-                  ? `Overall Cause List for ${toDisplayDate(result.date || selectedDate)}`
-                  : `${result.listingType === "criminal" ? "Criminal" : "Civil"} Cases Listed on ${toDisplayDate(result.date || selectedDate)}`}
+                {`${result.listingType === "criminal" ? "Criminal" : "Civil"} Cases Listed on ${toDisplayDate(result.date || selectedDate)}`}
               </p>
             </div>
 

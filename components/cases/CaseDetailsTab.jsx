@@ -179,7 +179,8 @@ export default function CaseDetailsTab({
               <SelectContent>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
-                {allowClosedStatus && <SelectItem value="closed">Closed/Disposed</SelectItem>}
+                {allowClosedStatus && <SelectItem value="disposed">Disposed</SelectItem>}
+                {allowClosedStatus && <SelectItem value="closed">Closed</SelectItem>}
               </SelectContent>
             </Select>
             {getFieldError("status") && (
