@@ -723,6 +723,10 @@ export default function CaseDetailsPage() {
 
   const isLawyer = user?.role === "lawyer"
   const userId = user?.id || user?._id
+  const creatorId = caseData?.createdBy?._id || caseData?.createdBy?.id || caseData?.createdBy
+  const canDeleteCase = Boolean(
+    userId && creatorId && String(userId) === String(creatorId)
+  )
   const canReviewDocuments =
     user?.role === "admin" ||
     (user?.role === "lawyer" &&
@@ -837,7 +841,7 @@ export default function CaseDetailsPage() {
                 Schedule Hearing
               </Button>
             )}
-            {canUploadDocuments && (
+            {canDeleteCase && (
               <Button variant="destructive" onClick={() => setShowDeleteDialog(true)}>
                 Delete Case
               </Button>
@@ -1008,7 +1012,7 @@ export default function CaseDetailsPage() {
               </CardContent>
             </Card>
 
-            <Accordion type="multiple" defaultValue={["acts", "fir", "ia", "notes", "processes"]} className="space-y-4">
+            <Accordion type="multiple" defaultValue={["acts", "fir", "processes", "ia", "notes"]} className="space-y-4">
               <AccordionItem value="acts" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
                 <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
                   Acts
@@ -1060,6 +1064,38 @@ export default function CaseDetailsPage() {
                       </tbody>
                     </table>
                   </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="processes" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
+                <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
+                  Processes
+                </AccordionTrigger>
+                <AccordionContent className="px-5 pb-5">
+                  {(caseData.processes?.length || 0) === 0 ? (
+                    <p className="text-sm italic text-muted-foreground">No process entries.</p>
+                  ) : (
+                    <div className="overflow-x-auto rounded-2xl border border-[#d9e2ef]">
+                      <table className="w-full border-collapse text-sm">
+                        <thead className="bg-[#eef3f9] text-left text-[#516076]">
+                          <tr>
+                            <th className="p-3 font-medium">Process ID</th>
+                            <th className="p-3 font-medium">Process Title</th>
+                            <th className="p-3 font-medium">Process Date</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {caseData.processes.map((processItem, index) => (
+                            <tr key={`${processItem.processId || "process"}-${index}`} className="border-t border-[#d9e2ef] align-top">
+                              <td className="p-3">{processItem.processId || "—"}</td>
+                              <td className="p-3">{processItem.processTitle || "—"}</td>
+                              <td className="p-3">{formatTransferDate(processItem.processDate)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </AccordionContent>
               </AccordionItem>
 
@@ -1151,38 +1187,6 @@ export default function CaseDetailsPage() {
                           )
                         })}
                       </div>
-                    </div>
-                  )}
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="processes" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
-                <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
-                  Processes
-                </AccordionTrigger>
-                <AccordionContent className="px-5 pb-5">
-                  {(caseData.processes?.length || 0) === 0 ? (
-                    <p className="text-sm italic text-muted-foreground">No process entries.</p>
-                  ) : (
-                    <div className="overflow-x-auto rounded-2xl border border-[#d9e2ef]">
-                      <table className="w-full border-collapse text-sm">
-                        <thead className="bg-[#eef3f9] text-left text-[#516076]">
-                          <tr>
-                            <th className="p-3 font-medium">Process ID</th>
-                            <th className="p-3 font-medium">Process Title</th>
-                            <th className="p-3 font-medium">Process Date</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {caseData.processes.map((processItem, index) => (
-                            <tr key={`${processItem.processId || "process"}-${index}`} className="border-t border-[#d9e2ef] align-top">
-                              <td className="p-3">{processItem.processId || "—"}</td>
-                              <td className="p-3">{processItem.processTitle || "—"}</td>
-                              <td className="p-3">{formatTransferDate(processItem.processDate)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
                     </div>
                   )}
                 </AccordionContent>
@@ -1287,7 +1291,7 @@ export default function CaseDetailsPage() {
                     <p className="text-sm text-muted-foreground">No interim orders linked to this case.</p>
                   )}
 
-                  {caseData.status === "closed" && (
+                  {["closed", "disposed"].includes(caseData.status) && (
                     <div>
                       <div className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c]">
                         Final judgment

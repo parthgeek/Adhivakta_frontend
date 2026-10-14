@@ -151,6 +151,10 @@ const toDayKey = (value) => {
   return date.toISOString().slice(0, 10);
 };
 
+// Cases filled from a CNR mirror eCourts; their proceedings are owned by the
+// court record, so they can be viewed but never edited here.
+const isCnrSourcedHearing = (hearing) => Boolean(hearing?.cnrNumber);
+
 const isFutureHearing = (value) => {
   const date = toDate(value);
   return Boolean(date && date.getTime() > Date.now());
@@ -617,7 +621,8 @@ export default function HearingsPage() {
   }, [activeQuickFilter, todayHearings, upcomingHearings, thisMonthHearings, completedHearings, normalizedHearings, searchTerm, filterType, filterCase, filterStatus]);
 
   const handleQuickFilter = (key) => {
-    setActiveQuickFilter((prev) => (prev === key ? null : key));
+    // Clicking the active card again keeps the filter; "Clear" removes it.
+    setActiveQuickFilter((prev) => (prev === key ? prev : key));
   };
 
   const handleSendReminder = async (hearing) => {
@@ -781,12 +786,31 @@ export default function HearingsPage() {
   };
 
   const handleEditProceedings = (hearing) => {
+    if (isCnrSourcedHearing(hearing)) {
+      toast({
+        title: "Proceedings are read-only",
+        description:
+          "This case was filled from its CNR, so proceedings stay in sync with eCourts and cannot be edited.",
+      });
+      return;
+    }
+
     setSelectedHearing(hearing);
     setProceedingForm(proceedingFormFromHearing(hearing));
     setShowProceedingsDialog(true);
   };
 
   const handleSaveProceedings = async () => {
+    if (isCnrSourcedHearing(selectedHearing)) {
+      toast({
+        title: "Proceedings are read-only",
+        description:
+          "This case was filled from its CNR, so proceedings stay in sync with eCourts and cannot be edited.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!selectedHearing?.caseId) {
       toast({
         title: "Error",
@@ -1177,11 +1201,13 @@ export default function HearingsPage() {
                     <div className="space-y-0.5">
                       <p className="text-[11px] font-medium uppercase tracking-normal text-muted-foreground">Actions</p>
                       <p className="line-clamp-1 text-[11px] text-muted-foreground">
-                        {isFutureHearing(hearing.date)
-                          ? "Proceedings unlock after hearing date."
-                          : hearing.outcome
-                            ? "Proceedings available."
-                            : "Proceedings not recorded."}
+                        {isCnrSourcedHearing(hearing)
+                          ? "Synced from eCourts (CNR) — view only."
+                          : isFutureHearing(hearing.date)
+                            ? "Proceedings unlock after hearing date."
+                            : hearing.outcome
+                              ? "Proceedings available."
+                              : "Proceedings not recorded."}
                       </p>
                     </div>
                     <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
@@ -1198,7 +1224,7 @@ export default function HearingsPage() {
                         View Proceeding
                       </Button>
 
-                      {isLawyer && (
+                      {isLawyer && !isCnrSourcedHearing(hearing) && (
                         <Button
                           variant={hearing.outcome ? "outline" : "secondary"}
                           size="sm"

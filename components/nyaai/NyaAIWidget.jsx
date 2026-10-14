@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Maximize2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize2, Minus, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import NyaAIChat from "./NyaAIChat";
+
+const DOCKED_STORAGE_KEY = "nyaai:widget-docked";
 
 const WIDGET_PROMPTS = [
   "What hearings do I have tomorrow?",
@@ -24,6 +26,31 @@ export default function NyaAIWidget() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [everOpened, setEverOpened] = useState(false);
+  // Docked = parked as a slim tab on the right edge, so the round launcher
+  // stops covering buttons in the bottom-right corner of a page.
+  const [docked, setDocked] = useState(false);
+
+  useEffect(() => {
+    try {
+      setDocked(localStorage.getItem(DOCKED_STORAGE_KEY) === "1");
+    } catch {
+      // storage unavailable — keep the launcher visible
+    }
+  }, []);
+
+  const persistDocked = (next) => {
+    setDocked(next);
+    try {
+      localStorage.setItem(DOCKED_STORAGE_KEY, next ? "1" : "0");
+    } catch {
+      // ignore: docking is a convenience, not state we must keep
+    }
+  };
+
+  const dockToSide = () => {
+    setOpen(false);
+    persistDocked(true);
+  };
 
   // The full-page assistant already lives here; no widget on top of it.
   if (pathname?.startsWith("/dashboard/nyaai")) return null;
@@ -91,7 +118,17 @@ export default function NyaAIWidget() {
                 type="button"
                 onClick={() => setOpen(false)}
                 className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                title="Close"
+                title="Minimize"
+                aria-label="Minimize chat"
+              >
+                <Minus className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={dockToSide}
+                className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                title="Close and move out of the way"
+                aria-label="Close and dock to the side"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -104,7 +141,28 @@ export default function NyaAIWidget() {
         </div>
       )}
 
+      {/* slim edge tab once the launcher is docked out of the way */}
+      {docked && !open && (
+        <button
+          type="button"
+          onClick={() => {
+            persistDocked(false);
+            setEverOpened(true);
+            setOpen(true);
+          }}
+          className="fixed right-0 top-1/2 z-50 flex -translate-y-1/2 items-center gap-1 rounded-l-lg bg-[#13345c] py-3 pl-1.5 pr-1 text-white shadow-lg ring-1 ring-white/30 transition-colors hover:bg-[#0f2747]"
+          title="Show NyaAI"
+          aria-label="Show NyaAI"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          <span className="text-[10px] font-semibold tracking-widest [writing-mode:vertical-rl]">
+            NYAAI
+          </span>
+        </button>
+      )}
+
       {/* floating round launcher */}
+      {!docked && (
       <motion.button
         type="button"
         onClick={toggle}
@@ -137,7 +195,28 @@ export default function NyaAIWidget() {
         {!open && (
           <span className="absolute inset-0 -z-10 animate-ping rounded-full bg-primary/20 [animation-duration:3s]" />
         )}
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={(event) => {
+            event.stopPropagation();
+            dockToSide();
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              event.stopPropagation();
+              dockToSide();
+            }
+          }}
+          className="absolute -left-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow transition-colors hover:text-foreground"
+          title="Move NyaAI out of the way"
+          aria-label="Move NyaAI out of the way"
+        >
+          <ChevronRight className="h-3.5 w-3.5" />
+        </span>
       </motion.button>
+      )}
     </>
   );
 }

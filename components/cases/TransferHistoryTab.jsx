@@ -482,7 +482,7 @@ export default function TransferHistoryTab({
         </CardContent>
       </Card>
 
-      {caseData?.status === "closed" && (
+      {["closed", "disposed"].includes(caseData?.status) && (
         <Card>
           <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-1 min-w-0 flex-1">
@@ -651,133 +651,6 @@ export default function TransferHistoryTab({
           )}
         </Card>
       )}
-
-      <Card>
-        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-1 min-w-0 flex-1">
-            <CardTitle>IA Status</CardTitle>
-            <CardDescription>
-              Optional. Track IA number, party name, filing date, next date or
-              purpose, and status.
-            </CardDescription>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            className="shrink-0 self-start"
-            onClick={() => addCaseCollectionItem("iaStatuses", EMPTY_IA_STATUS)}
-          >
-            + Add IA Status
-          </Button>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {iaStatusItems.length === 0 ? (
-            <p className="text-sm italic text-muted-foreground">
-              No IA status entries added yet.
-            </p>
-          ) : (
-            iaStatusItems.map((iaItem, index) => (
-              <div
-                key={`ia-status-${index}`}
-                className="space-y-4 rounded-md border p-4"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <h4 className="text-sm font-medium">IA Status {index + 1}</h4>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="text-red-600 hover:text-red-700"
-                    onClick={() =>
-                      removeCaseCollectionItem("iaStatuses", index)
-                    }
-                  >
-                    Remove
-                  </Button>
-                </div>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>IA Number</Label>
-                    <Input
-                      value={iaItem.iaNumber || ""}
-                      onChange={(e) =>
-                        updateCaseCollectionItem(
-                          "iaStatuses",
-                          index,
-                          "iaNumber",
-                          e.target.value
-                        )
-                      }
-                      placeholder="Enter IA number"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Party Name</Label>
-                    <Input
-                      value={iaItem.partyName || ""}
-                      onChange={(e) =>
-                        updateCaseCollectionItem(
-                          "iaStatuses",
-                          index,
-                          "partyName",
-                          e.target.value
-                        )
-                      }
-                      placeholder="Enter party name"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Date of Filing</Label>
-                    <DatePicker
-                      selected={
-                        iaItem.dateOfFiling ? new Date(iaItem.dateOfFiling) : null
-                      }
-                      onSelect={(value) =>
-                        updateCaseCollectionItem(
-                          "iaStatuses",
-                          index,
-                          "dateOfFiling",
-                          value
-                        )
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>IA Status</Label>
-                    <Input
-                      value={iaItem.status || ""}
-                      onChange={(e) =>
-                        updateCaseCollectionItem(
-                          "iaStatuses",
-                          index,
-                          "status",
-                          e.target.value
-                        )
-                      }
-                      placeholder="e.g. Pending"
-                    />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label>Next Date / Purpose</Label>
-                    <Input
-                      value={iaItem.nextDatePurpose || ""}
-                      onChange={(e) =>
-                        updateCaseCollectionItem(
-                          "iaStatuses",
-                          index,
-                          "nextDatePurpose",
-                          e.target.value
-                        )
-                      }
-                      placeholder="Enter next date or purpose"
-                    />
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -1043,6 +916,133 @@ export default function TransferHistoryTab({
                 </tbody>
               </table>
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1 min-w-0 flex-1">
+            <CardTitle>IA Status</CardTitle>
+            <CardDescription>
+              Optional. Track IA number, party name, filing date, next date or
+              purpose, and status.
+            </CardDescription>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="shrink-0 self-start"
+            onClick={() => addCaseCollectionItem("iaStatuses", EMPTY_IA_STATUS)}
+          >
+            + Add IA Status
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {iaStatusItems.length === 0 ? (
+            <p className="text-sm italic text-muted-foreground">
+              No IA status entries added yet.
+            </p>
+          ) : (
+            iaStatusItems.map((iaItem, index) => (
+              <div
+                key={`ia-status-${index}`}
+                className="space-y-4 rounded-md border p-4"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <h4 className="text-sm font-medium">IA Status {index + 1}</h4>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-600 hover:text-red-700"
+                    onClick={() =>
+                      removeCaseCollectionItem("iaStatuses", index)
+                    }
+                  >
+                    Remove
+                  </Button>
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>IA Number</Label>
+                    <Input
+                      value={iaItem.iaNumber || ""}
+                      onChange={(e) =>
+                        updateCaseCollectionItem(
+                          "iaStatuses",
+                          index,
+                          "iaNumber",
+                          e.target.value
+                        )
+                      }
+                      placeholder="Enter IA number"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Party Name</Label>
+                    <Input
+                      value={iaItem.partyName || ""}
+                      onChange={(e) =>
+                        updateCaseCollectionItem(
+                          "iaStatuses",
+                          index,
+                          "partyName",
+                          e.target.value
+                        )
+                      }
+                      placeholder="Enter party name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Date of Filing</Label>
+                    <DatePicker
+                      selected={
+                        iaItem.dateOfFiling ? new Date(iaItem.dateOfFiling) : null
+                      }
+                      onSelect={(value) =>
+                        updateCaseCollectionItem(
+                          "iaStatuses",
+                          index,
+                          "dateOfFiling",
+                          value
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>IA Status</Label>
+                    <Input
+                      value={iaItem.status || ""}
+                      onChange={(e) =>
+                        updateCaseCollectionItem(
+                          "iaStatuses",
+                          index,
+                          "status",
+                          e.target.value
+                        )
+                      }
+                      placeholder="e.g. Pending"
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Next Date / Purpose</Label>
+                    <Input
+                      value={iaItem.nextDatePurpose || ""}
+                      onChange={(e) =>
+                        updateCaseCollectionItem(
+                          "iaStatuses",
+                          index,
+                          "nextDatePurpose",
+                          e.target.value
+                        )
+                      }
+                      placeholder="Enter next date or purpose"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))
           )}
         </CardContent>
       </Card>

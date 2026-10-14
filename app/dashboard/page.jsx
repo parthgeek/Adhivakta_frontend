@@ -36,7 +36,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { getDisplayCaseType } from "@/lib/caseTypeUtils";
+import { getCaseCategory, getDisplayCaseType } from "@/lib/caseTypeUtils";
 import { cn } from "@/lib/utils";
 import { formatLegalTeamSummary } from "@/lib/legal-team";
 import { WIDTH_SPAN_CLASSES } from "@/lib/dashboard-layout";
@@ -580,12 +580,12 @@ const DonutChart = ({ data, colors, total, label = "Total" }) => (
 
 const CasesByStatusChart = ({ cases = [] }) => {
   const data = useMemo(() => {
-    const counts = { Ongoing: 0, Pending: 0, Disposal: 0, Closed: 0 };
+    const counts = { Ongoing: 0, Pending: 0, Disposed: 0, Closed: 0 };
     cases.forEach((c) => {
       const s = (c.status || "active").toLowerCase();
       if (s === "active" || s === "ongoing") counts.Ongoing++;
       else if (s === "pending") counts.Pending++;
-      else if (s === "disposal" || s === "disposed") counts.Disposal++;
+      else if (s === "disposal" || s === "disposed") counts.Disposed++;
       else if (s === "closed") counts.Closed++;
       else counts.Ongoing++;
     });
@@ -646,7 +646,7 @@ const CasesByCategoryChart = ({ cases = [] }) => {
       const cat = safeText(getDisplayCaseType(c) || c.caseType || c.category) || "Other";
       counts[cat] = (counts[cat] || 0) + 1;
     });
-    return Object.entries(counts)
+    const ranked = Object.entries(counts)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
   }, [cases]);
