@@ -643,16 +643,15 @@ const CasesByCategoryChart = ({ cases = [] }) => {
   const data = useMemo(() => {
     const counts = {};
     cases.forEach((c) => {
-      const cat = getDisplayCaseType(c) || c.caseType || c.category || "Other";
+      const cat = safeText(getDisplayCaseType(c) || c.caseType || c.category) || "Other";
       counts[cat] = (counts[cat] || 0) + 1;
     });
     return Object.entries(counts)
       .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 6);
+      .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
   }, [cases]);
 
-  const total = data.reduce((s, d) => s + d.value, 0);
+  const total = cases.length;
 
   return (
     <Card>

@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Building2, Loader2, MailPlus, Trash2, UserPlus, Users } from "lucide-react";
+import {
+  ArrowRightLeft,
+  Building2,
+  Eye,
+  Loader2,
+  MailPlus,
+  Trash2,
+  UserPlus,
+  Users,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import api from "@/services/api";
@@ -11,6 +20,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
 
 export default function OrganizationPage() {
@@ -26,6 +44,12 @@ export default function OrganizationPage() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [advocateAction, setAdvocateAction] = useState({
+    open: false,
+    mode: "transfer",
+    advocate: null,
+    targetAdvocateId: "",
+  });
 
   useEffect(() => {
     if (!user) return;
@@ -141,19 +165,64 @@ export default function OrganizationPage() {
     }
   };
 
-  const handleRemoveAdvocate = async (userId) => {
+  const openAdvocateAction = (mode, advocate) => {
+    const firstTarget = activeAdvocates.find((member) => member.userId !== advocate.userId);
+    setAdvocateAction({
+      open: true,
+      mode,
+      advocate,
+      targetAdvocateId: firstTarget ? String(firstTarget.userId) : "",
+    });
+  };
+
+  const closeAdvocateAction = (force = false) => {
+    if (saving && !force) return;
+    setAdvocateAction({
+      open: false,
+      mode: "transfer",
+      advocate: null,
+      targetAdvocateId: "",
+    });
+  };
+
+  const handleAdvocateAction = async () => {
+    if (!advocateAction.advocate) return;
+
+    const sourceId = advocateAction.advocate.userId;
+    const targetId = advocateAction.targetAdvocateId;
+
+    if (advocateAction.mode === "transfer" && !targetId) {
+      toast({
+        variant: "destructive",
+        title: "Select receiving advocate",
+        description: "Choose another active advocate before continuing.",
+      });
+      return;
+    }
+
     try {
       setSaving(true);
-      const data = await api.organizations.removeAdvocate(userId);
-      setOrganization(data);
-      toast({
-        title: "Advocate removed",
-        description: "Their data is no longer included in this organization dashboard.",
-      });
+      if (advocateAction.mode === "remove") {
+        const data = await api.organizations.removeAdvocate(sourceId, targetId || null);
+        setOrganization(data);
+        toast({
+          title: "Advocate removed",
+          description: targetId
+            ? "Their assigned cases were transferred before removal."
+            : "The advocate was removed from this organization.",
+        });
+      } else {
+        await api.organizations.transferAdvocateCases(sourceId, targetId);
+        toast({
+          title: "Cases transferred",
+          description: "Assigned cases are now with the selected advocate.",
+        });
+      }
+      closeAdvocateAction(true);
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Could not remove advocate",
+        title: advocateAction.mode === "remove" ? "Could not remove advocate" : "Could not transfer cases",
         description: error.message || "Please try again.",
       });
     } finally {
@@ -345,16 +414,38 @@ export default function OrganizationPage() {
                     <div className="font-medium text-gray-950">{member.name || "Unnamed advocate"}</div>
                     <div className="text-sm text-muted-foreground">{member.email}</div>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleRemoveAdvocate(member.userId)}
-                    disabled={saving}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Remove
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => router.push(`/dashboard/organization/advocate/${member.userId}`)}
+                      disabled={saving}
+                    >
+                      <Eye className="mr-2 h-4 w-4" />
+                      View Profile
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openAdvocateAction("transfer", member)}
+                      disabled={saving || activeAdvocates.length < 2}
+                    >
+                      <ArrowRightLeft className="mr-2 h-4 w-4" />
+                      Transfer Cases
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openAdvocateAction("remove", member)}
+                      disabled={saving}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Remove
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -379,6 +470,80 @@ export default function OrganizationPage() {
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={advocateAction.open} onOpenChange={(open) => !open && closeAdvocateAction()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {advocateAction.mode === "remove" ? "Remove advocate" : "Transfer advocate cases"}
+            </DialogTitle>
+            <DialogDescription>
+              {advocateAction.mode === "remove"
+                ? "Select another active advocate to receive assigned cases before removal, or continue without one if there are no cases to transfer."
+                : "Choose another active advocate to receive the assigned cases."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+              <div className="font-medium text-gray-950">
+                {advocateAction.advocate?.name || "Unnamed advocate"}
+              </div>
+              <div className="text-muted-foreground">{advocateAction.advocate?.email}</div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="target-advocate">Receiving Advocate</Label>
+              <Select
+                value={advocateAction.targetAdvocateId}
+                onValueChange={(value) =>
+                  setAdvocateAction((prev) => ({ ...prev, targetAdvocateId: value }))
+                }
+                disabled={saving}
+              >
+                <SelectTrigger id="target-advocate">
+                  <SelectValue placeholder="Select advocate" />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeAdvocates
+                    .filter((member) => member.userId !== advocateAction.advocate?.userId)
+                    .map((member) => (
+                      <SelectItem key={member.userId} value={String(member.userId)}>
+                        {member.name || member.email}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              {activeAdvocates.length < 2 && (
+                <p className="text-sm text-muted-foreground">
+                  Add another active advocate before transferring assigned cases.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={closeAdvocateAction} disabled={saving}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleAdvocateAction}
+              disabled={
+                saving ||
+                (advocateAction.mode === "transfer" && !advocateAction.targetAdvocateId)
+              }
+            >
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {advocateAction.mode === "remove"
+                ? advocateAction.targetAdvocateId
+                  ? "Transfer and Remove"
+                  : "Remove Advocate"
+                : "Transfer Cases"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

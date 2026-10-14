@@ -396,10 +396,32 @@ const api = {
       return handleResponse(response);
     },
 
-    removeAdvocate: async (userId) => {
+    getAdvocateProfile: async (userId) => {
+      const response = await fetch(`${API_URL}/organizations/advocates/${userId}/profile`, {
+        method: "GET",
+        headers: createHeaders(),
+      });
+
+      const data = await handleResponse(response);
+      return data.data || null;
+    },
+
+    transferAdvocateCases: async (userId, targetAdvocateId) => {
+      const response = await fetch(`${API_URL}/organizations/advocates/${userId}/transfer-cases`, {
+        method: "POST",
+        headers: createHeaders(),
+        body: JSON.stringify({ targetAdvocateId }),
+      });
+
+      const data = await handleResponse(response);
+      return data.data || null;
+    },
+
+    removeAdvocate: async (userId, targetAdvocateId = null) => {
       const response = await fetch(`${API_URL}/organizations/advocates/${userId}`, {
         method: "DELETE",
         headers: createHeaders(),
+        body: JSON.stringify(targetAdvocateId ? { targetAdvocateId } : {}),
       });
 
       const data = await handleResponse(response);
