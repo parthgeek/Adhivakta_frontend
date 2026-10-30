@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, Maximize2, Minus, X } from "lucide-react";
+import { motion } from "framer-motion";
+import { ChevronLeft, ChevronRight, Maximize2, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import NyaAIChat from "./NyaAIChat";
@@ -17,24 +17,26 @@ const WIDGET_PROMPTS = [
 ];
 
 /**
- * Floating NyaAI launcher — a round button fixed to the bottom-right of every
- * dashboard page that opens a chat popup. The popup stays mounted after first
- * open so the conversation survives closing and reopening.
+ * Floating NyaAI assistant panel. It can be collapsed into a slim edge tab,
+ * and the popup stays mounted after first open so the conversation survives.
  */
 export default function NyaAIWidget() {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [everOpened, setEverOpened] = useState(false);
-  // Docked = parked as a slim tab on the right edge, so the round launcher
-  // stops covering buttons in the bottom-right corner of a page.
+  // Docked = parked as a slim tab on the right edge.
   const [docked, setDocked] = useState(false);
 
   useEffect(() => {
     try {
-      setDocked(localStorage.getItem(DOCKED_STORAGE_KEY) === "1");
+      const savedDocked = localStorage.getItem(DOCKED_STORAGE_KEY) === "1";
+      setDocked(savedDocked);
+      setOpen(!savedDocked);
+      setEverOpened(true);
     } catch {
-      // storage unavailable — keep the launcher visible
+      setOpen(true);
+      setEverOpened(true);
     }
   }, []);
 
@@ -55,11 +57,6 @@ export default function NyaAIWidget() {
   // The full-page assistant already lives here; no widget on top of it.
   if (pathname?.startsWith("/dashboard/nyaai")) return null;
 
-  const toggle = () => {
-    setOpen((v) => !v);
-    setEverOpened(true);
-  };
-
   return (
     <>
       {/* popup panel — kept mounted after first open to preserve the thread */}
@@ -72,7 +69,7 @@ export default function NyaAIWidget() {
         >
           {/* mobile scrim */}
           <div
-            onClick={() => setOpen(false)}
+            onClick={dockToSide}
             className={cn(
               "absolute inset-0 bg-black/30 backdrop-blur-[2px] transition-opacity sm:hidden",
               open ? "opacity-100" : "opacity-0"
@@ -86,57 +83,59 @@ export default function NyaAIWidget() {
                 : { opacity: 0, y: 16, scale: 0.97 }
             }
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className="relative flex h-[calc(100dvh-6rem)] w-full flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-2xl sm:h-[34rem] sm:w-[24rem]"
+            className="relative h-[calc(100dvh-6rem)] w-full sm:h-[34rem] sm:w-[24rem]"
           >
-            <div className="flex items-center gap-2 border-b border-border/60 bg-muted/30 px-4 py-3">
-              <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full ring-1 ring-border/60">
-                <img
-                  src="/nyaai-avatar.png"
-                  alt="NyaAI"
-                  className="h-full w-full object-cover"
-                  draggable={false}
-                />
-              </span>
-              <div className="flex-1 leading-tight">
-                <p className="text-sm font-semibold text-foreground">NyaAI</p>
-                <p className="text-xs text-muted-foreground">
-                  Grounded in your workspace
-                </p>
+            <button
+              type="button"
+              onClick={dockToSide}
+              className="absolute left-0 top-1/2 z-10 hidden h-14 w-8 -translate-x-full -translate-y-1/2 items-center justify-center rounded-l-xl border border-r-0 border-border/60 bg-card text-muted-foreground shadow-lg transition-colors hover:bg-muted hover:text-foreground sm:flex"
+              title="Collapse NyaAI"
+              aria-label="Collapse NyaAI"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            <div className="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-2xl">
+              <div className="flex items-center gap-2 border-b border-border/60 bg-muted/30 px-4 py-3">
+                <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full ring-1 ring-border/60">
+                  <img
+                    src="/nyaai-avatar.png"
+                    alt="NyaAI"
+                    className="h-full w-full object-cover"
+                    draggable={false}
+                  />
+                </span>
+                <div className="flex-1 leading-tight">
+                  <p className="text-sm font-semibold text-foreground">NyaAI</p>
+                  <p className="text-xs text-muted-foreground">
+                    Grounded in your workspace
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    router.push("/dashboard/nyaai");
+                  }}
+                  className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  title="Open full view"
+                >
+                  <Maximize2 className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={dockToSide}
+                  className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  title="Collapse"
+                  aria-label="Collapse chat"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  router.push("/dashboard/nyaai");
-                }}
-                className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                title="Open full view"
-              >
-                <Maximize2 className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                title="Minimize"
-                aria-label="Minimize chat"
-              >
-                <Minus className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={dockToSide}
-                className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                title="Close and move out of the way"
-                aria-label="Close and dock to the side"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              <NyaAIChat
+                suggestedPrompts={WIDGET_PROMPTS}
+                className="min-h-0 flex-1"
+              />
             </div>
-            <NyaAIChat
-              suggestedPrompts={WIDGET_PROMPTS}
-              className="min-h-0 flex-1"
-            />
           </motion.div>
         </div>
       )}
@@ -159,63 +158,6 @@ export default function NyaAIWidget() {
             NYAAI
           </span>
         </button>
-      )}
-
-      {/* floating round launcher */}
-      {!docked && (
-      <motion.button
-        type="button"
-        onClick={toggle}
-        whileHover={{ scale: 1.06 }}
-        whileTap={{ scale: 0.94 }}
-        className="fixed bottom-6 right-6 z-50 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#13345c] to-[#0f2747] text-white shadow-lg shadow-primary/25 ring-2 ring-white/70 transition-shadow hover:shadow-xl dark:ring-border"
-        title={open ? "Close NyaAI" : "Ask NyaAI"}
-      >
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.span
-            key={open ? "close" : "open"}
-            initial={{ opacity: 0, rotate: -45, scale: 0.6 }}
-            animate={{ opacity: 1, rotate: 0, scale: 1 }}
-            exit={{ opacity: 0, rotate: 45, scale: 0.6 }}
-            transition={{ duration: 0.15 }}
-            className="flex h-full w-full items-center justify-center overflow-hidden rounded-full"
-          >
-            {open ? (
-              <X className="h-6 w-6" />
-            ) : (
-              <img
-                src="/nyaai-avatar.png"
-                alt="NyaAI"
-                className="h-full w-full object-cover"
-                draggable={false}
-              />
-            )}
-          </motion.span>
-        </AnimatePresence>
-        {!open && (
-          <span className="absolute inset-0 -z-10 animate-ping rounded-full bg-primary/20 [animation-duration:3s]" />
-        )}
-        <span
-          role="button"
-          tabIndex={0}
-          onClick={(event) => {
-            event.stopPropagation();
-            dockToSide();
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              event.stopPropagation();
-              dockToSide();
-            }
-          }}
-          className="absolute -left-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow transition-colors hover:text-foreground"
-          title="Move NyaAI out of the way"
-          aria-label="Move NyaAI out of the way"
-        >
-          <ChevronRight className="h-3.5 w-3.5" />
-        </span>
-      </motion.button>
       )}
     </>
   );

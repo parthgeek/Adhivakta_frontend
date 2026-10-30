@@ -265,8 +265,8 @@ export default function HighCourtDisplayBoard() {
                   High Court Display Board
                 </h2>
                 <p className="mt-1 text-sm text-[#355487]">
-                  View the live board directly from supported high court websites for
-                  states mapped from your tracked cases.
+                  Browse official High Court boards across India. Courts linked to your
+                  tracked cases appear first.
                 </p>
               </div>
               <div className="text-sm text-[#355487]">
@@ -279,7 +279,7 @@ export default function HighCourtDisplayBoard() {
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,280px)_1fr] lg:items-end">
               <div>
                 <label className="mb-1 block text-sm font-semibold text-[#355487]">
-                  Select State
+                  Select State / High Court
                 </label>
                 <select
                   value={displayBoardSelectedStateCode}
@@ -289,7 +289,7 @@ export default function HighCourtDisplayBoard() {
                 >
                   <option value="">
                     {displayBoardStates.length
-                      ? "Select State"
+                      ? "Select State / High Court"
                       : displayBoardLoading
                         ? "Loading states..."
                         : "No states available"}
@@ -370,9 +370,57 @@ export default function HighCourtDisplayBoard() {
 
       <Accordion
         type="multiple"
-        defaultValue={["personalized-display-board", "overall-display-board"]}
+        defaultValue={["overall-display-board", "personalized-display-board"]}
         className="space-y-6"
       >
+        <Card className="overflow-hidden border-[#d6deeb] shadow-sm">
+          <AccordionItem value="overall-display-board" className="border-b-0">
+            <AccordionTrigger className="bg-[#eef4fb] px-4 py-4 text-left hover:no-underline">
+              <div className="flex w-full flex-col gap-2 pr-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-[#03234b]">
+                    High Court Display Board
+                  </h2>
+                  <p className="mt-1 text-sm font-normal text-[#355487]">
+                    Browse official High Court boards across India. Courts linked to your
+                    tracked cases appear first.
+                  </p>
+                </div>
+                <div className="text-sm font-normal text-[#355487]">
+                  {formatMinutesAgo(displayBoardLastRefreshedAt)}
+                </div>
+              </div>
+            </AccordionTrigger>
+
+            <AccordionContent className="bg-[#f8fbff] px-4 py-4">
+              {displayBoardEmbedHtml ? (
+                <div className="overflow-hidden rounded-xl border border-[#d6deeb] bg-white">
+                  <iframe
+                    key={`${displayBoardSelectedState?.code || "display-board"}-${displayBoardFrameNonce}`}
+                    srcDoc={displayBoardEmbedHtml}
+                    title="High court display board"
+                    className="h-[720px] w-full bg-white"
+                    sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
+                  />
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-[#c7d4e4] bg-white px-4 py-10 text-center text-sm text-[#4f5f77]">
+                  {displayBoardSelectedState
+                    ? "The live board could not be rendered here. Use Open Official Site to view it directly on the court portal."
+                    : "Select a state or High Court to load its live board."}
+                </div>
+              )}
+
+              <p className="mt-3 text-xs text-[#6b7a90]">
+                District-court display boards are not included here. If the live board
+                does not render inside this page, use{" "}
+                <span className="font-medium">Open Official Site</span> to view it
+                directly on the high court portal.
+              </p>
+            </AccordionContent>
+          </AccordionItem>
+        </Card>
+
         <Card className="overflow-hidden border-[#d6deeb] shadow-sm">
           <AccordionItem value="personalized-display-board" className="border-b-0">
             <AccordionTrigger className="bg-[#eef4fb] px-4 py-4 text-left hover:no-underline">
@@ -599,54 +647,6 @@ export default function HighCourtDisplayBoard() {
                   })}
                 </div>
               )}
-            </AccordionContent>
-          </AccordionItem>
-        </Card>
-
-        <Card className="overflow-hidden border-[#d6deeb] shadow-sm">
-          <AccordionItem value="overall-display-board" className="border-b-0">
-            <AccordionTrigger className="bg-[#eef4fb] px-4 py-4 text-left hover:no-underline">
-              <div className="flex w-full flex-col gap-2 pr-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-[#03234b]">
-                    High Court Display Board
-                  </h2>
-                  <p className="mt-1 text-sm font-normal text-[#355487]">
-                    View the live board directly from supported high court websites for
-                    states mapped from your tracked cases.
-                  </p>
-                </div>
-                <div className="text-sm font-normal text-[#355487]">
-                  {formatMinutesAgo(displayBoardLastRefreshedAt)}
-                </div>
-              </div>
-            </AccordionTrigger>
-
-            <AccordionContent className="bg-[#f8fbff] px-4 py-4">
-              {displayBoardEmbedHtml ? (
-                <div className="overflow-hidden rounded-xl border border-[#d6deeb] bg-white">
-                  <iframe
-                    key={`${displayBoardSelectedState?.code || "display-board"}-${displayBoardFrameNonce}`}
-                    srcDoc={displayBoardEmbedHtml}
-                    title="High court display board"
-                    className="h-[720px] w-full bg-white"
-                    sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
-                  />
-                </div>
-              ) : (
-                <div className="rounded-xl border border-dashed border-[#c7d4e4] bg-white px-4 py-10 text-center text-sm text-[#4f5f77]">
-                  {displayBoardSelectedState
-                    ? "The live board could not be rendered here. Use Open Official Site to view it directly on the court portal."
-                    : "Select a state linked to your cases to load its live high court board."}
-                </div>
-              )}
-
-              <p className="mt-3 text-xs text-[#6b7a90]">
-                District-court display boards are not included here. If the live board
-                does not render inside this page, use{" "}
-                <span className="font-medium">Open Official Site</span> to view it
-                directly on the high court portal.
-              </p>
             </AccordionContent>
           </AccordionItem>
         </Card>

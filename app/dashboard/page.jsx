@@ -203,6 +203,11 @@ const formatNumericDate = (value, separator = "/") => {
 const getCaseDisplayLabel = (caseItem = {}) =>
   caseItem.title || caseItem.caseNumber || caseItem.cnrNumber || "Untitled case";
 
+const isDisposedOrClosedStatus = (status) => {
+  const normalized = String(status || "").toLowerCase();
+  return normalized === "closed" || normalized === "disposed" || normalized === "disposal";
+};
+
 const getEventCaseId = (event = {}) => {
   const candidates = [
     event.case?._id,
@@ -580,13 +585,12 @@ const DonutChart = ({ data, colors, total, label = "Total" }) => (
 
 const CasesByStatusChart = ({ cases = [] }) => {
   const data = useMemo(() => {
-    const counts = { Ongoing: 0, Pending: 0, Disposed: 0, Closed: 0 };
+    const counts = { Ongoing: 0, Pending: 0, "Disposed/Closed": 0 };
     cases.forEach((c) => {
       const s = (c.status || "active").toLowerCase();
       if (s === "active" || s === "ongoing") counts.Ongoing++;
       else if (s === "pending") counts.Pending++;
-      else if (s === "disposal" || s === "disposed") counts.Disposed++;
-      else if (s === "closed") counts.Closed++;
+      else if (isDisposedOrClosedStatus(s)) counts["Disposed/Closed"]++;
       else counts.Ongoing++;
     });
     return Object.entries(counts)
@@ -649,6 +653,7 @@ const CasesByCategoryChart = ({ cases = [] }) => {
     const ranked = Object.entries(counts)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
+    return ranked;
   }, [cases]);
 
   const total = cases.length;
@@ -1741,7 +1746,7 @@ const NewDashboard = () => {
           stats: stats || {
             totalCases: cases.length,
             activeCases: cases.filter((c) => c.status === "active").length,
-            closedCases: cases.filter((c) => c.status === "closed").length,
+            closedCases: cases.filter((c) => isDisposedOrClosedStatus(c.status)).length,
             urgentCases: 0,
             upcomingHearings: events.length,
             documents: documents.length,
@@ -1849,11 +1854,13 @@ const NewDashboard = () => {
     return createdDate && createdDate >= currentMonthStart;
   }).length;
   const casesClosedThisMonth = cases.filter((caseItem) => {
-    const status = String(caseItem.status || "").toLowerCase();
-    if (status !== "closed") return false;
+    if (!isDisposedOrClosedStatus(caseItem.status)) return false;
     const closedDate = getValidDate(caseItem.closedAt, caseItem.updatedAt);
     return closedDate && closedDate >= currentMonthStart;
   }).length;
+  const disposedClosedCases = cases.filter((caseItem) =>
+    isDisposedOrClosedStatus(caseItem.status)
+  ).length;
 
   const statsCardsById = {
     totalCases: {
@@ -1902,9 +1909,9 @@ const NewDashboard = () => {
       href: "/dashboard/cases?filter=urgent",
     },
     closedCases: {
-      title: "Closed Cases",
-      value: stats.closedCases,
-      sub: getMonthlyCountLabel(casesClosedThisMonth, "closed case"),
+      title: "Disposed/Closed",
+      value: disposedClosedCases,
+      sub: getMonthlyCountLabel(casesClosedThisMonth, "disposed/closed case"),
       icon: CheckCircle,
       iconBg: "bg-white/15 ring-1 ring-white/20",
       iconColor: "text-slate-100",

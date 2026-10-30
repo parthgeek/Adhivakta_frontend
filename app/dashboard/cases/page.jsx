@@ -78,15 +78,21 @@ function fmtDate(val) {
   return d.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
 }
 
+const DISPOSED_CLOSED_TAB = "Disposed/Closed";
+
+function isDisposedOrClosedStatus(status) {
+  const s = String(status || "").toLowerCase();
+  return s === "closed" || s === "disposed" || s === "disposal";
+}
+
 function getTabStatus(raw) {
   const s = (raw.status || "active").toLowerCase();
-  if (s === "closed") return "Closed";
-  if (s === "disposed" || s === "disposal") return "Disposed";
+  if (isDisposedOrClosedStatus(s)) return DISPOSED_CLOSED_TAB;
   if (s === "pending") return "Pending";
   return "Ongoing";
 }
 
-const TERMINAL_TAB_STATUSES = new Set(["Closed", "Disposed"]);
+const TERMINAL_TAB_STATUSES = new Set([DISPOSED_CLOSED_TAB]);
 
 // ─── PDF generation ──────────────────────────────────────────────────────────
 
@@ -539,7 +545,7 @@ function FilterOptionGroup({ title, options, value, onChange }) {
   );
 }
 
-const STATUS_TABS = ["All Cases", "Ongoing", "Pending", "Disposed", "Closed"];
+const STATUS_TABS = ["All Cases", "Ongoing", "Pending", DISPOSED_CLOSED_TAB];
 const CASES_PER_PAGE = 7;
 
 function getCaseId(raw = {}) {
@@ -688,6 +694,24 @@ export default function CasesPage() {
     setCurrentPage(1);
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const filter = new URLSearchParams(window.location.search).get("filter");
+    if (!filter) return;
+
+    setCurrentPage(1);
+    setHearingFilter("all");
+    if (filter === "closed") {
+      setActiveTab(DISPOSED_CLOSED_TAB);
+      setPriorityFilter("all");
+      setActiveQuickFilter("closed");
+    } else if (filter === "urgent") {
+      setActiveTab("All Cases");
+      setPriorityFilter("high");
+      setActiveQuickFilter("highPriority");
+    }
+  }, []);
+
   const handleStatusTab = useCallback((tab) => {
     setActiveTab(tab);
     setActiveQuickFilter(null);
@@ -736,14 +760,13 @@ export default function CasesPage() {
     "All Cases": uniqueCases.length,
     "Ongoing":   uniqueCases.filter((c) => getTabStatus(c) === "Ongoing").length,
     "Pending":   uniqueCases.filter((c) => getTabStatus(c) === "Pending").length,
-    "Disposed":  uniqueCases.filter((c) => getTabStatus(c) === "Disposed").length,
-    "Closed":    uniqueCases.filter((c) => getTabStatus(c) === "Closed").length,
+    [DISPOSED_CLOSED_TAB]: uniqueCases.filter((c) => getTabStatus(c) === DISPOSED_CLOSED_TAB).length,
   }), [uniqueCases]);
 
   const stats = useMemo(() => ({
     total:        uniqueCases.length,
     ongoing:      tabCounts["Ongoing"],
-    closed:       tabCounts["Closed"],
+    closed:       tabCounts[DISPOSED_CLOSED_TAB],
     highPriority: priorityCaseIds.size,
   }), [uniqueCases, tabCounts, priorityCaseIds]);
 
@@ -788,7 +811,7 @@ export default function CasesPage() {
       return;
     }
 
-    const statusByFilterKey = { ongoing: "Ongoing", closed: "Closed" };
+    const statusByFilterKey = { ongoing: "Ongoing", closed: DISPOSED_CLOSED_TAB };
 
     setActiveQuickFilter(filterKey);
     setActiveTab(statusByFilterKey[filterKey] || "All Cases");
@@ -1007,7 +1030,7 @@ export default function CasesPage() {
         <StatCard
           icon={<CheckCircle2 className="h-5 w-5 text-slate-600" />}
           value={stats.closed}
-          label="Closed"
+          label={DISPOSED_CLOSED_TAB}
           iconBg="bg-slate-100"
           active={activeQuickFilter === "closed"}
           onClick={() => applyStatFilter("closed")}
