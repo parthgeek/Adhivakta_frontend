@@ -12,6 +12,7 @@ import { Loader2, ArrowLeft, CheckCircle } from "lucide-react"
 import Image from "next/image"
 import { toast } from "@/components/ui/use-toast"
 
+
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
