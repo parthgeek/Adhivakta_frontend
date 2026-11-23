@@ -1,0 +1,305 @@
+
+> adhi_api@1.0.0 test
+> node --test tests/*.test.js
+
+✔ non-admin users have no admin permissions (2.008416ms)
+✔ legacy admin without adminRole is treated as super_admin (0.308917ms)
+✔ finance_admin can manage billing but not users (0.08175ms)
+✔ security_auditor is read-only: audit yes, manage no (0.07025ms)
+✔ support_admin has view-only access to its modules (0.06525ms)
+✔ requireAdmin blocks non-admin requests with 403 (0.46975ms)
+✔ requirePermission denies out-of-role actions and allows in-role ones (0.31625ms)
+✔ requirePermission with multiple permissions passes if any matches (0.260041ms)
+▶ authentication and authorization reject invalid sessions before reaching handlers
+  ✔ missing token (0.437ms)
+  ✔ empty bearer (0.076958ms)
+  ✔ malformed JWT (0.194083ms)
+  ✔ expired JWT (0.471792ms)
+  ✔ revoked device (0.318459ms)
+  ✔ missing device id (0.136833ms)
+  ✔ valid token attaches the authenticated user and device (0.184291ms)
+  ✔ query-token document downloads remain authenticated (0.164958ms)
+  ✔ suspended accounts cannot reuse a valid token (0.187417ms)
+  ✔ deleted users cannot reuse a valid token (0.210792ms)
+  ✔ role guard denies clients and permits lawyers (0.111375ms)
+✔ authentication and authorization reject invalid sessions before reaching handlers (7.154208ms)
+Initializing logger
+info: Case deleted: Client-created case (ID: case-1) by user: client-creator {"service":"legal-case-api","timestamp":"2026-11-11 16:06:48"}
+info: Case deleted: Lawyer-created case (ID: case-1) by user: lawyer-creator {"service":"legal-case-api","timestamp":"2026-11-11 16:06:48"}
+✔ case deletion is allowed only for the creator (3.895334ms)
+Initializing logger
+✔ a complete district-court case is accepted (4.821084ms)
+✔ case creation rejects missing title (0.733583ms)
+✔ case creation rejects missing caseNumber (0.280125ms)
+✔ case creation rejects missing cnrNumber (0.220959ms)
+✔ case creation rejects missing caseType (0.221792ms)
+✔ case creation rejects missing court (0.208416ms)
+✔ case creation rejects missing nextHearingDate (28.436ms)
+✔ case creation rejects missing parties (0.41275ms)
+✔ case creation rejects missing description (0.420667ms)
+✔ case validation rejects whitespace title (0.863667ms)
+✔ case validation rejects overlong title (0.60125ms)
+✔ case validation rejects punctuated case number (0.569209ms)
+✔ case validation rejects invalid CNR (0.269542ms)
+✔ case validation rejects unknown status (0.211ms)
+✔ case validation rejects invalid court type (0.375917ms)
+✔ case validation rejects past hearing (0.15575ms)
+✔ case validation rejects invalid hearing date (0.21325ms)
+✔ case validation rejects future filing date (0.176417ms)
+✔ case validation rejects no petitioners (0.166917ms)
+✔ case validation rejects blank respondent (0.18625ms)
+✔ high_court permits cases without a CNR (0.305083ms)
+✔ supreme_court permits cases without a CNR (0.586667ms)
+✔ case validation trims titles and accepts the 100-character boundary (0.144833ms)
+✔ hearing cannot occur on the filing day (0.138375ms)
+✔ defaults expose every stat card and widget (0.68125ms)
+✔ an empty payload falls back to the defaults (3.383083ms)
+✔ saved order is preserved and unknown ids are dropped (0.213208ms)
+✔ widgets the user has never seen are appended, not lost (0.079709ms)
+✔ invalid widths fall back, and fixed-width widgets ignore the saved width (0.071875ms)
+✔ every preset builds a complete, already-normalized layout (0.59075ms)
+✔ presets hide rather than drop the blocks they leave out (0.126042ms)
+✔ the default preset matches the shipped defaults (0.499958ms)
+✔ an unknown preset id yields null so the route can reject it (0.297542ms)
+✔ listPresets exposes metadata only, no layout internals (0.302292ms)
+✔ duplicate ids are collapsed to the first occurrence (2.708541ms)
+Initializing logger
+✔ Delhi board embeds live JSON rows without cross-origin browser AJAX (44.974ms)
+✔ Delhi rejects changed JSON and maintenance HTML rather than reporting an empty board (0.767ms)
+✔ Delhi distinguishes a valid empty board from an invalid upstream response (4.067709ms)
+✔ Madras personalized boards select one current hall card and match zero-padded numbers (31.358625ms)
+✔ users without tracked cases can browse every High Court board (13.145834ms)
+✔ tracked High Courts sort first and district cases do not count as High Court cases (1.164167ms)
+Initializing logger
+✔ reads current and rotated header names without executing remote code (1.407083ms)
+✔ recovers a signature rotation with the existing captcha, cookies and rotating token (84.992625ms)
+✔ court loader uses correct establishment mapping and releases rejected sessions (800.134625ms)
+✔ upload metadata accepts uppercase extensions and strips directory paths (1.744834ms)
+✔ upload metadata rejects .hidden.pdf (application/pdf) (0.446167ms)
+✔ upload metadata rejects document.exe.pdf (application/pdf) (0.087334ms)
+✔ upload metadata rejects document.pdf (image/png) (0.076125ms)
+✔ upload metadata rejects payload.svg (image/svg+xml) (0.073917ms)
+✔ upload metadata rejects archive.rar (application/vnd.rar) (0.056833ms)
+✔ upload metadata rejects no-extension (text/plain) (0.053959ms)
+✔ upload scanner accepts plain text and passive PDF signatures (110.937666ms)
+✔ upload scanner rejects empty files (18.485208ms)
+✔ upload scanner rejects a spoofed PDF extension (3.304459ms)
+✔ PDF scanner rejects /JavaScript active content (12.461083ms)
+✔ PDF scanner rejects /Launch active content (2.089292ms)
+✔ PDF scanner rejects /OpenAction active content (3.437291ms)
+✔ PDF scanner rejects /EmbeddedFile active content (2.34275ms)
+✔ ZIP scanner rejects unsafe entry ../escape.txt (1.67175ms)
+✔ ZIP scanner rejects unsafe entry /absolute.txt (2.332166ms)
+✔ ZIP scanner rejects unsafe entry C:\escape.txt (2.19975ms)
+✔ ZIP scanner rejects unsafe entry folder\..\escape.txt (4.781708ms)
+✔ ZIP scanner rejects encrypted entries (3.165458ms)
+✔ ZIP scanner rejects embedded payload.exe (9.71975ms)
+✔ ZIP scanner rejects embedded nested.zip (3.040291ms)
+✔ ZIP scanner rejects embedded script.js (3.206584ms)
+✔ Office scanner rejects macro entries (1.441334ms)
+✔ Office scanner rejects a container missing required package metadata (1.128667ms)
+Initializing logger
+✔ parses serials joined to case types across current High Court PDF formats (1.352667ms)
+✔ parses a wrapped serial, case type and case number without taking header dates (0.122792ms)
+✔ every state and UT resolves to its High Court; directory contains all 25 courts (466.2095ms)
+✔ JSON adapters preserve their current official field formats (37.094291ms)
+✔ Madhya Pradesh requests JSON instead of the website shell (1.121916ms)
+✔ Andhra delimiter parser retains court number, coram, status and kept-back items (0.963833ms)
+✔ Patna XML array maps each position to the matching courtroom (1.437917ms)
+✔ Manipur reads all five public courtroom endpoints (2.332292ms)
+✔ static adapters exclude navigation and expand court status colspan cells (5.962459ms)
+✔ Jammu board reads room numbers from the official form inputs (1.468291ms)
+✔ Orissa board pairs the status and judge fields by courtroom id (1.091833ms)
+✔ valid empty responses stay empty; malformed responses fail clearly (1.990125ms)
+✔ organization scope includes only active advocates (0.944709ms)
+✔ organization case scope includes the admin and active advocates (0.149333ms)
+✔ selecting an active advocate narrows case access (0.11625ms)
+✔ selecting an outside or inactive advocate returns an empty scope (0.093833ms)
+✖ EDGE-ORG-01: malformed selected advocate must not broaden access to all advocates (101.504792ms)
+✔ session limits clamp invalid, fractional and out-of-range settings (0.488375ms)
+✔ session pruning retains the newest sessions without mutating input (0.575042ms)
+✔ session pruning preserves a preferred older device within a two-device limit (0.088667ms)
+✖ EDGE-SES-01: keeping the current device at limit one revokes every other device (0.643542ms)
+✔ an unknown preferred device does not consume a session slot (0.081667ms)
+✔ active session lookup drops expired, duplicate and empty session tokens (1.171417ms)
+✔ legacy sessions are supported without duplicating current sessions (0.125209ms)
+✔ clearing sessions also clears the legacy active token (0.111625ms)
+✔ JWT lifetime handles seconds, minutes, hours, days and invalid configuration (0.203708ms)
+ℹ tests 115
+ℹ suites 0
+ℹ pass 113
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1569.874417
+
+✖ failing tests:
+
+test at tests/organizationScope.test.js:26:1
+✖ EDGE-ORG-01: malformed selected advocate must not broaden access to all advocates (101.504792ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    {
+  +   '$or': [
+  +     {
+  +       createdBy: {
+  +         '$in': [
+  +           ObjectId {
+  +             buffer: Buffer(12) [Uint8Array] [
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               2
+  +             ]
+  +           },
+  +           ObjectId {
+  +             buffer: Buffer(12) [Uint8Array] [
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               1
+  +             ]
+  +           }
+  +         ]
+  +       }
+  +     },
+  +     {
+  +       lawyer: {
+  +         '$in': [
+  +           ObjectId {
+  +             buffer: Buffer(12) [Uint8Array] [
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               2
+  +             ]
+  +           },
+  +           ObjectId {
+  +             buffer: Buffer(12) [Uint8Array] [
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               1
+  +             ]
+  +           }
+  +         ]
+  +       }
+  +     },
+  +     {
+  +       'lawyers.user': {
+  +         '$in': [
+  +           ObjectId {
+  +             buffer: Buffer(12) [Uint8Array] [
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               2
+  +             ]
+  +           },
+  +           ObjectId {
+  +             buffer: Buffer(12) [Uint8Array] [
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               0,
+  +               1
+  +             ]
+  +           }
+  +         ]
+  +       }
+  +     }
+  +   ]
+  -   _id: {
+  -     '$in': []
+  -   }
+    }
+  
+      at TestContext.<anonymous> (/Users/jatindhiman/Projects2/Adhivakta/Adhivakta_backend/tests/organizationScope.test.js:27:10)
+      at Test.runInAsyncScope (node:async_hooks:214:14)
+      at Test.run (node:internal/test_runner/test:1106:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:788:18)
+      at Test.postRun (node:internal/test_runner/test:1235:19)
+      at Test.run (node:internal/test_runner/test:1163:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { '$or': [ [Object], [Object], [Object] ] },
+    expected: { _id: { '$in': [] } },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/sessionPolicy.test.js:24:1
+✖ EDGE-SES-01: keeping the current device at limit one revokes every other device (0.643542ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+      'old',
+  +   'middle',
+  +   'new'
+    ]
+  
+      at TestContext.<anonymous> (/Users/jatindhiman/Projects2/Adhivakta/Adhivakta_backend/tests/sessionPolicy.test.js:25:10)
+      at Test.runInAsyncScope (node:async_hooks:214:14)
+      at Test.run (node:internal/test_runner/test:1106:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:788:18)
+      at Test.postRun (node:internal/test_runner/test:1235:19)
+      at Test.run (node:internal/test_runner/test:1163:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'old', 'middle', 'new' ],
+    expected: [ 'old' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

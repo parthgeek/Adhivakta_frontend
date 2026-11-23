@@ -1,0 +1,199 @@
+
+> my-v0-project@0.1.0 test
+> node --test tests/*.test.cjs
+
+✔ API client sends bearer credentials and returns successful JSON (434.711083ms)
+✔ protected 401 logs out the current session and preserves the backend error (90.101959ms)
+✔ login 401 does not trigger global logout (45.859375ms)
+✔ session-conflict errors preserve their code and HTTP status (59.684333ms)
+✔ non-JSON gateway errors produce a readable error (28.762458ms)
+✔ unauthenticated requests omit bearer credentials and do not trigger logout (23.419333ms)
+✔ network failures propagate to callers (17.377ms)
+✔ hearing priority at -1 days is normal (0.772375ms)
+✔ hearing priority at 0 days is urgent (0.180625ms)
+✔ hearing priority at 3 days is urgent (0.113333ms)
+✔ hearing priority at 4 days is high (0.10125ms)
+✔ hearing priority at 7 days is high (0.108958ms)
+✔ hearing priority at 8 days is normal (0.121542ms)
+✔ closed cases and invalid or absent hearing dates have normal priority (0.181875ms)
+✖ EDGE-CASE-01: disposed cases do not show urgent hearing alerts (9.420583ms)
+✔ case numbers normalize punctuation and round trip through formatting (0.894917ms)
+✔ incomplete case number and unknown category get safe fallbacks (0.139375ms)
+✔ case category uses the broad practice area instead of a subtype (0.063917ms)
+✔ legal team supports populated users, legacy lawyers and empty data (0.154125ms)
+✔ legal team picks an explicit lead before a senior member (0.122208ms)
+✔ dashboard defaults agree between frontend and backend (0.877209ms)
+✔ saved dashboard layouts normalize consistently on both sides (1.475791ms)
+✔ missing notifications fall back to the notification list (1.260375ms)
+✔ document review notifications select the documents tab while preserving other parameters (0.62775ms)
+✔ absolute dashboard links become local paths (0.277625ms)
+✖ EDGE-NAV-01: notification links reject unsafe target //outside.example/phishing (1.487459ms)
+✖ EDGE-NAV-01: notification links reject unsafe target javascript:alert(1) (0.4125ms)
+✖ EDGE-NAV-02: malformed non-string notification links fall back safely (0.084458ms)
+✔ document download URLs normalize API paths and include a local test token (76.864166ms)
+✔ signed storage URLs do not receive the API token (32.931084ms)
+✖ EDGE-DOC-01: third-party API paths never receive the application auth token (26.255792ms)
+✔ site protection disabled allows requests (2.747917ms)
+✔ site protection challenges requests without credentials (1.796583ms)
+✔ site protection accepts correct credentials and rejects incorrect credentials (0.917208ms)
+✖ EDGE-MW-01: malformed Authorization header returns 401 without throwing (21.0585ms)
+✖ EDGE-MW-02: a non-Basic authentication scheme cannot bypass the Basic guard (3.822083ms)
+✖ EDGE-MW-03: Basic authentication accepts a colon inside the password (1.39425ms)
+ℹ tests 37
+ℹ suites 0
+ℹ pass 29
+ℹ fail 8
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1411.502458
+
+✖ failing tests:
+
+test at tests/caseHelpers.test.cjs:20:1
+✖ EDGE-CASE-01: disposed cases do not show urgent hearing alerts (9.420583ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  'urgent' !== 'normal'
+  
+      at TestContext.<anonymous> (/Users/jatindhiman/Projects2/Adhivakta/Adhivakta_frontend/tests/caseHelpers.test.cjs:21:10)
+      at Test.runInAsyncScope (node:async_hooks:214:14)
+      at Test.run (node:internal/test_runner/test:1106:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:788:18)
+      at Test.postRun (node:internal/test_runner/test:1235:19)
+      at Test.run (node:internal/test_runner/test:1163:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'urgent',
+    expected: 'normal',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/navigationSecurity.test.cjs:18:3
+✖ EDGE-NAV-01: notification links reject unsafe target //outside.example/phishing (1.487459ms)
+  AssertionError [ERR_ASSERTION]: Expected a safe app path; received //outside.example/phishing
+      at TestContext.<anonymous> (/Users/jatindhiman/Projects2/Adhivakta/Adhivakta_frontend/tests/navigationSecurity.test.cjs:20:12)
+      at Test.runInAsyncScope (node:async_hooks:214:14)
+      at Test.run (node:internal/test_runner/test:1106:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:788:18)
+      at Test.postRun (node:internal/test_runner/test:1235:19)
+      at Test.run (node:internal/test_runner/test:1163:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/navigationSecurity.test.cjs:18:3
+✖ EDGE-NAV-01: notification links reject unsafe target javascript:alert(1) (0.4125ms)
+  AssertionError [ERR_ASSERTION]: Expected a safe app path; received javascript:alert(1)
+      at TestContext.<anonymous> (/Users/jatindhiman/Projects2/Adhivakta/Adhivakta_frontend/tests/navigationSecurity.test.cjs:20:12)
+      at Test.runInAsyncScope (node:async_hooks:214:14)
+      at Test.run (node:internal/test_runner/test:1106:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:788:18)
+      at Test.postRun (node:internal/test_runner/test:1235:19)
+      at Test.run (node:internal/test_runner/test:1163:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/navigationSecurity.test.cjs:23:1
+✖ EDGE-NAV-02: malformed non-string notification links fall back safely (0.084458ms)
+  TypeError: link.startsWith is not a function
+      at normalizeAppLink (/Users/jatindhiman/Projects2/Adhivakta/Adhivakta_frontend/lib/notification-link.js:42:14)
+      at getNotificationTarget (/Users/jatindhiman/Projects2/Adhivakta/Adhivakta_frontend/lib/notification-link.js:15:28)
+      at TestContext.<anonymous> (/Users/jatindhiman/Projects2/Adhivakta/Adhivakta_frontend/tests/navigationSecurity.test.cjs:24:16)
+      at Test.runInAsyncScope (node:async_hooks:214:14)
+      at Test.run (node:internal/test_runner/test:1106:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:788:18)
+      at Test.postRun (node:internal/test_runner/test:1235:19)
+      at Test.run (node:internal/test_runner/test:1163:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7)
+
+test at tests/navigationSecurity.test.cjs:46:1
+✖ EDGE-DOC-01: third-party API paths never receive the application auth token (26.255792ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  true !== false
+  
+      at TestContext.<anonymous> (/Users/jatindhiman/Projects2/Adhivakta/Adhivakta_frontend/tests/navigationSecurity.test.cjs:52:10)
+      at Test.runInAsyncScope (node:async_hooks:214:14)
+      at Test.run (node:internal/test_runner/test:1106:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:788:18)
+      at Test.postRun (node:internal/test_runner/test:1235:19)
+      at Test.run (node:internal/test_runner/test:1163:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/siteProtection.test.cjs:28:1
+✖ EDGE-MW-01: malformed Authorization header returns 401 without throwing (21.0585ms)
+  TypeError [ERR_INVALID_ARG_TYPE]: The first argument must be of type string or an instance of Buffer, ArrayBuffer, or Array or an Array-like Object. Received undefined
+      at Buffer.from (node:buffer:335:9)
+      at middleware (/Users/jatindhiman/Projects2/Adhivakta/Adhivakta_frontend/middleware.ts:21:28)
+      at TestContext.<anonymous> (/Users/jatindhiman/Projects2/Adhivakta/Adhivakta_frontend/tests/siteProtection.test.cjs:30:16)
+      at Test.runInAsyncScope (node:async_hooks:214:14)
+      at Test.run (node:internal/test_runner/test:1106:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:788:18)
+      at Test.postRun (node:internal/test_runner/test:1235:19)
+      at Test.run (node:internal/test_runner/test:1163:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7) {
+    code: 'ERR_INVALID_ARG_TYPE'
+  }
+
+test at tests/siteProtection.test.cjs:32:1
+✖ EDGE-MW-02: a non-Basic authentication scheme cannot bypass the Basic guard (3.822083ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  200 !== 401
+  
+      at TestContext.<anonymous> (/Users/jatindhiman/Projects2/Adhivakta/Adhivakta_frontend/tests/siteProtection.test.cjs:35:10)
+      at Test.runInAsyncScope (node:async_hooks:214:14)
+      at Test.run (node:internal/test_runner/test:1106:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:788:18)
+      at Test.postRun (node:internal/test_runner/test:1235:19)
+      at Test.run (node:internal/test_runner/test:1163:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 200,
+    expected: 401,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/siteProtection.test.cjs:37:1
+✖ EDGE-MW-03: Basic authentication accepts a colon inside the password (1.39425ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  401 !== 200
+  
+      at TestContext.<anonymous> (/Users/jatindhiman/Projects2/Adhivakta/Adhivakta_frontend/tests/siteProtection.test.cjs:39:10)
+      at Test.runInAsyncScope (node:async_hooks:214:14)
+      at Test.run (node:internal/test_runner/test:1106:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:788:18)
+      at Test.postRun (node:internal/test_runner/test:1235:19)
+      at Test.run (node:internal/test_runner/test:1163:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 401,
+    expected: 200,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

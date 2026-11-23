@@ -1,0 +1,71 @@
+
+> my-v0-project@0.1.0 build
+> next build
+
+   ▲ Next.js 15.2.6
+   - Environments: .env
+   - Experiments (use with caution):
+     · cpus: 1
+
+   Creating an optimized production build ...
+getaddrinfo ENOTFOUND fonts.googleapis.com
+
+Retrying 1/3...
+getaddrinfo ENOTFOUND fonts.googleapis.com
+
+Retrying 1/3...
+getaddrinfo ENOTFOUND fonts.googleapis.com
+
+Retrying 1/3...
+getaddrinfo ENOTFOUND fonts.googleapis.com
+
+Retrying 2/3...
+getaddrinfo ENOTFOUND fonts.googleapis.com
+
+Retrying 2/3...
+getaddrinfo ENOTFOUND fonts.googleapis.com
+
+Retrying 2/3...
+getaddrinfo ENOTFOUND fonts.googleapis.com
+
+Retrying 3/3...
+getaddrinfo ENOTFOUND fonts.googleapis.com
+
+Retrying 3/3...
+getaddrinfo ENOTFOUND fonts.googleapis.com
+
+Retrying 3/3...
+[Error: getaddrinfo ENOTFOUND fonts.googleapis.com] {
+  errno: -3008,
+  code: 'ENOTFOUND',
+  syscall: 'getaddrinfo',
+  hostname: 'fonts.googleapis.com'
+}
+[Error: getaddrinfo ENOTFOUND fonts.googleapis.com] {
+  errno: -3008,
+  code: 'ENOTFOUND',
+  syscall: 'getaddrinfo',
+  hostname: 'fonts.googleapis.com'
+}
+[Error: getaddrinfo ENOTFOUND fonts.googleapis.com] {
+  errno: -3008,
+  code: 'ENOTFOUND',
+  syscall: 'getaddrinfo',
+  hostname: 'fonts.googleapis.com'
+}
+Failed to compile.
+
+app/layout.jsx
+`next/font` error:
+Failed to fetch `Geist Mono` from Google Fonts.
+
+app/layout.jsx
+`next/font` error:
+Failed to fetch `Noto Sans` from Google Fonts.
+
+app/layout.jsx
+`next/font` error:
+Failed to fetch `Noto Sans` from Google Fonts.
+
+
+> Build failed because of webpack errors

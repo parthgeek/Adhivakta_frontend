@@ -1,0 +1,10 @@
+app/auth/forgot-password/page.tsx(22,31): error TS7006: Parameter 'e' implicitly has an 'any' type.
+app/auth/forgot-password/page.tsx(36,11): error TS18046: 'err' is of type 'unknown'.
+app/auth/forgot-password/page.tsx(38,18): error TS18046: 'err' is of type 'unknown'.
+app/auth/forgot-password/page.tsx(40,18): error TS18046: 'err' is of type 'unknown'.
+app/auth/forgot-password/page.tsx(43,18): error TS18046: 'err' is of type 'unknown'.
+app/auth/forgot-password/page.tsx(49,22): error TS18046: 'err' is of type 'unknown'.
+components/ui/calendar-shadcn.tsx(23,3): error TS2339: Property 'selected' does not exist on type 'CalendarProps'.
+components/ui/calendar-shadcn.tsx(111,9): error TS2322: Type '{ month: Date; onMonthChange: Dispatch<SetStateAction<Date>>; selected: any; showOutsideDays: boolean; className: string; classNames: { root?: string | undefined; ... 73 more ...; with_weeknumber?: string | undefined; }; ... 72 more ...; onSelect?: OnSelectHandler<...> | undefined; } | ... 5 more ... | { ...; }' is not assignable to type 'IntrinsicAttributes & DayPickerProps'.
+  Type '{ month: Date; onMonthChange: Dispatch<SetStateAction<Date>>; selected: any; showOutsideDays: boolean; className: string; classNames: { root?: string | undefined; ... 73 more ...; with_weeknumber?: string | undefined; }; ... 71 more ...; onDayTouchStart?: DayEventHandler<...> | undefined; }' is not assignable to type 'IntrinsicAttributes & DayPickerProps'.
+    Property 'selected' does not exist on type 'IntrinsicAttributes & PropsBase & { mode?: undefined; required?: undefined; }'.
