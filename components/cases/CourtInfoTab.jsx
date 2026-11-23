@@ -1,10 +1,11 @@
+import { useId } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Building2, Scale, Gavel, CheckCircle2, RefreshCw, Search, Sparkles, Zap } from "lucide-react";
+import { Gavel, CheckCircle2, RefreshCw, Search, Sparkles, Zap } from "lucide-react";
 import CaseTypeSearchSelect from "@/components/cases/CaseTypeSearchSelect";
 import { cn } from "@/lib/utils";
 
@@ -12,20 +13,20 @@ const COURT_TYPE_OPTIONS = [
   {
     source: "ecourts",
     label: "District Court",
+    image: "/dc-india.png",
     description: "District & subordinate courts across India",
-    icon: Building2,
   },
   {
     source: "highcourts",
     label: "High Court",
+    image: "/hc-india.png",
     description: "State High Courts and their benches",
-    icon: Scale,
   },
   {
     source: "supremecourt",
     label: "Supreme Court",
+    image: "/sc-india.png",
     description: "Supreme Court of India, New Delhi",
-    icon: Gavel,
   },
 ];
 
@@ -96,8 +97,22 @@ export default function CourtInfoTab({
     ((!selectedEcourt.courtCode && !isSupremeCourt) || courtDirectoryLoading?.caseTypes);
   const selectedCaseTypeName = selectedEcourt.caseTypeName || "";
 
+  const navyFilterId = `court-navy-${useId().replace(/:/g, "")}`;
+
   return (
     <Card>
+      <svg aria-hidden="true" width="0" height="0" className="pointer-events-none absolute">
+        <defs>
+          <filter id={navyFilterId} colorInterpolationFilters="sRGB">
+            <feColorMatrix type="saturate" values="0" />
+            <feComponentTransfer>
+              <feFuncR type="linear" slope="0.98824" intercept="0.01176" />
+              <feFuncG type="linear" slope="0.86275" intercept="0.13725" />
+              <feFuncB type="linear" slope="0.70588" intercept="0.29412" />
+            </feComponentTransfer>
+          </filter>
+        </defs>
+      </svg>
       <CardHeader>
         <CardTitle>Court Information</CardTitle>
         <CardDescription>
@@ -206,26 +221,30 @@ export default function CourtInfoTab({
               Which court is this case filed in? <span className="text-red-500">*</span>
             </Label>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              {COURT_TYPE_OPTIONS.map(({ source, label, description, icon: Icon }) => {
+              {COURT_TYPE_OPTIONS.map(({ source, label, description, image }) => {
                 const isSelected = courtSource === source;
                 return (
                   <button
                     key={source}
                     type="button"
                     onClick={() => handleCourtTypeChange(source)}
-                    className={`flex flex-col items-start gap-1 rounded-lg border-2 p-4 text-left transition-all hover:border-primary hover:bg-accent ${
+                    aria-pressed={isSelected}
+                    className={`relative isolate flex min-h-[7.5rem] flex-col items-start gap-1 overflow-hidden rounded-lg border-2 p-4 text-left transition-all hover:border-primary hover:bg-accent ${
                       isSelected
                         ? "border-primary bg-accent"
                         : "border-muted bg-background"
                     }`}
                   >
-                    <div className="flex w-full items-center justify-between">
-                      <Icon className={`h-5 w-5 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
-                      {isSelected && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                    <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 isolate opacity-95">
+                      <img
+                        src={image}
+                        alt=""
+                        draggable={false}
+                        className="h-full w-full object-cover"
+                        style={{ filter: `url(#${navyFilterId})` }}
+                      />
                     </div>
-                    <span className={`font-medium ${isSelected ? "text-primary" : ""}`}>
-                      {label}
-                    </span>
+                    <span className={`font-medium ${isSelected ? "text-primary" : "text-foreground"}`}>{label}</span>
                     <span className="text-xs text-muted-foreground">{description}</span>
                   </button>
                 );

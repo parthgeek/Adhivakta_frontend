@@ -1933,7 +1933,7 @@ const NewDashboard = () => {
     dayBriefing: () => (
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <div className="flex items-center gap-2 text-sm text-gray-700">
+          <Link href="/dashboard/hearings" className="flex items-center gap-2 rounded-md text-sm text-gray-700 hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50">
               <Calendar className="h-4 w-4 text-blue-600" />
             </span>
@@ -1941,8 +1941,8 @@ const NewDashboard = () => {
               <span className="font-bold text-gray-900">{todayHearings}</span>{" "}
               hearing{todayHearings !== 1 ? "s" : ""} today
             </span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-gray-700">
+          </Link>
+          <Link href="/dashboard/notifications" className="flex items-center gap-2 rounded-md text-sm text-gray-700 hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-50">
               <AlertCircle className="h-4 w-4 text-orange-600" />
             </span>
@@ -1950,7 +1950,7 @@ const NewDashboard = () => {
               <span className="font-bold text-gray-900">{overdueTasks}</span>{" "}
               overdue task{overdueTasks !== 1 ? "s" : ""} needing attention
             </span>
-          </div>
+          </Link>
         </div>
         <div className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-1.5 text-sm font-medium text-gray-600">
           <Calendar className="h-4 w-4 text-gray-400" />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Maximize2, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
@@ -27,6 +27,55 @@ export default function NyaAIWidget() {
   const [everOpened, setEverOpened] = useState(false);
   // Docked = parked as a slim tab on the right edge.
   const [docked, setDocked] = useState(false);
+
+  const [launcherTop, setLauncherTop] = useState(null);
+  const launcherRef = useRef(null);
+  const dragRef = useRef(null);
+  const suppressClickRef = useRef(false);
+
+  const clampTop = (top, height) =>
+    Math.max(0, Math.min(top, window.innerHeight - height));
+
+  useEffect(() => {
+    const keepLauncherVisible = () => {
+      const rect = launcherRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setLauncherTop((top) => top == null ? null : clampTop(top, rect.height));
+    };
+    keepLauncherVisible();
+    window.addEventListener("resize", keepLauncherVisible);
+    return () => window.removeEventListener("resize", keepLauncherVisible);
+  }, [docked, open]);
+
+  const startLauncherDrag = (event) => {
+    if (!event.isPrimary || event.button !== 0) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    suppressClickRef.current = false;
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      y: rect.top,
+      height: rect.height,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const moveLauncher = (event) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const dy = event.clientY - drag.startY;
+    if (!suppressClickRef.current && Math.abs(dy) < 5) return;
+    suppressClickRef.current = true;
+    setLauncherTop(clampTop(drag.y + dy, drag.height));
+  };
+
+  const endLauncherDrag = (event) => {
+    if (dragRef.current?.pointerId !== event.pointerId) return;
+    dragRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
 
   useEffect(() => {
     try {
@@ -144,13 +193,24 @@ export default function NyaAIWidget() {
       {docked && !open && (
         <button
           type="button"
-          onClick={() => {
+          ref={launcherRef}
+          onPointerDown={startLauncherDrag}
+          onPointerMove={moveLauncher}
+          onPointerUp={endLauncherDrag}
+          onPointerCancel={endLauncherDrag}
+          onLostPointerCapture={() => { dragRef.current = null; }}
+          style={{ right: 0, top: launcherTop ?? "50%", transform: launcherTop == null ? "translateY(-50%)" : undefined }}
+          onClick={(event) => {
+            if (suppressClickRef.current && event.detail !== 0) {
+              suppressClickRef.current = false;
+              return;
+            }
             persistDocked(false);
             setEverOpened(true);
             setOpen(true);
           }}
-          className="fixed right-0 top-1/2 z-50 flex -translate-y-1/2 items-center gap-1 rounded-l-lg bg-[#13345c] py-3 pl-1.5 pr-1 text-white shadow-lg ring-1 ring-white/30 transition-colors hover:bg-[#0f2747]"
-          title="Show NyaAI"
+          className="fixed z-50 flex touch-none select-none cursor-grab active:cursor-grabbing items-center gap-1 rounded-l-lg bg-[#13345c] py-3 pl-1.5 pr-1 text-white shadow-lg ring-1 ring-white/30 transition-colors hover:bg-[#0f2747]"
+          title="Show NyaAI · Drag up or down"
           aria-label="Show NyaAI"
         >
           <ChevronLeft className="h-4 w-4" />

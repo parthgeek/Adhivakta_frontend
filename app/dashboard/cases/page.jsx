@@ -66,7 +66,9 @@ function getAdvocateInitials(name) {
 function formatHearingDate(dateStr) {
   if (!dateStr) return null;
   const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (isNaN(d.getTime()) || d < today) return null;
   const date = d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
   return { date };
 }
