@@ -516,18 +516,20 @@ export default function CaseDetailsPage() {
     })
 
     if (firstHearingDate && !firstHearingExists) {
+      // The case's next date may come after recorded hearings (it is usually
+      // the date fixed at the last hearing), so keep the list chronological.
       return [
         {
           _id: "first-hearing",
           start: firstHearingDate,
-          description: "Set during case creation",
+          description: eventHearings.length ? "Next date fixed by court" : "Set during case creation",
           outcome: "",
           isVirtualFirst: true,
           location: caseData?.court || "Courtroom",
           title: `Hearing for ${caseData?.title || caseData?.caseNumber || "Case"}`,
         },
         ...eventHearings,
-      ]
+      ].sort((a, b) => new Date(a.start) - new Date(b.start))
     }
 
     return eventHearings
@@ -1555,11 +1557,16 @@ export default function CaseDetailsPage() {
                               </div>
 
                               <div className="flex items-center gap-2 md:justify-end">
-                                {isLawyer && (
+                                {isLawyer && !caseData?.autoFilledFromCnr && (
                                   <Button
                                     size="sm"
                                     variant="outline"
                                     disabled={isFutureHearing(event.start)}
+                                    title={
+                                      isFutureHearing(event.start)
+                                        ? "Proceedings can be recorded once the hearing date has passed"
+                                        : undefined
+                                    }
                                     onClick={() => handleEditOutcome(event)}
                                   >
                                     {event.outcome ? "Edit Proceeding" : "Add Proceeding"}

@@ -694,6 +694,22 @@ export default function NewCasePage() {
       const parsed = JSON.parse(raw);
       if (!parsed?.caseData) return;
 
+      // The form auto-saves even when untouched; only restore real input.
+      const draft = parsed.caseData;
+      const hasMeaningfulInput = Boolean(
+        normalizeValue(draft.title) ||
+          normalizeValue(draft.caseNumberMiddle) ||
+          normalizeValue(draft.cnrNumber) ||
+          normalizeValue(draft.description) ||
+          draft.eCourt?.stateCode ||
+          (draft.petitioners || []).some((p) => normalizeValue(p?.name)) ||
+          (draft.respondents || []).some((r) => normalizeValue(r?.name))
+      );
+      if (!hasMeaningfulInput) {
+        localStorage.removeItem(getDraftStorageKey(user));
+        return;
+      }
+
       setCaseData(syncDerivedCaseFields(reviveDraftDates(parsed.caseData)));
       if (parsed.activeTab && TAB_ORDER.includes(parsed.activeTab)) {
         setActiveTab(parsed.activeTab);
@@ -1327,6 +1343,8 @@ export default function NewCasePage() {
         : [];
 
       applyAutoFilledCaseData(formData, { importClientAdvocates: true });
+      // Imported from eCourts by CNR: proceedings stay read-only for this case.
+      setCaseData((prev) => ({ ...prev, autoFilledFromCnr: true }));
 
       if (courtInfo?.stateCode) {
         setCourtSource("ecourts");
@@ -2053,6 +2071,9 @@ export default function NewCasePage() {
         // Basic case info
         title: normalizeValue(caseData.title),
         cnrNumber: normalizeValue(caseData.cnrNumber).toUpperCase(),
+        autoFilledFromCnr: Boolean(
+          caseData.autoFilledFromCnr && normalizeValue(caseData.cnrNumber)
+        ),
         caseNumber: normalizeFormattedCaseNumber(caseData.caseNumber),
         caseType: getBackendCaseType(caseData.category),
         caseSubType: normalizeValue(caseData.eCourt?.caseTypeName),
@@ -2405,6 +2426,8 @@ export default function NewCasePage() {
       setCaseData((prev) => ({
         ...prev,
         cnrNumber: value.toUpperCase(),
+        // A hand-edited CNR is no longer the eCourts-imported record.
+        autoFilledFromCnr: false,
       }));
       return;
     }

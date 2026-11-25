@@ -58,6 +58,19 @@ const normalizeStatus = (status) => {
   }
 };
 
+// A hearing whose date has passed is no longer "scheduled": either its
+// proceedings were recorded (completed) or the advocate still has to record
+// what happened and the next date (awaiting proceedings).
+const deriveHearingStatus = (rawStatus, startDate, outcome) => {
+  const status = normalizeStatus(rawStatus);
+  if (status !== "scheduled") return status;
+  if (!startDate) return status;
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  if (startDate >= todayStart) return status;
+  return outcome ? "completed" : "awaiting_proceedings";
+};
+
 const normalizeType = (type) => {
   switch (type) {
     case "hearing":
@@ -123,6 +136,8 @@ const getStatusColor = (status) => {
       return "bg-green-100 text-green-800 border border-green-200 hover:bg-green-100";
     case "postponed":
       return "bg-amber-100 text-amber-800 border border-amber-200 hover:bg-amber-100";
+    case "awaiting_proceedings":
+      return "bg-orange-100 text-orange-800 border border-orange-200 hover:bg-orange-100";
     case "cancelled":
       return "bg-red-100 text-red-800 border border-red-200 hover:bg-red-100";
     default:
@@ -153,7 +168,7 @@ const toDayKey = (value) => {
 
 // Cases filled from a CNR mirror eCourts; their proceedings are owned by the
 // court record, so they can be viewed but never edited here.
-const isCnrSourcedHearing = (hearing) => Boolean(hearing?.cnrNumber);
+const isCnrSourcedHearing = (hearing) => Boolean(hearing?.autoFilledFromCnr);
 
 const isFutureHearing = (value) => {
   const date = toDate(value);
@@ -269,6 +284,16 @@ const getHearingCardTone = (hearing, index) => {
       side: "bg-amber-50/60",
       chip: "bg-white/15 text-white",
       icon: "text-amber-700",
+    };
+  }
+
+  if (hearing.status === "awaiting_proceedings") {
+    return {
+      card: "border-orange-200/80 bg-orange-50/30",
+      rail: "bg-orange-700 text-white",
+      side: "bg-orange-50/60",
+      chip: "bg-white/15 text-white",
+      icon: "text-orange-700",
     };
   }
 
@@ -411,6 +436,7 @@ export default function HearingsPage() {
         sourceId: event._id || event.id,
         caseId,
         cnrNumber: caseObj?.cnrNumber || "",
+        autoFilledFromCnr: Boolean(caseObj?.autoFilledFromCnr),
         isCaseHearing: false,
         caseNumber: event.caseNumber || caseObj?.caseNumber || caseObj?.number || "N/A",
         caseName: defaultCaseName,
@@ -427,7 +453,7 @@ export default function HearingsPage() {
         judge: caseObj?.judge || caseObj?.assignedJudge || "Not assigned",
         type: normalizeType(event.type),
         priority: getCasePriority(caseObj || {}, { hearingDate: event.start }),
-        status: normalizeStatus(event.status),
+        status: deriveHearingStatus(event.status, startDate, event.outcome),
         advocate,
         client,
         notes: event.description || "",
@@ -479,6 +505,7 @@ export default function HearingsPage() {
         sourceId: null,
         caseId,
         cnrNumber: caseItem.cnrNumber || "",
+        autoFilledFromCnr: Boolean(caseItem.autoFilledFromCnr),
         isCaseHearing: true,
         caseNumber: caseItem.caseNumber || caseItem.number || "N/A",
         caseName:
@@ -498,10 +525,7 @@ export default function HearingsPage() {
         judge: caseItem.judge || caseItem.assignedJudge || "Not assigned",
         type: "hearing",
         priority: getCasePriority(caseItem),
-        status:
-          startDate && startDate < new Date()
-            ? "completed"
-            : "scheduled",
+        status: deriveHearingStatus("scheduled", startDate, ""),
         advocate,
         client,
         notes: "Hearing scheduled from case timeline.",
@@ -1010,6 +1034,7 @@ export default function HearingsPage() {
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="scheduled">Scheduled</SelectItem>
+                <SelectItem value="awaiting_proceedings">Awaiting proceedings</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
                 <SelectItem value="postponed">Postponed</SelectItem>
                 <SelectItem value="cancelled">Cancelled</SelectItem>
@@ -1098,7 +1123,7 @@ export default function HearingsPage() {
                       <span>{hearing.time}</span>
                     </div>
                     <div className={`hidden rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-normal md:block ${tone.chip}`}>
-                      {hearing.status}
+                      {hearing.status.replace(/_/g, " ")}
                     </div>
                   </div>
 
@@ -1113,7 +1138,7 @@ export default function HearingsPage() {
                             {hearing.type.replace("_", " ").toUpperCase()}
                           </Badge>
                           <Badge className={getStatusColor(hearing.status)}>
-                            {hearing.status.toUpperCase()}
+                            {hearing.status.replace(/_/g, " ").toUpperCase()}
                           </Badge>
                         </div>
                         <h3 className="line-clamp-1 text-base font-semibold leading-snug text-foreground">

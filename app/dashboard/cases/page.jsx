@@ -68,7 +68,11 @@ function formatHearingDate(dateStr) {
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return null;
   const date = d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-  return { date };
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  // A "next" hearing that has already passed means the proceeding / new date
+  // has not been recorded yet.
+  return { date, isPast: d.getTime() < todayStart.getTime() };
 }
 
 function fmtDate(val) {
@@ -594,27 +598,8 @@ function buildPriorityCaseIds(caseList = []) {
     }
   });
 
-  if (priorityIds.size > 0) {
-    return priorityIds;
-  }
-
-  const nowTime = Date.now();
-  const upcoming = caseList
-    .map((raw) => ({
-      id: getCaseId(raw),
-      time: getUpcomingHearingTime(raw, nowTime),
-    }))
-    .filter((item) => item.id && item.time);
-
-  if (upcoming.length === 0) {
-    return priorityIds;
-  }
-
-  const soonestTime = Math.min(...upcoming.map((item) => item.time));
-  upcoming
-    .filter((item) => item.time === soonestTime)
-    .forEach((item) => priorityIds.add(item.id));
-
+  // Only genuinely urgent/high cases count. The list is already sorted by
+  // the soonest hearing, so no case is promoted just for being first.
   return priorityIds;
 }
 
@@ -749,7 +734,10 @@ export default function CasesPage() {
       court: raw.court || "N/A",
       category: getCaseCategory(raw),
       stage: raw.caseStage?.replace(/_/g, " ") || raw.stage || raw.currentStage || raw.hearingStage || "—",
-      nextHearing: raw.nextHearingDate || raw.nextHearing || raw.hearingDate,
+      // Disposed/closed matters have no next hearing.
+      nextHearing: TERMINAL_TAB_STATUSES.has(getTabStatus(raw))
+        ? null
+        : raw.nextHearingDate || raw.nextHearing || raw.hearingDate,
       advocateName: lead?.name || raw.assignedTo?.name || null,
       isHighPriority: priorityCaseIds.has(getCaseId(raw)),
       tabStatus: getTabStatus(raw),
@@ -1257,6 +1245,9 @@ export default function CasesPage() {
                       {hearing ? (
                         <div>
                           <p className="text-sm text-foreground whitespace-nowrap">{hearing.date}</p>
+                          {hearing.isPast && (
+                            <p className="text-xs text-amber-600 whitespace-nowrap">Update next date</p>
+                          )}
                         </div>
                       ) : (
                         <span className="text-muted-foreground">—</span>
