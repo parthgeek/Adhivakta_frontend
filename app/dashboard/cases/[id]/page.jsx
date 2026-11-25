@@ -23,6 +23,8 @@ import { formatCaseTypeLabel, formatDisplayCaseNumber } from "@/lib/caseTypeUtil
 import { getDocumentOpenUrl } from "@/lib/document-url"
 import CaseTimeline from "@/components/cases/CaseTimeline"
 
+const hasInput = (value) => value != null && String(value).trim() !== ""
+
 const CASE_TAB_VALUES = new Set(["details", "history", "documents", "hearings"])
 
 const formatTransferDate = (d) => {
@@ -810,13 +812,13 @@ export default function CaseDetailsPage() {
       <div className="space-y-6">
         <div className="flex flex-col gap-3 rounded-2xl border border-[#d6deeb] bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-bold uppercase tracking-[0.28em] text-[#4f5f77] sm:text-base">
-              {String(caseData.courtType || "Civil Court").replace(/_/g, " ")}
+            <p className="text-sm font-bold text-[#4f5f77] sm:text-base">
+              {String(caseData.courtType || "Civil Court").replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase())}
             </p>
             <div className="mt-2 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
               {courtEstablishmentFields.map((field) => (
                 <div key={field.label}>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#6b7a90]">
+                  <p className="text-[11px] font-semibold text-[#6b7a90]">
                     {field.label}
                   </p>
                   <p className="mt-1 text-lg font-semibold text-[#1e2b3d]">
@@ -875,7 +877,7 @@ export default function CaseDetailsPage() {
                     {caseData?.eCourt?.court || caseData?.court || "Court not specified"}
                   </p>
                   <p className="mt-1 text-lg font-semibold text-[#355487]">
-                    Case details
+                    Case Details
                   </p>
                 </div>
                 <div className="overflow-x-auto">
@@ -928,7 +930,7 @@ export default function CaseDetailsPage() {
             <Card className="overflow-hidden border-[#ead5d8] shadow-sm">
               <CardContent className="p-0">
                 <div className="border-b border-[#ead5d8] bg-[#fff7ef] px-4 py-3 text-center text-lg font-semibold text-[#b42318]">
-                  Case status
+                  Case Status
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[760px] border-collapse text-sm">
@@ -953,7 +955,7 @@ export default function CaseDetailsPage() {
             <Card className="overflow-hidden border-[#d6deeb] shadow-sm">
               <CardContent className="p-0">
                 <div className="border-b border-[#d6deeb] bg-white px-4 py-3 text-center text-lg font-semibold text-[#1f2937]">
-                  Petitioner and advocate
+                  Petitioner And Advocate
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[760px] border-collapse text-sm">
@@ -985,7 +987,7 @@ export default function CaseDetailsPage() {
             <Card className="overflow-hidden border-[#d6deeb] shadow-sm">
               <CardContent className="p-0">
                 <div className="border-b border-[#d6deeb] bg-white px-4 py-3 text-center text-lg font-semibold text-[#1f2937]">
-                  Respondent and advocate
+                  Respondent And Advocate
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[760px] border-collapse text-sm">
@@ -1014,9 +1016,15 @@ export default function CaseDetailsPage() {
               </CardContent>
             </Card>
 
-            <Accordion type="multiple" defaultValue={["acts", "fir", "processes", "ia", "notes"]} className="space-y-4">
+            <Accordion type="multiple" defaultValue={[
+              actRows.length > 0 && "acts",
+              [caseData.policeStation, caseData.firNumber, caseData.firYear].some(hasInput) && "fir",
+              caseData.processes?.some((entry) => [entry.processId, entry.processTitle, entry.processDate].some(hasInput)) && "processes",
+              caseData.iaStatuses?.some((entry) => [entry.iaNumber, entry.partyName, entry.dateOfFiling, entry.nextDatePurpose, entry.status].some(hasInput)) && "ia",
+              ([caseData.description, caseData.reliefSought, caseData.notes].some(hasInput) || allClients.length > 0 || caseData.stakeholders?.some((entry) => hasInput(entry.name))) && "notes",
+            ].filter(Boolean)} className="space-y-4">
               <AccordionItem value="acts" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
-                <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
+                <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold text-[#43628c] hover:no-underline">
                   Acts
                 </AccordionTrigger>
                 <AccordionContent className="px-5 pb-5">
@@ -1046,8 +1054,8 @@ export default function CaseDetailsPage() {
               </AccordionItem>
 
               <AccordionItem value="fir" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
-                <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
-                  FIR and police station
+                <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold text-[#43628c] hover:no-underline">
+                  FIR And Police Station
                 </AccordionTrigger>
                 <AccordionContent className="px-5 pb-5">
                   <div className="overflow-hidden rounded-2xl border border-[#d9e2ef]">
@@ -1070,7 +1078,7 @@ export default function CaseDetailsPage() {
               </AccordionItem>
 
               <AccordionItem value="processes" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
-                <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
+                <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold text-[#43628c] hover:no-underline">
                   Processes
                 </AccordionTrigger>
                 <AccordionContent className="px-5 pb-5">
@@ -1102,8 +1110,8 @@ export default function CaseDetailsPage() {
               </AccordionItem>
 
               <AccordionItem value="ia" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
-                <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
-                  IA status
+                <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold text-[#43628c] hover:no-underline">
+                  IA Status
                 </AccordionTrigger>
                 <AccordionContent className="px-5 pb-5">
                   {(caseData.iaStatuses?.length || 0) === 0 ? (
@@ -1138,25 +1146,25 @@ export default function CaseDetailsPage() {
               </AccordionItem>
 
               <AccordionItem value="notes" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
-                <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
-                  Notes and relief
+                <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold text-[#43628c] hover:no-underline">
+                  Notes And Relief
                 </AccordionTrigger>
                 <AccordionContent className="space-y-4 px-5 pb-5">
                   <div>
-                    <p className="text-sm font-medium text-[#243246]">Case description</p>
+                    <p className="text-sm font-medium text-[#243246]">Case Description</p>
                     <p className="mt-2 text-sm leading-7 text-[#6a778a]">
                       {caseData.description || "No case description provided yet."}
                     </p>
                   </div>
                   {caseData.reliefSought && (
                     <div>
-                      <p className="text-sm font-medium text-[#243246]">Relief sought</p>
+                      <p className="text-sm font-medium text-[#243246]">Relief Sought</p>
                       <p className="mt-2 text-sm leading-7 text-[#6a778a]">{caseData.reliefSought}</p>
                     </div>
                   )}
                   {caseData.notes && (
                     <div>
-                      <p className="text-sm font-medium text-[#243246]">Additional notes</p>
+                      <p className="text-sm font-medium text-[#243246]">Additional Notes</p>
                       <p className="mt-2 text-sm leading-7 text-[#6a778a]">{caseData.notes}</p>
                     </div>
                   )}
@@ -1200,7 +1208,7 @@ export default function CaseDetailsPage() {
             <Card className="overflow-hidden border-[#d9e2ef] shadow-sm">
               <CardContent className="p-0">
                 <div className="border-b border-[#d9e2ef] bg-[#f1f8d9] px-4 py-3 text-center text-lg font-semibold text-[#355487]">
-                  Case history
+                  Case History
                 </div>
                 {hearingHistory.length > 0 ? (
                   <div className="overflow-x-auto">
@@ -1243,10 +1251,13 @@ export default function CaseDetailsPage() {
 
             <CaseTimeline caseData={{ ...caseData, events: hearings }} />
 
-            <Accordion type="multiple" defaultValue={["orders", "transfer"]} className="space-y-4">
+            <Accordion type="multiple" defaultValue={[
+              (interimOrders.length > 0 || (["closed", "disposed"].includes(caseData.status) && finalOrders.length > 0)) && "orders",
+              caseData.transferHistory?.length > 0 && "transfer",
+            ].filter(Boolean)} className="space-y-4">
               <AccordionItem value="orders" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
-                <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
-                  Interim orders
+                <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold text-[#43628c] hover:no-underline">
+                  Interim Orders
                 </AccordionTrigger>
                 <AccordionContent className="space-y-4 px-5 pb-5">
                   {interimOrders.length > 0 ? (
@@ -1295,8 +1306,8 @@ export default function CaseDetailsPage() {
 
                   {["closed", "disposed"].includes(caseData.status) && (
                     <div>
-                      <div className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c]">
-                        Final judgment
+                      <div className="mb-3 text-sm font-semibold text-[#43628c]">
+                        Final Judgment
                       </div>
                       {finalOrders.length > 0 ? (
                         <div className="overflow-x-auto rounded-2xl border border-[#d9e2ef]">
@@ -1347,8 +1358,8 @@ export default function CaseDetailsPage() {
               </AccordionItem>
 
               <AccordionItem value="transfer" className="overflow-hidden rounded-2xl border border-[#d9e2ef] bg-white shadow-sm">
-                <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold uppercase tracking-[0.18em] text-[#43628c] hover:no-underline">
-                  Case transfer history
+                <AccordionTrigger className="px-5 py-4 text-left text-sm font-semibold text-[#43628c] hover:no-underline">
+                  Case Transfer History
                 </AccordionTrigger>
                 <AccordionContent className="px-5 pb-5">
                   {(caseData.transferHistory?.length || 0) === 0 ? (

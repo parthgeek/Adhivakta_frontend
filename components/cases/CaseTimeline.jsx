@@ -89,7 +89,7 @@ function EventText({ ev, align }) {
 export default function CaseTimeline({ caseData }) {
   const events = useMemo(() => buildEvents(caseData), [caseData]);
   const displayEvents = useMemo(() => [...events].reverse(), [events]);
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(() => events.length > 0);
 
   return (
     <Card>
